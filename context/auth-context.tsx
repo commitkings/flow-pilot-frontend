@@ -1,10 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
+import { clearCurrentUserEmail } from "@/lib/auth-storage";
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isReady: boolean;
   login: () => void;
   logout: () => void;
 }
@@ -12,15 +14,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("flowpilot_auth") === "true";
+  });
+  const isReady = true;
   const router = useRouter();
-
-  useEffect(() => {
-    const stored = localStorage.getItem("flowpilot_auth");
-    if (stored === "true") {
-      setIsAuthenticated(true);
-    }
-  }, []);
 
   const login = () => {
     localStorage.setItem("flowpilot_auth", "true");
@@ -29,12 +28,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("flowpilot_auth");
+    clearCurrentUserEmail();
     setIsAuthenticated(false);
-    router.push("/");
+    router.push("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isReady, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
