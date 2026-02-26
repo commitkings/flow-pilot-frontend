@@ -14,7 +14,7 @@ export function LandingHero() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#e86727] opacity-75"></span>
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#e86727]"></span>
             </span>
-            Powered by Interswitch APIs
+            Interswitch Protocol Integrated
           </span>
         </div>
 
@@ -23,7 +23,7 @@ export function LandingHero() {
           <span className="text-[#e86727]">without the drag.</span>
         </h1>
 
-        <p className="mx-auto mt-6 max-w-xl text-center text-base leading-relaxed text-[#6B6B6B] md:text-lg">
+        <p className="mx-auto mt-6 max-w-120 text-center text-[12px] leading-relaxed text-[#6B6B6B] md:text-[16px]">
           FlowPilot turns operator goals into supervised runs. Agents reconcile,
           score risk, verify recipients, and execute approved payouts — with
           full traceability.

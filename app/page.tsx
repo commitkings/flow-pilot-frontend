@@ -3,6 +3,7 @@ import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingHowItWorks } from "@/components/landing/landing-how-it-works";
 import { LandingFeatures } from "@/components/landing/landing-features";
 import { LandingFooter } from "@/components/landing/landing-footer";
+//import { LandingIntegrations } from "@/components/landing/landing-integrations";
 
 export default function HomePage() {
   return (
@@ -11,6 +12,7 @@ export default function HomePage() {
       <LandingHero />
       <LandingHowItWorks />
       <LandingFeatures />
+      {/* <LandingIntegrations /> */}
       <LandingFooter />
     </main>
   );

@@ -1,47 +1,47 @@
 "use client";
 
-import { Bolt, BrainCircuit, CheckCircle2, FileCheck2, Hand, ShieldCheck } from "lucide-react";
+import { Bolt, BrainCircuit, FileCheck2, Hand, ShieldCheck } from "lucide-react";
 
 const features = [
   {
     icon: BrainCircuit,
-    title: "AI Reconciliation",
-    text: "Normalize and compare payment activity across channels to expose unresolved references.",
+    title: "Self-Healing Ledger",
+    text: "Agents don't just find mismatches; they suggest resolutions for duplicate entries and orphan references in real-time.",
     tone: "bg-[#EAF2FF] text-[#0A84FF]",
     span: "md:col-span-2",
   },
   {
     icon: ShieldCheck,
-    title: "Risk Scoring",
-    text: "Each candidate carries transparent scoring factors, not black-box outputs.",
+    title: "Anti-Fraud Engine",
+    text: "Automatic cross-referencing of account numbers against Interswitch's KYC database before any funds are staged.",
     tone: "bg-[#E8FBF2] text-[#0D9D6D]",
     span: "md:col-span-1",
   },
   {
     icon: Bolt,
-    title: "Liquidity Forecast",
-    text: "7-day payout impact simulation flags stress before execution windows.",
+    title: "Liquidity Guard",
+    text: "Real-time stress testing ensures that proposed payout batches never compromise your operating capital.",
     tone: "bg-[#FFF5E6] text-[#D98700]",
     span: "md:col-span-1",
   },
   {
-    icon: CheckCircle2,
-    title: "Recipient Verification",
-    text: "Account lookup against institution data before every disbursement attempt.",
-    tone: "bg-[#EEF0F5] text-[#1B2A44]",
-    span: "md:col-span-1",
-  },
-  {
     icon: Hand,
-    title: "Human Approval Gate",
-    text: "Operators explicitly approve safe or caution candidates before money moves.",
+    title: "Human-in-the-Loop",
+    text: "Deterministic safety rails. No agent can execute a transaction without a cryptographically signed human approval.",
     tone: "bg-[#FFF0F2] text-[#C0445E]",
     span: "md:col-span-1",
   },
   {
+    icon: BrainCircuit, // You can use a 'Link' or 'Cpu' icon here if preferred
+    title: "Direct Protocol Access",
+    text: "Native integration with Interswitch search, lookup, and payout APIs for sub-second execution.",
+    tone: "bg-[#EEF0F5] text-[#1B2A44]",
+    span: "md:col-span-1",
+  },
+  {
     icon: FileCheck2,
-    title: "Full Audit Trail",
-    text: "Every decision, status transition, and API trace is exportable for compliance.",
+    title: "Automated Compliance",
+    text: "Every run generates a pre-formatted audit pack, including API timestamps and agent reasoning, ready for review.",
     tone: "bg-[#EBF9FF] text-[#0D7EA6]",
     span: "md:col-span-2",
   },
