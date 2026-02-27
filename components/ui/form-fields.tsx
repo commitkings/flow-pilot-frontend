@@ -153,6 +153,64 @@ export function Checkbox({
 }
 
 /**
+ * Textarea Input: Multi-line styled to match TextInput
+ */
+export function TextareaInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={cn(
+        "min-h-24 w-full rounded-2xl border border-border bg-background px-5 py-3 text-sm outline-none transition-all resize-none",
+        "focus:border-brand focus:ring-1 focus:ring-brand/10",
+        className
+      )}
+    />
+  );
+}
+
+/**
+ * Phone Input: Prefixed with country code
+ */
+export function PhoneInput({
+  value,
+  onChange,
+  prefix = "🇳🇬 +234",
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  prefix?: string;
+}) {
+  return (
+    <div className={cn(
+      "flex h-12 overflow-hidden rounded-full border border-border bg-background transition-all",
+      "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10"
+    )}>
+      <span className="inline-flex shrink-0 items-center border-r border-border px-4 text-sm text-muted-foreground">
+        {prefix}
+      </span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode="tel"
+        className="w-full bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
+      />
+    </div>
+  );
+}
+
+/**
  * Password Input: Toggleable visibility
  */
 export function PasswordInput({

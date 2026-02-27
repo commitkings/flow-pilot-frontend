@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AuthAside } from "@/components/auth/AuthAside";
-import { ForgotPasswordForm } from "@/components/auth/forgot-password/ForgotPasswordForm";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

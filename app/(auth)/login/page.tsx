@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthAside } from "@/components/auth/AuthAside";
-import { LoginForm } from "@/components/auth/login/LoginForm";
+import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
   const router = useRouter();

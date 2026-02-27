@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthAside } from "@/components/auth/AuthAside";
-import { AccountStep } from "@/components/auth/signup/AccountStep";
-import { BusinessStep } from "@/components/auth/signup/BusinessStep";
+import { AccountStep } from "@/components/auth/AccountStep";
+import { BusinessStep } from "@/components/auth/BusinessStep";
 import { setPendingVerificationEmail, upsertUser } from "@/lib/auth-storage";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 
@@ -94,7 +94,7 @@ export default function SignupPage() {
       <section className="px-4 py-8 md:px-10 md:py-12 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl rounded-2xl md:p-8">
 
-          <StepIndicator steps={SIGNUP_STEPS} current={step} />
+          <StepIndicator steps={SIGNUP_STEPS} current={step} onStepClick={(s) => setStep(s as 1 | 2)} />
 
           {step === 1 ? (
             <AccountStep

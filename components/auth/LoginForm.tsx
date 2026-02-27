@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Checkbox, Field, PasswordInput, TextInput } from "@/components/auth/ui/form-fields";
+import { Checkbox, Field, PasswordInput, TextInput } from "@/components/ui/form-fields";
 import { GoogleIcon } from "@/public/svg/GoogleIcon";
 
 interface LoginFormProps {

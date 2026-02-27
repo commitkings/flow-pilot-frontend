@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AuthAside } from "@/components/auth/AuthAside";
-import { VerifyForm } from "@/components/auth/verify-email/VerifyForm";
+import { VerifyForm } from "@/components/auth/VerifyForm";
 
 const CODE_LENGTH = 6;
 const INITIAL_SECONDS = 8 * 60 + 47;

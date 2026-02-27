@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { OtpInput } from "@/components/auth/ui/form-fields";
+import { OtpInput } from "@/components/ui/form-fields";
 
 interface VerifyFormProps {
   email: string;

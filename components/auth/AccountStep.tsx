@@ -4,7 +4,7 @@ import {
   Field,
   PasswordInput,
   TextInput,
-} from "@/components/auth/ui/form-fields";
+} from "@/components/ui/form-fields";
 import { GoogleIcon } from "@/public/svg/GoogleIcon";
 
 interface AccountStepProps {

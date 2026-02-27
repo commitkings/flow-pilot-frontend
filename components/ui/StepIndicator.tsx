@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 interface StepIndicatorProps {
   steps: string[];
   current: number;
+  onStepClick?: (step: number) => void;
 }
 
-export function StepIndicator({ steps, current }: StepIndicatorProps) {
+export function StepIndicator({ steps, current, onStepClick }: StepIndicatorProps) {
   return (
     <nav aria-label="Progress" className="mb-5 w-full">
       <ol className="flex w-full items-center justify-between">
@@ -28,14 +29,17 @@ export function StepIndicator({ steps, current }: StepIndicatorProps) {
               <div className="relative flex flex-col items-start">
                 <div className="flex items-center gap-3">
                   {/* Step Circle */}
-                  <div
+                  <button
+                    type="button"
+                    disabled={!isCompleted || !onStepClick}
+                    onClick={() => isCompleted && onStepClick?.(stepNumber)}
                     className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black transition-all duration-500",
                       isCompleted
-                        ? "bg-brand text-white"
+                        ? "bg-brand text-white cursor-pointer hover:opacity-80 active:scale-95"
                         : isActive
-                        ? "bg-brand text-white"
-                        : "bg-muted text-muted-foreground border-2 border-transparent"
+                        ? "bg-brand text-white cursor-default"
+                        : "bg-muted text-muted-foreground border-2 border-transparent cursor-default"
                     )}
                   >
                     {isCompleted ? (
@@ -43,7 +47,7 @@ export function StepIndicator({ steps, current }: StepIndicatorProps) {
                     ) : (
                       <span>{stepNumber}</span>
                     )}
-                  </div>
+                  </button>
 
                   {/* Desktop Label */}
                   <span
