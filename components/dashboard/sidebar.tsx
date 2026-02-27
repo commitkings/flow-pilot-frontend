@@ -25,7 +25,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <aside
         className={cn(
           "fixed left-0 top-0 z-40 hidden md:flex h-screen flex-col border-r border-border bg-card transition-all duration-300",

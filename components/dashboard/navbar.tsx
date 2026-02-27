@@ -7,7 +7,7 @@ import { SearchInput } from "@/components/ui/form-fields";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 
 export function Navbar() {
-  const { toggleSidebar, openNewRun } = useDashboardShell();
+  const { openNewRun } = useDashboardShell();
   const [query, setQuery] = useState("");
 
   return (
@@ -25,16 +25,16 @@ export function Navbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground transition-colors">
-          <Bell className="h-4 w-4" />
+        <button className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors">
+          <Bell className="h-4.5 w-4.5" />
           <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-background bg-brand" />
         </button>
 
         <Button 
           onClick={openNewRun}
-          className="h-10 rounded-full bg-brand px-5 font-bold text-white transition-all"
+          className="h-10 rounded-full bg-brand px-6 font-bold text-white transition-all"
         >
-          <Plus className="mr-2 h-4 w-4 stroke-3" />
+          <Plus className="mr-1 h-4 w-4 stroke-3" />
           New Run
         </Button>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Eye, EyeOff, Search } from "lucide-react";
+import { Calendar, Eye, EyeOff, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +73,7 @@ export function SelectInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-12 w-full appearance-none rounded-full border border-border bg-background px-5 text-sm text-foreground outline-none transition-all",
-          "focus:border-brand focus:ring-1 focus:ring-brand/1",
+          "focus:border-brand focus:ring-1 focus:ring-brand/10",
           "disabled:opacity-50"
         )}
       >
@@ -172,7 +172,7 @@ export function TextareaInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={cn(
-        "min-h-24 w-full rounded-2xl border border-border bg-background px-5 py-3 text-sm outline-none transition-all resize-none",
+        "min-h-24 w-full rounded-2xl border border-border bg-background p-3 text-sm outline-none transition-all resize-none",
         "focus:border-brand focus:ring-1 focus:ring-brand/10",
         className
       )}
@@ -266,7 +266,7 @@ export function SearchInput({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 transition-all",
+        "flex items-center gap-2 h-12 rounded-full border border-border bg-muted/40 px-3 py-2 transition-all",
         "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
         className
       )}
@@ -277,6 +277,97 @@ export function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+      />
+    </div>
+  );
+}
+
+/**
+ * Date Input: Custom-formatted date picker (shows as "2,Oct,2025")
+ */
+export function DateInput({
+  value,
+  onChange,
+  placeholder = "Select date",
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const formatted = value
+    ? new Date(value + "T00:00:00")
+        .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+        .replace(/ /g, ",")
+    : null;
+
+  return (
+    <div
+      onClick={() => inputRef.current?.showPicker?.()}
+      className={cn(
+        "relative h-12 min-w-36 cursor-pointer rounded-full border border-border bg-background transition-all",
+        "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
+        className
+      )}
+    >
+      <div className="pointer-events-none flex h-full items-center justify-between px-4">
+        {formatted ? (
+          <span className="text-sm text-foreground">{formatted}</span>
+        ) : (
+          <span className="text-sm text-muted-foreground">{placeholder}</span>
+        )}
+        <Calendar className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <input
+        ref={inputRef}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="sr-only"
+      />
+    </div>
+  );
+}
+
+/**
+ * DateRange Input: Two date pickers for a from/to range
+ */
+export function DateRangeInput({
+  from,
+  to,
+  onFromChange,
+  onToChange,
+  className,
+}: {
+  from: string;
+  to: string;
+  onFromChange: (value: string) => void;
+  onToChange: (value: string) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center h-12 overflow-hidden rounded-full border border-border bg-background transition-all",
+        "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
+        className
+      )}
+    >
+      <input
+        type="date"
+        value={from}
+        onChange={(e) => onFromChange(e.target.value)}
+        className="h-10 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
+      />
+      <span className="shrink-0 border-x border-border px-2 text-xs text-muted-foreground font-bold">x</span>
+      <input
+        type="date"
+        value={to}
+        onChange={(e) => onToChange(e.target.value)}
+        className="h-10 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
       />
     </div>
   );
@@ -341,7 +432,7 @@ export function OtpInput({
           className={cn(
             // Sizing: Use fixed aspect ratio boxes
             "h-12 w-10 sm:w-12 text-center text-xl font-bold transition-all outline-none",
-            "rounded-xl border border-border bg-background",
+            "rounded-full border border-border bg-background",
             // States
             "focus:border-brand focus:ring-1 focus:ring-brand/10",
             allFilled && "border-brand shadow-sm shadow-brand/10",
