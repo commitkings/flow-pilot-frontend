@@ -1,64 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
 import { Navbar } from "@/components/navbar";
-import { useAuth } from "@/context/auth-context";
 import { DashboardShellProvider } from "@/components/dashboard-shell-context";
 import { NewRunModal } from "@/components/new-run-modal";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { isAuthenticated, isReady } = useAuth();
-  const router = useRouter();
-  const [onboarded] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("flowpilot_onboarded") === "true";
-  });
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [newRunOpen, setNewRunOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isReady) return;
-
-    if (!isAuthenticated) {
-      router.replace("/login");
-      return;
-    }
-
-    if (!onboarded) {
-      router.replace("/onboarding");
-    }
-  }, [isAuthenticated, isReady, onboarded, router]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const inEditable =
-        target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
-      if (inEditable) return;
-      if (event.key.toLowerCase() === "n") {
-        event.preventDefault();
-        setNewRunOpen(true);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  if (!isReady || !isAuthenticated || !onboarded) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-600">
-        Loading workspace...
-      </div>
-    );
-  }
 
   return (
     <DashboardShellProvider
@@ -68,17 +19,20 @@ export default function DashboardLayout({
         openNewRun: () => setNewRunOpen(true),
       }}
     >
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-background text-foreground">
         <Sidebar />
-        <Navbar />
-        <main
-          className={cn(
-            "min-h-screen pt-16 transition-all",
-            collapsed ? "ml-16" : "ml-60"
-          )}
-        >
-          <div className="p-6 md:p-8">{children}</div>
-        </main>
+        <div className={cn(
+          "flex flex-col min-h-screen transition-all duration-300 ease-in-out",
+          "ml-0",
+          collapsed ? "md:ml-20" : "md:ml-64"
+        )}>
+          <Navbar />
+          <main className="flex-1 p-4 md:p-8 lg:p-10 pb-20 md:pb-8">
+            <div className="mx-auto max-w-7xl">
+              {children}
+            </div>
+          </main>
+        </div>
       </div>
       <NewRunModal open={newRunOpen} onClose={() => setNewRunOpen(false)} />
     </DashboardShellProvider>

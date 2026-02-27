@@ -2,92 +2,90 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, ChevronLeft, LogOut, Monitor, Moon, PlayCircle, Repeat, Settings, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  ShieldCheck,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/context/auth-context";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 
 const navItems = [
-  { label: "Runs", href: "/dashboard/runs", icon: PlayCircle },
-  { label: "Transactions", href: "/dashboard/transactions", icon: Repeat },
-  { label: "Institutions", href: "/dashboard/institutions", icon: Building2 },
+  { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
+  { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
+  { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
-const themeOptions = [
-  { value: "light", icon: Sun, label: "Light" },
-  { value: "dark", icon: Moon, label: "Dark" },
-  { value: "system", icon: Monitor, label: "System" },
-] as const;
-
 export function Sidebar() {
   const pathname = usePathname();
-  const { collapsed, toggleSidebar } = useDashboardShell();
-  const { logout } = useAuth();
-  // const { theme, setTheme } = useTheme();
+  const { collapsed } = useDashboardShell();
 
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-slate-200 bg-white transition-all dark:border-slate-700 dark:bg-slate-900",
-        collapsed ? "w-16" : "w-60"
-      )}
-    >
-      {/* Theme switcher */}
-      {/* <div className={cn("flex items-center border-b border-slate-200 px-3 py-2 dark:border-slate-700", collapsed ? "justify-center" : "gap-1")}>
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={() => {
-              const next = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-              setTheme(next);
-            }}
-            title={`Theme: ${theme}`}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-          >
-            {theme === "dark" ? <Moon className="h-4 w-4" /> : theme === "light" ? <Sun className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
-          </button>
-        ) : (
-          <>
-            {themeOptions.map(({ value, icon: Icon, label }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setTheme(value)}
-                title={label}
+    <>
+      {/* ── Desktop sidebar ───────────────────────────────────────────── */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-40 hidden md:flex h-screen flex-col border-r border-border bg-card transition-all duration-300",
+          collapsed ? "w-20" : "w-64"
+        )}
+      >
+        <div className="flex h-16 items-center px-6 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white" />
+            {!collapsed && (
+              <span className="font-black tracking-tighter text-xl">
+                FLOW<span className="text-brand">PILOT</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-2 p-4 mt-4">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname.startsWith(item.href);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1 rounded-md py-1 text-xs font-medium transition-colors",
-                  theme === value
-                    ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-                    : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all",
+                  isActive
+                    ? "bg-brand/10 text-brand"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
-                {label}
-              </button>
-            ))}
-          </>
-        )}
-      </div> */}
+                <Icon className={cn("h-5 w-5 shrink-0 transition-colors", isActive ? "text-brand" : "text-muted-foreground group-hover:text-foreground")} />
+                {!collapsed && <span>{item.label}</span>}
+                {isActive && !collapsed && (
+                  <span className="absolute right-2 h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_8px_rgba(232,103,39,0.6)]" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3 dark:border-slate-700">
-        <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white dark:bg-slate-100 dark:text-slate-900">
-            FP
-          </span>
-          {!collapsed && <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">FlowPilot</span>}
+        <div className="p-4 border-t border-border/50 bg-muted/30">
+          <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+            <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
+              <AvatarFallback className="bg-brand text-white font-bold text-xs">OA</AvatarFallback>
+            </Avatar>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-black text-foreground">O. Adeyemi</p>
+                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pro Plan</p>
+              </div>
+            )}
+          </div>
         </div>
-        {!collapsed && (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+      </aside>
 
-      <nav className="flex-1 space-y-1 p-2">
+      {/* ── Mobile bottom nav ─────────────────────────────────────────── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 flex md:hidden items-center justify-around border-t border-border bg-card/95 backdrop-blur-md px-2 pb-safe">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
@@ -97,54 +95,15 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                collapsed && "justify-center px-0",
-                isActive
-                  ? "bg-blue-50 text-blue-900 dark:bg-slate-800 dark:text-slate-100"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                "flex flex-1 flex-col items-center gap-1 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors",
+                isActive ? "text-brand" : "text-muted-foreground"
               )}
-              title={collapsed ? item.label : undefined}
             >
-              {isActive && <span className="absolute left-0 top-0 h-full w-1 rounded-r bg-slate-900 dark:bg-slate-100" />}
-              <Icon className={cn("h-4 w-4", isActive ? "text-slate-900 dark:text-slate-100" : "text-slate-500 dark:text-slate-400")} />
-              {!collapsed && <span>{item.label}</span>}
+              <Icon className={cn("h-5 w-5", isActive && "drop-shadow-[0_0_6px_rgba(232,103,39,0.5)]")} />
             </Link>
           );
         })}
       </nav>
-
-      <div className="border-t border-slate-200 p-3 dark:border-slate-700">
-        {!collapsed ? (
-          <>
-            <div className="mb-3 flex items-center gap-2">
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-slate-200 text-xs font-semibold text-slate-700">OA</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">Oluwaseun Adeyemi</p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">Acme Corp Ltd</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={logout}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
-            >
-              <LogOut className="h-4 w-4" />
-              Log Out
-            </button>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-slate-200 text-[10px] font-semibold text-slate-700">OA</AvatarFallback>
-            </Avatar>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleSidebar}>
-              <ChevronLeft className="h-4 w-4 rotate-180" />
-            </Button>
-          </div>
-        )}
-      </div>
-    </aside>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -245,6 +245,39 @@ export function PasswordInput({
       >
         {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
+    </div>
+  );
+}
+
+/**
+ * Search Input: Icon-prefixed search bar
+ */
+export function SearchInput({
+  value,
+  onChange,
+  placeholder = "Search...",
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 transition-all",
+        "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
+        className
+      )}
+    >
+      <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+      />
     </div>
   );
 }
