@@ -166,7 +166,7 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
           <PageHeader
             title="Payout Recipients"
             description="Agents will verify and risk-score each recipient."
-            className="mb-3"
+            className="my-5"
           />
 
           <div className="space-y-2">
@@ -175,7 +175,7 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
               return (
                 <div
                   key={row.id}
-                  className="rounded-2xl bg-muted/40 py-3 md:border md:border-border md:bg-background md:px-4 md:py-4"
+                  className="rounded-2xl py-3 md:px-4 md:py-4"
                 >
                   {/* Row header: live name + delete */}
                   <div className="mb-3 flex items-center justify-between">

@@ -172,7 +172,7 @@ export function TextareaInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={cn(
-        "min-h-24 w-full rounded-2xl border border-border bg-background p-3 text-sm outline-none transition-all resize-none",
+        "min-h-24 w-full rounded-2xl border border-border bg-background p-3 text-[12px] outline-none transition-all resize-none",
         "focus:border-brand focus:ring-1 focus:ring-brand/10",
         className
       )}
