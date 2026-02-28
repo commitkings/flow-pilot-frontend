@@ -10,6 +10,7 @@ import { useState } from "react";
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [newRunOpen, setNewRunOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <DashboardShellProvider
@@ -17,6 +18,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         collapsed,
         toggleSidebar: () => setCollapsed((prev) => !prev),
         openNewRun: () => setNewRunOpen(true),
+        mobileMenuOpen,
+        toggleMobileMenu: () => setMobileMenuOpen((prev) => !prev),
       }}
     >
       <div className="min-h-screen bg-background text-foreground">

@@ -4,8 +4,13 @@ import { useMemo, useState } from "react";
 import { Plus, Rocket, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { SheetModal } from "@/components/modals/SheetModal";
-import { Field, TextInput, TextareaInput, DateRangeInput } from "@/components/ui/form-fields";
+import { RightModal } from "@/components/modals/RightModal";
+import {
+  Field,
+  TextInput,
+  TextareaInput,
+  DateRangeInput,
+} from "@/components/ui/form-fields";
 import { SelectInput } from "@/components/ui/form-fields";
 import { PageHeader } from "@/components/ui/page-header";
 import { institutions, naira } from "@/lib/mock-data";
@@ -30,7 +35,13 @@ function recipientRow(values: Partial<Recipient> = {}): Recipient {
   };
 }
 
-export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function NewRunModal({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const router = useRouter();
   const [objective, setObjective] = useState(
     "Reconcile all transactions from Feb 1 to Feb 14 and execute approved payroll payouts under risk threshold 0.35."
@@ -42,8 +53,20 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [recipients, setRecipients] = useState<Recipient[]>([
-    recipientRow({ beneficiaryName: "Chukwuemeka Adeyemi", institution: "GTBank", accountNumber: "054221789", amount: "450000", purpose: "February Salary" }),
-    recipientRow({ beneficiaryName: "Fatima Bello", institution: "Access Bank", accountNumber: "031998442", amount: "320000", purpose: "Contractor Fee" }),
+    recipientRow({
+      beneficiaryName: "Chukwuemeka Adeyemi",
+      institution: "GTBank",
+      accountNumber: "054221789",
+      amount: "450000",
+      purpose: "February Salary",
+    }),
+    recipientRow({
+      beneficiaryName: "Fatima Bello",
+      institution: "Access Bank",
+      accountNumber: "031998442",
+      amount: "320000",
+      purpose: "Contractor Fee",
+    }),
   ]);
 
   const total = useMemo(
@@ -52,18 +75,35 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
   );
 
   const hasInvalidField = recipients.some(
-    (row) => !row.beneficiaryName.trim() || !row.institution.trim() || !row.accountNumber.trim() || !row.amount.trim() || !row.purpose.trim()
+    (row) =>
+      !row.beneficiaryName.trim() ||
+      !row.institution.trim() ||
+      !row.accountNumber.trim() ||
+      !row.amount.trim() ||
+      !row.purpose.trim()
   );
 
-  const canSubmit = objective.trim().length > 0 && fromDate && toDate && recipients.length > 0 && !hasInvalidField;
+  const canSubmit =
+    objective.trim().length > 0 &&
+    fromDate &&
+    toDate &&
+    recipients.length > 0 &&
+    !hasInvalidField;
 
-  const closeAndReset = () => { setSubmitted(false); onClose(); };
+  const closeAndReset = () => {
+    setSubmitted(false);
+    onClose();
+  };
 
   const updateRow = (id: string, patch: Partial<Recipient>) =>
-    setRecipients((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)));
+    setRecipients((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, ...patch } : row))
+    );
 
   const removeRow = (id: string) =>
-    setRecipients((prev) => (prev.length > 1 ? prev.filter((row) => row.id !== id) : prev));
+    setRecipients((prev) =>
+      prev.length > 1 ? prev.filter((row) => row.id !== id) : prev
+    );
 
   const onSubmit = async () => {
     setSubmitted(true);
@@ -77,21 +117,29 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
   };
 
   return (
-    <SheetModal
+    <RightModal
       open={open}
       onClose={closeAndReset}
       title="New Run"
       description="Describe your objective and configure run parameters."
       footer={
         <>
-          <Button variant="ghost" onClick={closeAndReset} className="text-muted-foreground">
+          <Button
+            variant="ghost"
+            onClick={closeAndReset}
+            className="text-muted-foreground"
+          >
             Cancel
           </Button>
           <div className="flex items-center gap-3">
             {submitted && !canSubmit && (
               <p className="text-xs text-red-500">Fill all required fields.</p>
             )}
-            <Button onClick={onSubmit} loading={submitting} className="rounded-xl bg-brand text-white hover:opacity-90">
+            <Button
+              onClick={onSubmit}
+              loading={submitting}
+              className="rounded-xl bg-brand text-white hover:opacity-90"
+            >
               <Rocket className="h-4 w-4" />
               Start Run
             </Button>
@@ -100,7 +148,6 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
       }
     >
       <div className="space-y-4 md:space-y-5">
-
         {/* Objective */}
         <Field label="Objective">
           <TextareaInput
@@ -110,7 +157,8 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
             className="min-h-20 text-xs italic md:min-h-24 md:text-sm"
           />
           <p className="text-[10px] text-muted-foreground md:text-xs">
-            Write in plain English. Be specific about dates, thresholds, and what you want to do.
+            Write in plain English. Be specific about dates, thresholds, and
+            what you want to do.
           </p>
         </Field>
 
@@ -134,13 +182,18 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
               </span>
             </div>
             <input
-              type="range" min={0} max={1} step={0.01}
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
               value={riskTolerance}
               onChange={(e) => setRiskTolerance(Number(e.target.value))}
               className="mt-2 w-full accent-brand"
             />
             <div className="mt-2 grid grid-cols-3 overflow-hidden rounded-full border border-border text-[10px] font-bold text-white">
-              <span className="bg-emerald-600 px-2 py-1 text-center">Allow 0–0.35</span>
+              <span className="bg-emerald-600 px-2 py-1 text-center">
+                Allow 0–0.35
+              </span>
               <span className="bg-amber-500 px-2 py-1 text-center">Review</span>
               <span className="bg-red-500 px-2 py-1 text-center">Block</span>
             </div>
@@ -157,81 +210,138 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
           </Field>
 
           <div className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs text-muted-foreground">
-            Recipients total: <span className="font-black text-foreground">{naira(total)}</span>
+            Recipients total:{" "}
+            <span className="font-black text-foreground">{naira(total)}</span>
           </div>
         </div>
 
         {/* Recipients */}
         <div>
-          <PageHeader
-            title="Payout Recipients"
-            description="Agents will verify and risk-score each recipient."
-            className="my-5"
-          />
+          <div className="mb-5">
+            <h1 className="text-[16px] font-semibold text-foreground">
+              Payout Recipients
+            </h1>
+            <p className="text-[12px] text-muted-foreground">
+              Agents will verify and risk-score each recipient.
+            </p>
+          </div>
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             {recipients.map((row) => {
-              const invalid = submitted && (!row.beneficiaryName.trim() || !row.accountNumber.trim() || !row.amount.trim() || !row.purpose.trim());
+              const invalid =
+                submitted &&
+                (!row.beneficiaryName.trim() ||
+                  !row.accountNumber.trim() ||
+                  !row.amount.trim() ||
+                  !row.purpose.trim());
+
               return (
                 <div
                   key={row.id}
-                  className="rounded-2xl py-3 md:px-4 md:py-4"
+                  className="group relative rounded-2xl p-4 border border-border bg-muted/20 transition-all hover:border-brand/30 hover:bg-muted/40"
                 >
-                  {/* Row header: live name + delete */}
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-xs font-black text-foreground">
-                      {row.beneficiaryName || "New Recipient"}
-                    </p>
+                  {/* Row header: Name + Delete Action */}
+                  <div className="mb-4 flex items-center justify-between border-b border-border/50 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand/10 text-[10px] font-bold text-brand">
+                        {recipients.indexOf(row) + 1}
+                      </span>
+                      <p className="text-sm font-bold text-foreground truncate max-w-[200px]">
+                        {row.beneficiaryName || "New Recipient"}
+                      </p>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => removeRow(row.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 focus:ring-2 focus:ring-red-200"
+                      title="Remove recipient"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Name">
-                      <TextInput
-                        value={row.beneficiaryName}
-                        onChange={(v) => updateRow(row.id, { beneficiaryName: v })}
-                        placeholder="Full name"
-                        className={invalid && !row.beneficiaryName.trim() ? "border-red-400" : ""}
-                      />
-                    </Field>
-                    <Field label="Bank">
-                      <SelectInput
-                        value={row.institution}
-                        onChange={(v) => updateRow(row.id, { institution: v })}
-                        placeholder="Select bank"
-                        options={institutions}
-                      />
-                    </Field>
-                    <Field label="Account No.">
-                      <TextInput
-                        value={row.accountNumber}
-                        onChange={(v) => updateRow(row.id, { accountNumber: v })}
-                        placeholder="0000000000"
-                        inputMode="numeric"
-                        className={invalid && !row.accountNumber.trim() ? "border-red-400" : ""}
-                      />
-                    </Field>
-                    <Field label="Amount (₦)">
-                      <TextInput
-                        value={row.amount}
-                        onChange={(v) => updateRow(row.id, { amount: v })}
-                        placeholder="0.00"
-                        inputMode="decimal"
-                        className={invalid && !row.amount.trim() ? "border-red-400" : ""}
-                      />
-                    </Field>
-                    <Field label="Purpose" className="col-span-2">
+                  {/* Responsive Grid Layout */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+                    {/* Name Field - Spans more space on large screens */}
+                    <div className="lg:col-span-4">
+                      <Field label="Beneficiary Name">
+                        <TextInput
+                          value={row.beneficiaryName}
+                          onChange={(v) =>
+                            updateRow(row.id, { beneficiaryName: v })
+                          }
+                          placeholder="Full name"
+                          className={
+                            invalid && !row.beneficiaryName.trim()
+                              ? "border-red-500 bg-red-50/30"
+                              : ""
+                          }
+                        />
+                      </Field>
+                    </div>
+
+                    {/* Bank Selection */}
+                    <div className="lg:col-span-3">
+                      <Field label="Bank/Institution">
+                        <SelectInput
+                          value={row.institution}
+                          onChange={(v) =>
+                            updateRow(row.id, { institution: v })
+                          }
+                          placeholder="Select bank"
+                          options={institutions}
+                        />
+                      </Field>
+                    </div>
+
+                    {/* Account Number */}
+                    <div className="lg:col-span-2">
+                      <Field label="Account No.">
+                        <TextInput
+                          value={row.accountNumber}
+                          onChange={(v) =>
+                            updateRow(row.id, { accountNumber: v })
+                          }
+                          placeholder="0000000000"
+                          inputMode="numeric"
+                          className={
+                            invalid && !row.accountNumber.trim()
+                              ? "border-red-500 bg-red-50/30"
+                              : ""
+                          }
+                        />
+                      </Field>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="lg:col-span-3">
+                      <Field label="Amount (₦)">
+                        <TextInput
+                          value={row.amount}
+                          onChange={(v) => updateRow(row.id, { amount: v })}
+                          placeholder="0.00"
+                          inputMode="decimal"
+                          className={
+                            invalid && !row.amount.trim()
+                              ? "border-red-500 bg-red-50/30"
+                              : ""
+                          }
+                        />
+                      </Field>
+                    </div>
+                  </div>
+                  <div className="col-span-full mt-3">
+                    <Field label="Purpose">
                       <TextareaInput
                         value={row.purpose}
                         onChange={(v) => updateRow(row.id, { purpose: v })}
                         placeholder="e.g. February Salary"
-                        className={`min-h-0 h-25 resize-none ${invalid && !row.purpose.trim() ? "border-red-400" : ""}`}
+                        className={`min-h-20 md:min-h-15 w-full resize-none ${
+                          invalid && !row.purpose.trim()
+                            ? "border-red-500 bg-red-50/30"
+                            : ""
+                        }`}
                       />
                     </Field>
                   </div>
@@ -249,8 +359,7 @@ export function NewRunModal({ open, onClose }: { open: boolean; onClose: () => v
             Add Recipient
           </button>
         </div>
-
       </div>
-    </SheetModal>
+    </RightModal>
   );
 }

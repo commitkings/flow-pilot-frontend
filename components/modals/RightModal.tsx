@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 
-interface SheetModalProps {
+interface RightModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
@@ -12,14 +12,14 @@ interface SheetModalProps {
   children: React.ReactNode;
 }
 
-export function SheetModal({
+export function RightModal({
   open,
   onClose,
   title,
   description,
   footer,
   children,
-}: SheetModalProps) {
+}: RightModalProps) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => {

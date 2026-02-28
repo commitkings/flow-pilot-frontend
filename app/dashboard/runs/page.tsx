@@ -77,15 +77,15 @@ const columns: TableColumn<RunRecord>[] = [
       </span>
     ),
   },
-  {
-    id: "actions",
-    header: "",
-    cell: () => (
-      <Button size="sm" variant="outline" className="rounded-full text-xs">
-        View
-      </Button>
-    ),
-  },
+  // {
+  //   id: "actions",
+  //   header: "",
+  //   cell: () => (
+  //     <Button size="sm" variant="outline" className="rounded-full text-xs">
+  //       View
+  //     </Button>
+  //   ),
+  // },
 ];
 
 export default function RunsPage() {

@@ -172,7 +172,7 @@ export function TextareaInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={cn(
-        "min-h-24 w-full rounded-2xl border border-border bg-background p-3 text-[12px] outline-none transition-all resize-none",
+        "min-h-32 w-full rounded-2xl border border-border bg-background p-3 text-[12px] outline-none transition-all resize-none",
         "focus:border-brand focus:ring-1 focus:ring-brand/10",
         className
       )}
@@ -360,14 +360,14 @@ export function DateRangeInput({
         type="date"
         value={from}
         onChange={(e) => onFromChange(e.target.value)}
-        className="h-10 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
+        className="h-12 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
       />
       <span className="shrink-0 border-x border-border px-2 text-xs text-muted-foreground font-bold">x</span>
       <input
         type="date"
         value={to}
         onChange={(e) => onToChange(e.target.value)}
-        className="h-10 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
+        className="h-12 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
       />
     </div>
   );

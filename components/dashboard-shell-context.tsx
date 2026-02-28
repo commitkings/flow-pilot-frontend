@@ -6,6 +6,8 @@ type DashboardShellContextType = {
   collapsed: boolean;
   toggleSidebar: () => void;
   openNewRun: () => void;
+  mobileMenuOpen: boolean;
+  toggleMobileMenu: () => void;
 };
 
 const DashboardShellContext = createContext<DashboardShellContextType | null>(null);

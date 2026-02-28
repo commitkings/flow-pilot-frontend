@@ -55,7 +55,7 @@ export function DataTable<T>({
               <th
                 key={col.id}
                 className={cn(
-                  "px-4 py-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground/60",
+                  "px-4 py-3 text-[11px] font-black uppercase tracking-wider text-black",
                   col.headerClassName
                 )}
               >
