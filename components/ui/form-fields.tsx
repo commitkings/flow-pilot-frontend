@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Calendar, Eye, EyeOff, Search } from "lucide-react";
+import { ArrowRight, Calendar, Eye, EyeOff, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -72,7 +72,7 @@ export function SelectInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "h-12 w-full appearance-none rounded-full border border-border bg-background px-5 text-sm text-foreground outline-none transition-all",
+          "h-12 w-full appearance-none rounded-full border border-border bg-background px-2 text-sm text-foreground outline-none transition-all",
           "focus:border-brand focus:ring-1 focus:ring-brand/10",
           "disabled:opacity-50"
         )}
@@ -86,7 +86,7 @@ export function SelectInput({
           </option>
         ))}
       </select>
-      <div className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground group-hover:text-foreground transition-colors">
+      <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground group-hover:text-foreground transition-colors">
         <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
           <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
         </svg>
@@ -348,27 +348,56 @@ export function DateRangeInput({
   onToChange: (value: string) => void;
   className?: string;
 }) {
+  const fromRef = useRef<HTMLInputElement>(null);
+  const toRef = useRef<HTMLInputElement>(null);
+
+  const fmt = (value: string) =>
+    value
+      ? new Date(value + "T00:00:00")
+          .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+          .replace(/ /g, ",")
+      : null;
+
   return (
-    <div
-      className={cn(
-        "flex items-center h-12 overflow-hidden rounded-full border border-border bg-background transition-all",
-        "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
-        className
-      )}
-    >
-      <input
-        type="date"
-        value={from}
-        onChange={(e) => onFromChange(e.target.value)}
-        className="h-12 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
-      />
-      <span className="shrink-0 border-x border-border px-2 text-xs text-muted-foreground font-bold">x</span>
-      <input
-        type="date"
-        value={to}
-        onChange={(e) => onToChange(e.target.value)}
-        className="h-12 flex-1 bg-transparent px-4 text-sm text-foreground outline-none [&::-webkit-calendar-picker-indicator]:opacity-40 [&::-webkit-calendar-picker-indicator]:hover:opacity-80"
-      />
+    <div className={cn("flex flex-col gap-2 sm:flex-row sm:gap-0 sm:h-12 sm:overflow-hidden sm:rounded-full sm:border sm:border-border sm:bg-background sm:transition-all sm:focus-within:border-brand sm:focus-within:ring-1 sm:focus-within:ring-brand/10", className)}>
+      {/* From */}
+      <div
+        onClick={() => fromRef.current?.showPicker?.()}
+        className="flex h-12 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 transition-all focus-within:border-brand sm:flex-1 sm:rounded-none sm:border-0 sm:focus-within:border-0"
+      >
+        <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">From</span>
+        <span className="flex-1 text-sm">
+          {fmt(from) ? (
+            <span className="text-foreground">{fmt(from)}</span>
+          ) : (
+            <span className="text-muted-foreground">Start date</span>
+          )}
+        </span>
+        <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input ref={fromRef} type="date" value={from} onChange={(e) => onFromChange(e.target.value)} className="sr-only" />
+      </div>
+
+      {/* Separator — desktop only */}
+      <div className="hidden sm:flex items-center border-x border-border px-2.5 text-muted-foreground">
+        <ArrowRight className="h-3 w-3" />
+      </div>
+
+      {/* To */}
+      <div
+        onClick={() => toRef.current?.showPicker?.()}
+        className="flex h-12 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 transition-all focus-within:border-brand sm:flex-1 sm:rounded-none sm:border-0 sm:focus-within:border-0"
+      >
+        <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">To</span>
+        <span className="flex-1 text-sm">
+          {fmt(to) ? (
+            <span className="text-foreground">{fmt(to)}</span>
+          ) : (
+            <span className="text-muted-foreground">End date</span>
+          )}
+        </span>
+        <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input ref={toRef} type="date" value={to} onChange={(e) => onToChange(e.target.value)} className="sr-only" />
+      </div>
     </div>
   );
 }

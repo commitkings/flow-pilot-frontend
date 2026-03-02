@@ -8,7 +8,7 @@ export function LandingHero() {
   return (
     <section className="bg-white px-6 pb-20 pt-20 md:px-10 md:pb-28 md:pt-24">
       <div className="mx-auto max-w-7xl">
-        <div className="flex justify-center">
+        {/* <div className="flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#e86727]/60 bg-white/50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6B6B6B]">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#e86727] opacity-75"></span>
@@ -16,7 +16,7 @@ export function LandingHero() {
             </span>
             Interswitch Protocol Integrated
           </span>
-        </div>
+        </div> */}
 
         <h1 className="mx-auto mt-7 max-w-3xl text-center text-5xl font-extrabold leading-[1.06] tracking-tight text-[#0F0F0F] md:text-7xl">
           Treasury execution,{" "}

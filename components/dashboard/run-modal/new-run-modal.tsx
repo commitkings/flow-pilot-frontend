@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus, Rocket, Trash2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Download, Plus, Rocket, Trash2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { RightModal } from "@/components/modals/RightModal";
@@ -12,7 +12,6 @@ import {
   DateRangeInput,
 } from "@/components/ui/form-fields";
 import { SelectInput } from "@/components/ui/form-fields";
-import { PageHeader } from "@/components/ui/page-header";
 import { institutions, naira } from "@/lib/mock-data";
 
 type Recipient = {
@@ -52,6 +51,60 @@ export function NewRunModal({
   const [budgetCap, setBudgetCap] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const csvRef = useRef<HTMLInputElement>(null);
+
+  const parseCsv = (text: string): Recipient[] => {
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row.");
+    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, ""));
+    const col = (cols: string[], key: string) => {
+      const i = headers.indexOf(key);
+      return i >= 0 ? (cols[i] ?? "").trim().replace(/^"|"$/g, "") : "";
+    };
+    return lines.slice(1).map((line) => {
+      const cols = line.split(",");
+      return recipientRow({
+        beneficiaryName: col(cols, "beneficiaryname") || col(cols, "name"),
+        institution: col(cols, "institution") || col(cols, "bank"),
+        accountNumber: col(cols, "accountnumber") || col(cols, "account"),
+        amount: col(cols, "amount"),
+        purpose: col(cols, "purpose"),
+      });
+    });
+  };
+
+  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvError(null);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = parseCsv(evt.target?.result as string);
+        if (parsed.length === 0) throw new Error("No valid recipients found in CSV.");
+        setRecipients((prev) => [...prev, ...parsed]);
+      } catch (err) {
+        setCsvError(err instanceof Error ? err.message : "Failed to parse CSV.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const downloadTemplate = () => {
+    const csv = [
+      "beneficiaryName,institution,accountNumber,amount,purpose",
+      "John Doe,GTBank,0123456789,50000,February Salary",
+      "Jane Smith,Access Bank,9876543210,75000,Contractor Fee",
+    ].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "recipients-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [recipients, setRecipients] = useState<Recipient[]>([
     recipientRow({
       beneficiaryName: "Chukwuemeka Adeyemi",
@@ -218,12 +271,44 @@ export function NewRunModal({
         {/* Recipients */}
         <div>
           <div className="mb-5">
-            <h1 className="text-[16px] font-semibold text-foreground">
-              Payout Recipients
-            </h1>
-            <p className="text-[12px] text-muted-foreground">
-              Agents will verify and risk-score each recipient.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-[16px] font-semibold text-foreground">Payout Recipients</h1>
+                <p className="text-[12px] text-muted-foreground">
+                  Agents will verify and risk-score each recipient.
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition-colors hover:border-brand/40 hover:text-brand"
+                >
+                  <Download className="h-3 w-3" />
+                  Template
+                </button>
+                <button
+                  type="button"
+                  onClick={() => csvRef.current?.click()}
+                  className="flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1.5 text-[11px] font-bold text-brand transition-colors hover:bg-brand/20"
+                >
+                  <Upload className="h-3 w-3" />
+                  Upload CSV
+                </button>
+                <input
+                  ref={csvRef}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={handleCsvUpload}
+                  className="sr-only"
+                />
+              </div>
+            </div>
+            {csvError && (
+              <p className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-600">
+                {csvError}
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">

@@ -197,7 +197,7 @@ export default function TransactionsPage() {
           keyExtractor={(row) => row.reference}
           onRowClick={(row) => setSelectedRef(row.reference)}
           emptyState={
-            <div className="space-y-2">
+            <div className="space-y-2 flex items-center flex-col justify-center py-10">
               <p className="text-base font-black text-foreground">
                 No transactions found
               </p>

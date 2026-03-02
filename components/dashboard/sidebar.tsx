@@ -74,7 +74,7 @@ function NavLink({
       <Icon className={cn("h-5 w-5 shrink-0 transition-colors", isActive ? "text-brand" : "text-muted-foreground group-hover:text-foreground")} />
       {!collapsed && <span className="flex-1">{item.label}</span>}
       {!collapsed && item.badge && (
-        <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
           {item.badge}
         </span>
       )}
@@ -88,43 +88,57 @@ function NavLink({
 function SettingsSubNav({ onClick }: { onClick?: () => void }) {
   const searchParams = useSearchParams();
   const activeSection = searchParams.get("section") ?? "profile";
+  const activeIndex = settingsSubItems.findIndex((i) => i.section === activeSection);
+
+  // Each item: py-2 (8+8=16px) + text-xs line-height (16px) = 32px, space-y-0.5 gap = 2px
+  const ITEM_H = 32;
+  const GAP = 2;
+  const INDICATOR_H = 20;
+  const indicatorY = activeIndex * (ITEM_H + GAP) + (ITEM_H - INDICATOR_H) / 2;
 
   return (
-    <div className="ml-4 mt-1 space-y-0.5 border-l border-border/50 pl-3">
-      {settingsSubItems.map((subItem) => {
-        const Icon = subItem.icon;
-        const isActive = activeSection === subItem.section;
-        return (
-          <Link
-            key={subItem.section}
-            href={`/dashboard/settings?section=${subItem.section}`}
-            onClick={onClick}
-            className={cn(
-              "flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-semibold transition-all",
-              isActive
-                ? "bg-brand/10 text-brand"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <span className="flex items-center gap-2">
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              {subItem.label}
-            </span>
-            <span className="flex items-center gap-1">
-              {"badge" in subItem && subItem.badge && (
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
-                  {subItem.badge}
-                </span>
+    <div className="relative ml-3 mt-2 pb-1 border-l-2 border-muted-foreground/25">
+      {/* Sliding active indicator — sits exactly over the border-l */}
+      {activeIndex >= 0 && (
+        <div
+          className="absolute -left-0.5 w-0.5 rounded-full bg-brand transition-transform duration-300 ease-in-out"
+          style={{ height: INDICATOR_H, transform: `translateY(${indicatorY}px)` }}
+        />
+      )}
+      <div className="space-y-0.5 pl-5">
+        {settingsSubItems.map((subItem) => {
+          const Icon = subItem.icon;
+          const isActive = activeSection === subItem.section;
+          return (
+            <Link
+              key={subItem.section}
+              href={`/dashboard/settings?section=${subItem.section}`}
+              onClick={onClick}
+              className={cn(
+                "flex items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold transition-all",
+                isActive
+                  ? "bg-brand/10 text-brand"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
-              {"pill" in subItem && subItem.pill && (
-                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700">
-                  {subItem.pill}
-                </span>
-              )}
-            </span>
-          </Link>
-        );
-      })}
+            >
+              <span className="flex items-center gap-2">
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                {subItem.label}
+              </span>
+              <span className="flex items-center gap-1">
+                {"badge" in subItem && subItem.badge && (
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground">
+                    {subItem.badge}
+                  </span>
+                )}
+                {"pill" in subItem && subItem.pill && (
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
+                )}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -132,10 +146,10 @@ function SettingsSubNav({ onClick }: { onClick?: () => void }) {
 export function Sidebar() {
   const { collapsed, mobileMenuOpen, toggleMobileMenu } = useDashboardShell();
   const pathname = usePathname();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
   const isOnSettings = pathname.startsWith("/dashboard/settings");
-  const showSubNav = isOnSettings || settingsOpen;
+  const [settingsOpen, setSettingsOpen] = useState(isOnSettings);
+
+  const showSubNav = settingsOpen;
 
   const renderNav = (isCollapsed?: boolean, onClose?: () => void) => (
     <>
@@ -153,7 +167,7 @@ export function Sidebar() {
               >
                 <Link
                   href="/dashboard/settings"
-                  onClick={onClose}
+                  onClick={() => { setSettingsOpen(true); onClose?.(); }}
                   className="flex flex-1 items-center gap-3 px-3 py-2.5 text-sm font-bold"
                 >
                   <Settings
@@ -167,7 +181,7 @@ export function Sidebar() {
                 {!isCollapsed && (
                   <button
                     onClick={() => setSettingsOpen((prev) => !prev)}
-                    className="py-2.5 pr-3 text-current"
+                    className="rounded-lg py-2.5 pl-2 pr-4 text-current hover:bg-muted/60 transition-colors"
                   >
                     <ChevronsDown
                       className={cn(
@@ -182,7 +196,7 @@ export function Sidebar() {
             </div>
           );
         }
-        return <NavLink key={item.href} item={item} collapsed={isCollapsed} onClick={onClose} />;
+        return <NavLink key={item.href} item={item} collapsed={isCollapsed} onClick={() => { setSettingsOpen(false); onClose?.(); }} />;
       })}
     </>
   );
