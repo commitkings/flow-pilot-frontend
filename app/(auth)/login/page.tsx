@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { loginWithGoogle } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,11 +22,12 @@ export default function LoginPage() {
     e.preventDefault();
     setSubmitted(true);
     if (!email.trim() || !password.trim()) return;
-    router.push("/dashboard/runs");
+    // Email/password auth is not yet wired — redirect to Google OAuth
+    loginWithGoogle();
   };
 
   const onGoogle = () => {
-    router.push("/onboarding");
+    loginWithGoogle();
   };
 
   return (

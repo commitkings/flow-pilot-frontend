@@ -8,6 +8,8 @@ import { AuthAside } from "@/components/auth/AuthAside";
 import { Step1BusinessProfile, type RiskAppetite } from "@/components/onboarding/Step1BusinessProfile";
 import { Step2FinancialSetup } from "@/components/onboarding/Step2FinancialSetup";
 import { Step3InviteTeam, type InviteRow } from "@/components/onboarding/Step3InviteTeam";
+import { completeOnboarding } from "@/lib/api-client";
+import { ApiError, type OnboardingPayload } from "@/lib/api-types";
 
 const STEPS = ["Business Profile", "Financial Setup", "Invite Team"];
 
@@ -21,8 +23,11 @@ const STEP_META = [
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Step 1
+  const [businessName, setBusinessName] = useState("");
   const [transactionVolume, setTransactionVolume] = useState("");
   const [monthlyPayouts, setMonthlyPayouts] = useState("");
   const [primaryBank, setPrimaryBank] = useState("");
@@ -42,7 +47,7 @@ export default function OnboardingPage() {
     { id: crypto.randomUUID(), email: "", role: "Approver" },
   ]);
 
-  const step1Valid = !!(transactionVolume && monthlyPayouts && primaryBank && selectedUseCases.length > 0 && riskAppetite);
+  const step1Valid = !!(businessName.trim() && transactionVolume && monthlyPayouts && primaryBank && selectedUseCases.length > 0 && riskAppetite);
   const step2Valid = !!(merchantAccountId.trim() && merchantState && dailyPayoutLimit.trim() && singlePayoutLimit.trim() && riskAlertThreshold.trim() && liquidityAlertThreshold.trim());
   const inviteRowsValid = useMemo(() => invites.every((row) => !row.email || row.email), [invites]);
 
@@ -65,8 +70,37 @@ export default function OnboardingPage() {
     setStep((p) => p - 1);
   };
 
-  const finishSetup = () => {
-    router.push("/dashboard/runs?welcome=1");
+  const finishSetup = async () => {
+    let navigated = false;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const payload: OnboardingPayload = {
+        business_name: businessName.trim(),
+        business_type: undefined,
+        monthly_txn_volume_range: transactionVolume || undefined,
+        avg_monthly_payouts_range: monthlyPayouts || undefined,
+        primary_bank: primaryBank || undefined,
+        primary_use_cases: selectedUseCases.length ? selectedUseCases : undefined,
+        risk_appetite: riskAppetite || undefined,
+      };
+      await completeOnboarding(payload);
+      navigated = true;
+      router.push("/dashboard/runs?welcome=1");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        navigated = true;
+        router.push("/dashboard/runs");
+        return;
+      }
+      if (!navigated) {
+        setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      }
+    } finally {
+      if (!navigated) {
+        setSubmitting(false);
+      }
+    }
   };
 
   const { title, subtitle } = STEP_META[step - 1];
@@ -99,6 +133,7 @@ export default function OnboardingPage() {
           <div className="mt-8">
             {step === 1 && (
               <Step1BusinessProfile
+                businessName={businessName} setBusinessName={setBusinessName}
                 transactionVolume={transactionVolume} setTransactionVolume={setTransactionVolume}
                 monthlyPayouts={monthlyPayouts} setMonthlyPayouts={setMonthlyPayouts}
                 primaryBank={primaryBank} setPrimaryBank={setPrimaryBank}
@@ -126,6 +161,10 @@ export default function OnboardingPage() {
             )}
           </div>
 
+          {error && (
+            <p className="mt-4 text-sm text-destructive">{error}</p>
+          )}
+
           <div className="mt-10 flex flex-col items-center justify-between gap-4 md:flex-row">
             <Button type="button" variant="outline" onClick={handleBack} className="w-full rounded-full md:w-auto">
               Back
@@ -135,7 +174,8 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={finishSetup}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+                disabled={submitting}
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
               >
                 Skip for now
               </button>
@@ -144,10 +184,10 @@ export default function OnboardingPage() {
             <Button
               type="button"
               onClick={step === 3 ? finishSetup : () => canContinue && setStep((p) => p + 1)}
-              disabled={!canContinue}
+              disabled={!canContinue || submitting}
               className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5 md:w-auto md:px-8"
             >
-              {step === 3 ? "Finish Setup" : "Continue"}
+              {step === 3 ? (submitting ? "Submitting..." : "Finish Setup") : "Continue"}
             </Button>
           </div>
         </div>

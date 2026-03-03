@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, FileSearch, ShieldAlert, Wallet, X, Zap } from "lucide-react";
+import { Copy, FileSearch, Loader2, ShieldAlert, Wallet, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   SearchInput,
@@ -13,8 +13,9 @@ import { DataTable, type TableColumn } from "@/components/ui/data-table";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { StatusBadge } from "@/components/status-badge";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
-import { runs, truncateRunId, type RunRecord } from "@/lib/mock-data";
+import { truncateRunId, type RunRecord } from "@/lib/mock-data";
 import { PageHeader } from "@/components/ui/page-header";
+import { listRuns, adaptRun } from "@/lib/api-client";
 
 const STATUS_OPTIONS = ["Running", "Awaiting Approval", "Completed", "Failed"];
 
@@ -98,7 +99,24 @@ export default function RunsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [fromDate, setFromDate] = useState("2026-02-01");
   const [toDate, setToDate] = useState("2026-02-24");
-  const [rows] = useState<RunRecord[]>(runs);
+  const [rows, setRows] = useState<RunRecord[]>([]);
+  const [loadingRuns, setLoadingRuns] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listRuns()
+      .then((apiRuns) => {
+        if (!cancelled) setRows(apiRuns.map(adaptRun));
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRuns(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const showWelcome = searchParams.get("welcome") === "1" && !dismissedWelcome;
 
@@ -201,6 +219,11 @@ export default function RunsPage() {
         </div>
 
         {/* Table */}
+        {loadingRuns ? (
+          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : loadError ? (
+          <div className="flex justify-center py-12"><p className="text-sm text-red-600">Failed to load runs. Please refresh the page.</p></div>
+        ) : (
         <DataTable
           columns={columns}
           data={filteredRows}
@@ -223,6 +246,7 @@ export default function RunsPage() {
             </div>
           }
         />
+        )}
       </div>
     </div>
   );

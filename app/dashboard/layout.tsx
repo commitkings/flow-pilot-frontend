@@ -6,11 +6,40 @@ import { DashboardShellProvider } from "@/components/dashboard-shell-context";
 import { NewRunModal } from "@/components/dashboard/run-modal/new-run-modal";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
   const [collapsed, setCollapsed] = useState(false);
   const [newRunOpen, setNewRunOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+    if (user && !user.has_completed_onboarding) {
+      router.replace("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, user, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground animate-pulse">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || (user && !user.has_completed_onboarding)) {
+    return null;
+  }
 
   return (
     <DashboardShellProvider

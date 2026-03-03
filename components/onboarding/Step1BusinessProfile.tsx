@@ -1,5 +1,5 @@
 import { Scale, Shield, Zap } from "lucide-react";
-import { Field, SelectInput } from "@/components/ui/form-fields";
+import { Field, SelectInput, TextInput } from "@/components/ui/form-fields";
 import { CardSelect, PillSelect, type CardSelectOption } from "@/components/ui/select-fields";
 
 export type RiskAppetite = "conservative" | "moderate" | "aggressive";
@@ -43,6 +43,8 @@ const riskOptions: CardSelectOption<RiskAppetite>[] = [
 ];
 
 interface Step1Props {
+  businessName: string;
+  setBusinessName: (v: string) => void;
   transactionVolume: string;
   setTransactionVolume: (v: string) => void;
   monthlyPayouts: string;
@@ -56,6 +58,7 @@ interface Step1Props {
 }
 
 export function Step1BusinessProfile({
+  businessName, setBusinessName,
   transactionVolume, setTransactionVolume,
   monthlyPayouts, setMonthlyPayouts,
   primaryBank, setPrimaryBank,
@@ -64,6 +67,10 @@ export function Step1BusinessProfile({
 }: Step1Props) {
   return (
     <div className="space-y-6">
+      <Field label="Business Name">
+        <TextInput value={businessName} onChange={setBusinessName} placeholder="e.g. Acme Corp" />
+      </Field>
+
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="Monthly Transaction Volume">
           <SelectInput value={transactionVolume} onChange={setTransactionVolume} placeholder="Select volume range" options={monthlyTransactionVolumes} />
