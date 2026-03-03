@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/ui/StepIndicator";
@@ -10,6 +10,7 @@ import { Step2FinancialSetup } from "@/components/onboarding/Step2FinancialSetup
 import { Step3InviteTeam, type InviteRow } from "@/components/onboarding/Step3InviteTeam";
 import { completeOnboarding } from "@/lib/api-client";
 import { ApiError, type OnboardingPayload } from "@/lib/api-types";
+import { useAuth } from "@/context/auth-context";
 
 const STEPS = ["Business Profile", "Financial Setup", "Invite Team"];
 
@@ -22,6 +23,7 @@ const STEP_META = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user, isLoading, refreshUser } = useAuth();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,10 +87,12 @@ export default function OnboardingPage() {
         risk_appetite: riskAppetite || undefined,
       };
       await completeOnboarding(payload);
+      await refreshUser();
       navigated = true;
       router.push("/dashboard/runs?welcome=1");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
+        await refreshUser();
         navigated = true;
         router.push("/dashboard/runs");
         return;
@@ -104,6 +108,13 @@ export default function OnboardingPage() {
   };
 
   const { title, subtitle } = STEP_META[step - 1];
+
+  useEffect(() => {
+    if (isLoading) return;
+    if (user?.has_completed_onboarding) {
+      router.replace("/dashboard/runs");
+    }
+  }, [isLoading, user, router]);
 
   return (
     <main className="h-screen md:grid md:grid-cols-[420px_1fr]">

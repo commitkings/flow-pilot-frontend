@@ -17,6 +17,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** Re-fetch authenticated user from /auth/me */
+  refreshUser: () => Promise<User | null>;
   /** Store token and hydrate user from /auth/me */
   loginWithToken: (token: string) => Promise<void>;
   /** Redirect browser to backend Google OAuth */
@@ -62,6 +64,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+    try {
+      const me = await fetchMe();
+      setUser(me);
+      return me;
+    } catch {
+      clearToken();
+      setUser(null);
+      return null;
+    }
+  }, []);
+
   const loginWithGoogle = useCallback(() => {
     window.location.href = googleLoginUrl();
   }, []);
@@ -82,11 +101,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isAuthenticated: !!user,
       isLoading,
+      refreshUser,
       loginWithToken,
       loginWithGoogle,
       logout,
     }),
-    [user, isLoading, loginWithToken, loginWithGoogle, logout],
+    [user, isLoading, refreshUser, loginWithToken, loginWithGoogle, logout],
   );
 
   return (
