@@ -1,40 +1,116 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { clearCurrentUserEmail } from "@/lib/auth-storage";
+import type { User } from "@/lib/api-types";
+import { getToken, setToken, clearToken } from "@/lib/token-storage";
+import { fetchMe, logout as apiLogout, googleLoginUrl } from "@/lib/api-client";
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
-  isReady: boolean;
-  login: () => void;
-  logout: () => void;
+  isLoading: boolean;
+  /** Re-fetch authenticated user from /auth/me */
+  refreshUser: () => Promise<User | null>;
+  /** Store token and hydrate user from /auth/me */
+  loginWithToken: (token: string) => Promise<void>;
+  /** Redirect browser to backend Google OAuth */
+  loginWithGoogle: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem("flowpilot_auth") === "true";
-  });
-  const isReady = true;
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const login = () => {
-    localStorage.setItem("flowpilot_auth", "true");
-    setIsAuthenticated(true);
-  };
+  // Hydrate on mount: if a token exists, fetch /auth/me
+  useEffect(() => {
+    let cancelled = false;
+    const token = getToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    fetchMe()
+      .then((me) => { if (!cancelled) setUser(me); })
+      .catch(() => {
+        clearToken();
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
-  const logout = () => {
-    localStorage.removeItem("flowpilot_auth");
-    clearCurrentUserEmail();
-    setIsAuthenticated(false);
+  const loginWithToken = useCallback(async (token: string) => {
+    setToken(token);
+    setIsLoading(true);
+    try {
+      const me = await fetchMe();
+      setUser(me);
+    } catch {
+      clearToken();
+      throw new Error("Failed to fetch user profile after login");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      return null;
+    }
+    try {
+      const me = await fetchMe();
+      setUser(me);
+      return me;
+    } catch {
+      clearToken();
+      setUser(null);
+      return null;
+    }
+  }, []);
+
+  const loginWithGoogle = useCallback(() => {
+    window.location.href = googleLoginUrl();
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // best-effort; clear locally regardless
+    }
+    clearToken();
+    setUser(null);
     router.push("/login");
-  };
+  }, [router]);
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      isLoading,
+      refreshUser,
+      loginWithToken,
+      loginWithGoogle,
+      logout,
+    }),
+    [user, isLoading, refreshUser, loginWithToken, loginWithGoogle, logout],
+  );
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isReady, login, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

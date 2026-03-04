@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Download, Link2 } from "lucide-react";
@@ -7,9 +8,32 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { apiTraceRows, naira, truncateRunId } from "@/lib/mock-data";
+import { downloadRunReport } from "@/lib/api-client";
 
 export default function RunReportPage() {
   const { id } = useParams<{ id: string }>();
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState(false);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError(false);
+    try {
+      const blob = await downloadRunReport(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `run-${id}-report.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch {
+      setDownloadError(true);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -23,9 +47,15 @@ export default function RunReportPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" className="rounded-xl"><Link2 className="h-4 w-4" />Share Report</Button>
-          <Button className="rounded-xl bg-slate-900 text-white hover:bg-slate-800"><Download className="h-4 w-4" />Download PDF</Button>
+          <Button className="rounded-xl bg-slate-900 text-white hover:bg-slate-800" onClick={handleDownload} disabled={downloading}><Download className="h-4 w-4" />{downloading ? "Downloading…" : "Download Report"}</Button>
         </div>
       </div>
+
+      {downloadError && (
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+          Download failed. Please try again.
+        </div>
+      )}
 
       <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
         Run completed successfully. 4 of 6 candidates disbursed. ₦1,205,000 transferred.

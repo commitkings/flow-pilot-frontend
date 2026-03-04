@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { approvalCandidates, maskAccount, naira, runs, transactionRows, truncateRunId } from "@/lib/mock-data";
+import { maskAccount, naira, transactionRows, truncateRunId, type RunRecord, type PayoutCandidate } from "@/lib/mock-data";
+import { getRun, adaptRun, listCandidates, adaptCandidate } from "@/lib/api-client";
 
 const planSteps = [
   ["Create Plan", "PlannerAgent"],
@@ -27,11 +28,20 @@ export default function RunDetailPage() {
   const [activeTab, setActiveTab] = useState("transactions");
   const [openCallCard, setOpenCallCard] = useState<number | null>(0);
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
+  const [run, setRun] = useState<RunRecord | null>(null);
+  const [candidates, setCandidates] = useState<PayoutCandidate[]>([]);
+  const [runError, setRunError] = useState(false);
+  const [candidatesError, setCandidatesError] = useState(false);
 
-  const run = runs.find((row) => row.id === id) ?? runs[0];
+  useEffect(() => {
+    let cancelled = false;
+    getRun(id).then((r) => { if (!cancelled) setRun(adaptRun(r)); }).catch(() => { if (!cancelled) setRunError(true); });
+    listCandidates(id).then((res) => { if (!cancelled) setCandidates(res.candidates.map(adaptCandidate)); }).catch(() => { if (!cancelled) setCandidatesError(true); });
+    return () => { cancelled = true; };
+  }, [id]);
+
   const phase = searchParams.get("phase") === "executing" ? "executing" : "running";
-
-  const status = phase === "executing" ? "executing" : run.status;
+  const status = phase === "executing" ? "executing" : (run?.status ?? "running");
 
   const timelineCards =
     phase === "executing"
@@ -121,9 +131,12 @@ export default function RunDetailPage() {
         ];
 
   const selected = useMemo(
-    () => approvalCandidates.find((candidate) => candidate.id === selectedCandidate) ?? null,
-    [selectedCandidate]
+    () => candidates.find((candidate) => candidate.id === selectedCandidate) ?? null,
+    [selectedCandidate, candidates]
   );
+
+  if (runError) return <div className="flex items-center justify-center py-20"><p className="text-sm text-red-600">Failed to load run. Please go back and try again.</p></div>;
+  if (!run) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>;
 
   return (
     <div className="space-y-5">
@@ -335,6 +348,7 @@ export default function RunDetailPage() {
 
           {activeTab === "candidates" && (
             <div className="overflow-x-auto">
+              {candidatesError && <p className="mb-4 text-sm text-red-600">Failed to load candidates.</p>}
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-slate-600">
                   <tr>
@@ -349,7 +363,7 @@ export default function RunDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {approvalCandidates.map((candidate) => (
+                  {candidates.map((candidate) => (
                     <tr key={candidate.id} className="cursor-pointer border-b border-slate-100 hover:bg-slate-50" onClick={() => setSelectedCandidate(candidate.id)}>
                       <td className="py-2">{candidate.beneficiaryName}</td>
                       <td className="py-2">{candidate.institution}</td>

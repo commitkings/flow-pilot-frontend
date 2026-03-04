@@ -1,61 +1,93 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, Loader2, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { approvalCandidates, maskAccount, naira, truncateRunId } from "@/lib/mock-data";
+import { maskAccount, naira, truncateRunId, type PayoutCandidate } from "@/lib/mock-data";
+import { listCandidates, adaptCandidate, approveCandidates } from "@/lib/api-client";
 
 export default function ApprovalGatePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    approvalCandidates.filter((candidate) => candidate.approvalStatus === "selected").map((candidate) => candidate.id)
-  );
+  const [allCandidates, setAllCandidates] = useState<PayoutCandidate[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [overrideDecision, setOverrideDecision] = useState("review");
   const [overrideReason, setOverrideReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
+  const [approving, setApproving] = useState(false);
+
+  const [loadingCandidates, setLoadingCandidates] = useState(true);
+  const [candidatesError, setCandidatesError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    listCandidates(id).then((res) => {
+      if (cancelled) return;
+      const adapted = res.candidates.map(adaptCandidate);
+      setAllCandidates(adapted);
+      setSelectedIds(adapted.filter((c) => c.approvalStatus === "selected").map((c) => c.id));
+    }).catch(() => { if (!cancelled) setCandidatesError(true); }).finally(() => { if (!cancelled) setLoadingCandidates(false); });
+    return () => { cancelled = true; };
+  }, [id]);
 
   const rows = useMemo(
     () =>
-      approvalCandidates.filter(
+      allCandidates.filter(
         (candidate) =>
           candidate.beneficiaryName.toLowerCase().includes(query.toLowerCase()) ||
           candidate.institution.toLowerCase().includes(query.toLowerCase())
       ),
-    [query]
+    [query, allCandidates]
   );
 
-  const selectedCandidates = approvalCandidates.filter((candidate) => selectedIds.includes(candidate.id));
+  const selectedCandidates = allCandidates.filter((candidate) => selectedIds.includes(candidate.id));
   const selectedTotal = selectedCandidates.reduce((acc, candidate) => acc + candidate.amount, 0);
 
-  const activeCandidate = approvalCandidates.find((candidate) => candidate.id === activeCandidateId) ?? null;
+  const activeCandidate = allCandidates.find((candidate) => candidate.id === activeCandidateId) ?? null;
 
   const toggle = (candidateId: string) => {
-    if (candidateId === "cand-5") return;
     setSelectedIds((prev) =>
-      prev.includes(candidateId) ? prev.filter((id) => id !== candidateId) : [...prev, candidateId]
+      prev.includes(candidateId) ? prev.filter((cid) => cid !== candidateId) : [...prev, candidateId]
     );
   };
 
   const selectAllSafe = () => {
     setSelectedIds(
-      approvalCandidates
+      allCandidates
         .filter((candidate) => candidate.decision === "allow" && candidate.lookupStatus === "verified")
         .map((candidate) => candidate.id)
     );
   };
 
-  const onApprove = () => {
-    if (!confirmChecked) return;
-    router.push(`/dashboard/runs/${id}?phase=executing`);
+  const [approveError, setApproveError] = useState(false);
+
+  const onApprove = async () => {
+    if (!confirmChecked || approving) return;
+    setApproving(true);
+    setApproveError(false);
+    try {
+      await approveCandidates(id, selectedIds);
+      router.push(`/dashboard/runs/${id}?phase=executing`);
+    } catch {
+      setApproveError(true);
+      setApproving(false);
+    }
   };
+
+  if (loadingCandidates) {
+    return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>;
+  }
+
+  if (candidatesError) {
+    return <div className="flex items-center justify-center py-24"><p className="text-sm text-red-600">Failed to load candidates. Please go back and try again.</p></div>;
+  }
 
   return (
     <div className="space-y-5 pb-28">
@@ -259,9 +291,10 @@ export default function ApprovalGatePage() {
             </label>
 
             <div className="mt-4 space-y-2">
-              <Button className="h-11 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!confirmChecked} onClick={onApprove}>
+              {approveError && <p className="text-sm text-red-600">Approval failed. Please try again.</p>}
+              <Button className="h-11 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!confirmChecked || approving} onClick={onApprove}>
                 <Check className="h-4 w-4" />
-                Confirm and Execute Payouts
+                {approving ? "Processing…" : "Confirm and Execute Payouts"}
               </Button>
               <Button variant="ghost" className="h-11 w-full rounded-xl" onClick={() => setConfirmOpen(false)}>
                 Go Back and Review
