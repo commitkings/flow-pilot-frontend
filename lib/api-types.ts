@@ -71,6 +71,7 @@ export type ApiRunStatus =
   | "awaiting_approval"
   | "executing"
   | "completed"
+  | "completed_with_errors"
   | "failed"
   | "cancelled";
 
@@ -119,6 +120,8 @@ export interface CreateRunPayload {
   objective: string;
   created_by?: string;
   constraints?: string;
+  date_from?: string;
+  date_to?: string;
   risk_tolerance?: number;
   budget_cap?: number;
   merchant_id?: string;
@@ -148,9 +151,9 @@ export interface Candidate {
   amount: number;
   currency: string;
   purpose: string | null;
-  risk_score: number;
-  risk_reasons: string[];
-  risk_decision: string;
+  risk_score: number | null;
+  risk_reasons: string[] | null;
+  risk_decision: string | null;
   approval_status: CandidateApprovalStatus;
   execution_status: string;
   approved_by: string | null;
@@ -214,6 +217,9 @@ export interface AuditReport {
 export interface Institution {
   institutionCode: string;
   institutionName: string;
+  shortName?: string | null;
+  nipCode?: string | null;
+  cbnCode?: string | null;
   isActive: boolean;
   lastSyncedAt: string | null;
 }

@@ -276,8 +276,8 @@ const approvalStatusMap: Record<CandidateApprovalStatus, PayoutCandidate["approv
 
 /** Maps backend risk_decision → UI CandidateDecision */
 function mapRiskDecision(rd: string): PayoutCandidate["decision"] {
-  if (rd === "approve") return "allow";
-  if (rd === "reject") return "block";
+  if (rd === "approve" || rd === "allow") return "allow";
+  if (rd === "reject" || rd === "block") return "block";
   return "review";
 }
 
@@ -289,10 +289,10 @@ export function adaptCandidate(c: Candidate): PayoutCandidate {
     accountNumber: c.account_number,
     amount: c.amount,
     purpose: c.purpose ?? "",
-    riskScore: c.risk_score,
-    riskReasons: c.risk_reasons,
+    riskScore: c.risk_score ?? 0,
+    riskReasons: c.risk_reasons ?? [],
     lookupStatus: "verified",
-    decision: mapRiskDecision(c.risk_decision),
+    decision: mapRiskDecision(c.risk_decision ?? "review"),
     approvalStatus: approvalStatusMap[c.approval_status],
     similarity: 1,
     nameOnFile: c.beneficiary_name,
@@ -304,7 +304,7 @@ export function adaptCandidate(c: Candidate): PayoutCandidate {
 function mapRunStatus(s: string): RunStatus {
   const known: RunStatus[] = [
     "pending", "planning", "running", "awaiting_approval",
-    "executing", "completed", "failed",
+    "executing", "completed", "completed_with_errors", "failed",
   ];
   if ((known as string[]).includes(s)) return s as RunStatus;
   // Backend-only intermediate statuses map to "running"

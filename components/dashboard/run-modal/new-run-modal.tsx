@@ -12,25 +12,72 @@ import {
   DateRangeInput,
 } from "@/components/ui/form-fields";
 import { SelectInput } from "@/components/ui/form-fields";
-import { institutions as fallbackInstitutions, naira } from "@/lib/mock-data";
+import { naira } from "@/lib/mock-data";
 import { createRun, listInstitutions } from "@/lib/api-client";
-import type { CandidateInput } from "@/lib/api-types";
+import type { CandidateInput, Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 
 type Recipient = {
   id: string;
   beneficiaryName: string;
-  institution: string;
+  institutionCode: string;
   accountNumber: string;
   amount: string;
   purpose: string;
 };
 
+type InstitutionOption = {
+  label: string;
+  value: string;
+  aliases: string[];
+};
+
+function normalizeInstitutionKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function buildInstitutionOptions(institutions: Institution[]): InstitutionOption[] {
+  return institutions.map((institution) => {
+    const label = institution.shortName?.trim() || institution.institutionName;
+    const aliases = [
+      institution.institutionCode,
+      institution.institutionName,
+      institution.shortName,
+      institution.nipCode,
+      institution.cbnCode,
+    ]
+      .filter((alias): alias is string => Boolean(alias?.trim()))
+      .map(normalizeInstitutionKey);
+
+    return {
+      label,
+      value: institution.institutionCode,
+      aliases,
+    };
+  });
+}
+
+function resolveInstitutionCode(
+  rawValue: string,
+  institutionOptions: InstitutionOption[],
+): string | null {
+  const normalizedValue = normalizeInstitutionKey(rawValue);
+  if (!normalizedValue) {
+    return null;
+  }
+
+  const match = institutionOptions.find((option) =>
+    option.aliases.includes(normalizedValue),
+  );
+
+  return match?.value ?? null;
+}
+
 function recipientRow(values: Partial<Recipient> = {}): Recipient {
   return {
     id: crypto.randomUUID(),
     beneficiaryName: values.beneficiaryName ?? "",
-    institution: values.institution ?? "",
+    institutionCode: values.institutionCode ?? "",
     accountNumber: values.accountNumber ?? "",
     amount: values.amount ?? "",
     purpose: values.purpose ?? "",
@@ -46,7 +93,9 @@ export function NewRunModal({
 }) {
   const router = useRouter();
   const { user } = useAuth();
-  const [institutions, setInstitutions] = useState<string[]>(fallbackInstitutions);
+  const [institutions, setInstitutions] = useState<InstitutionOption[]>([]);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(false);
+  const [institutionsError, setInstitutionsError] = useState<string | null>(null);
   const [objective, setObjective] = useState(
     "Reconcile all transactions from Feb 1 to Feb 14 and execute approved payroll payouts under risk threshold 0.35."
   );
@@ -60,21 +109,77 @@ export function NewRunModal({
   const [csvError, setCsvError] = useState<string | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
 
-  // Load institutions from API, fall back to hardcoded list
+  const [recipients, setRecipients] = useState<Recipient[]>([
+    recipientRow({
+      beneficiaryName: "Chukwuemeka Adeyemi",
+      institutionCode: "GTBank",
+      accountNumber: "054221789",
+      amount: "450000",
+      purpose: "February Salary",
+    }),
+    recipientRow({
+      beneficiaryName: "Fatima Bello",
+      institutionCode: "Access Bank",
+      accountNumber: "031998442",
+      amount: "320000",
+      purpose: "Contractor Fee",
+    }),
+  ]);
+
+  // Load institutions from API and resolve any demo aliases to canonical codes.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
+    setLoadingInstitutions(true);
+    setInstitutionsError(null);
     listInstitutions()
       .then((res) => {
         if (!cancelled && res.data.length > 0) {
-          setInstitutions(res.data.map((i) => i.institutionName));
+          const institutionOptions = buildInstitutionOptions(res.data);
+          setInstitutions(institutionOptions);
+          setRecipients((prev) =>
+            prev.map((recipient) => {
+              if (!recipient.institutionCode.trim()) {
+                return recipient;
+              }
+
+              const resolvedCode = resolveInstitutionCode(
+                recipient.institutionCode,
+                institutionOptions,
+              );
+
+              return {
+                ...recipient,
+                institutionCode: resolvedCode ?? "",
+              };
+            }),
+          );
+        } else if (!cancelled) {
+          setInstitutions([]);
+          setInstitutionsError("No institutions are available for payouts yet.");
         }
       })
-      .catch(() => { /* keep fallback */ });
+      .catch(() => {
+        if (!cancelled) {
+          setInstitutions([]);
+          setInstitutionsError(
+            "Unable to load institutions. Refresh the page and try again.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingInstitutions(false);
+        }
+      });
     return () => { cancelled = true; };
   }, [open]);
 
   const parseCsv = (text: string): Recipient[] => {
+    if (institutions.length === 0) {
+      throw new Error("Institutions must finish loading before CSV import.");
+    }
+
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row.");
     const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, ""));
@@ -82,11 +187,28 @@ export function NewRunModal({
       const i = headers.indexOf(key);
       return i >= 0 ? (cols[i] ?? "").trim().replace(/^"|"$/g, "") : "";
     };
-    return lines.slice(1).map((line) => {
+    return lines.slice(1).map((line, index) => {
       const cols = line.split(",");
+      const rawInstitution =
+        col(cols, "institution_code") ||
+        col(cols, "institution") ||
+        col(cols, "bank");
+      const institutionCode = resolveInstitutionCode(rawInstitution, institutions);
+
+      if (!rawInstitution) {
+        throw new Error(
+          `Row ${index + 2}: missing institution_code or institution value.`,
+        );
+      }
+      if (!institutionCode) {
+        throw new Error(
+          `Row ${index + 2}: unknown institution '${rawInstitution}'. Use a valid institution code from the loaded list.`,
+        );
+      }
+
       return recipientRow({
         beneficiaryName: col(cols, "beneficiaryname") || col(cols, "name"),
-        institution: col(cols, "institution") || col(cols, "bank"),
+        institutionCode,
         accountNumber: col(cols, "accountnumber") || col(cols, "account"),
         amount: col(cols, "amount"),
         purpose: col(cols, "purpose"),
@@ -114,9 +236,9 @@ export function NewRunModal({
 
   const downloadTemplate = () => {
     const csv = [
-      "beneficiaryName,institution,accountNumber,amount,purpose",
-      "John Doe,GTBank,0123456789,50000,February Salary",
-      "Jane Smith,Access Bank,9876543210,75000,Contractor Fee",
+      "beneficiaryName,institution_code,accountNumber,amount,purpose",
+      "John Doe,058,0123456789,50000,February Salary",
+      "Jane Smith,044,9876543210,75000,Contractor Fee",
     ].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
@@ -125,22 +247,6 @@ export function NewRunModal({
     a.click();
     URL.revokeObjectURL(url);
   };
-  const [recipients, setRecipients] = useState<Recipient[]>([
-    recipientRow({
-      beneficiaryName: "Chukwuemeka Adeyemi",
-      institution: "GTBank",
-      accountNumber: "054221789",
-      amount: "450000",
-      purpose: "February Salary",
-    }),
-    recipientRow({
-      beneficiaryName: "Fatima Bello",
-      institution: "Access Bank",
-      accountNumber: "031998442",
-      amount: "320000",
-      purpose: "Contractor Fee",
-    }),
-  ]);
 
   const total = useMemo(
     () => recipients.reduce((acc, row) => acc + (Number(row.amount) || 0), 0),
@@ -150,7 +256,7 @@ export function NewRunModal({
   const hasInvalidField = recipients.some(
     (row) =>
       !row.beneficiaryName.trim() ||
-      !row.institution.trim() ||
+      !row.institutionCode.trim() ||
       !row.accountNumber.trim() ||
       !row.amount.trim() ||
       !row.purpose.trim()
@@ -161,6 +267,9 @@ export function NewRunModal({
     fromDate &&
     toDate &&
     recipients.length > 0 &&
+    institutions.length > 0 &&
+    !loadingInstitutions &&
+    !institutionsError &&
     !hasInvalidField;
 
   const closeAndReset = () => {
@@ -188,7 +297,7 @@ export function NewRunModal({
       if (!businessId) throw new Error("No business found on your account.");
 
       const candidates: CandidateInput[] = recipients.map((r) => ({
-        institution_code: r.institution,
+        institution_code: r.institutionCode,
         beneficiary_name: r.beneficiaryName,
         account_number: r.accountNumber,
         amount: Number(r.amount),
@@ -198,6 +307,8 @@ export function NewRunModal({
       const result = await createRun({
         business_id: businessId,
         objective,
+        date_from: fromDate,
+        date_to: toDate,
         risk_tolerance: riskTolerance,
         budget_cap: budgetCap ? Number(budgetCap) : undefined,
         candidates,
@@ -230,6 +341,9 @@ export function NewRunModal({
           <div className="flex items-center gap-3">
             {submitError && (
               <p className="text-xs text-red-500">{submitError}</p>
+            )}
+            {institutionsError && !submitError && (
+              <p className="text-xs text-red-500">{institutionsError}</p>
             )}
             {submitted && !canSubmit && !submitError && (
               <p className="text-xs text-red-500">Fill all required fields.</p>
@@ -323,6 +437,16 @@ export function NewRunModal({
                 <p className="text-[12px] text-muted-foreground">
                   Agents will verify and risk-score each recipient.
                 </p>
+                {loadingInstitutions && (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Loading institutions...
+                  </p>
+                )}
+                {institutionsError && (
+                  <p className="mt-1 text-[11px] text-red-500">
+                    {institutionsError}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button
@@ -362,6 +486,7 @@ export function NewRunModal({
               const invalid =
                 submitted &&
                 (!row.beneficiaryName.trim() ||
+                  !row.institutionCode.trim() ||
                   !row.accountNumber.trim() ||
                   !row.amount.trim() ||
                   !row.purpose.trim());
@@ -416,11 +541,13 @@ export function NewRunModal({
                     <div className="lg:col-span-3">
                       <Field label="Bank/Institution">
                         <SelectInput
-                          value={row.institution}
+                          value={row.institutionCode}
                           onChange={(v) =>
-                            updateRow(row.id, { institution: v })
+                            updateRow(row.id, { institutionCode: v })
                           }
-                          placeholder="Select bank"
+                          placeholder={
+                            loadingInstitutions ? "Loading banks..." : "Select bank"
+                          }
                           options={institutions}
                         />
                       </Field>
