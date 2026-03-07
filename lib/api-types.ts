@@ -203,11 +203,7 @@ export interface AuditEntry {
 
 export interface AuditReport {
   run_id: string;
-  report?: {
-    summary: string;
-    risk_overview?: Record<string, unknown>;
-    execution_results?: Record<string, unknown>;
-  };
+  report?: Record<string, unknown>;
   audit_trail?: AuditEntry[];
   entries?: AuditEntry[];
 }

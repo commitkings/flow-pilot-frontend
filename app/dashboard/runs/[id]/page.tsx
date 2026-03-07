@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRun, listTransactions } from "@/lib/api-client";
+import { getRun, listTransactions, getRunReport } from "@/lib/api-client";
 import type {
   ApiRunRecord,
+  AuditEntry,
+  AuditReport,
   Candidate,
   TransactionSummary,
   TransactionsResponse,
@@ -114,10 +116,13 @@ export default function RunDetailPage() {
   const [run, setRun] = useState<ApiRunRecord | null>(null);
   const [transactionsResponse, setTransactionsResponse] =
     useState<TransactionsResponse | null>(null);
+  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
   const [loadingRun, setLoadingRun] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
+  const [loadingReport, setLoadingReport] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,6 +165,18 @@ export default function RunDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // Fetch audit report when the tab is activated (fetch-once pattern)
+  const reportFetchedRef = useRef(false);
+  useEffect(() => {
+    if (activeTab !== "audit" || reportFetchedRef.current) return;
+    reportFetchedRef.current = true;
+    setLoadingReport(true);
+    getRunReport(id)
+      .then((data) => setAuditReport(data))
+      .catch((err: Error) => setReportError(err.message || "Failed to load report."))
+      .finally(() => setLoadingReport(false));
+  }, [activeTab, id]);
 
   if (loadingRun) {
     return (
@@ -333,17 +350,16 @@ export default function RunDetailPage() {
             {[
               ["transactions", "Transactions"],
               ["candidates", "Candidates"],
-              ["forecast", "Forecast"],
+              ["audit", "Audit Report"],
             ].map(([key, label]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setActiveTab(key)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                  activeTab === key
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-700"
-                }`}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${activeTab === key
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700"
+                  }`}
               >
                 {label}
               </button>
@@ -462,9 +478,117 @@ export default function RunDetailPage() {
             </div>
           )}
 
-          {activeTab === "forecast" && (
-            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-              Forecast data is not available for this run yet.
+          {activeTab === "audit" && (
+            <div>
+              {loadingReport ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                </div>
+              ) : reportError ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                  {reportError}
+                </div>
+              ) : !auditReport ? (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                  Audit report has not been generated for this run yet.
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* Executive Summary */}
+                  {auditReport.report?.executive_summary && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">
+                        Executive Summary
+                      </h3>
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-emerald-900">
+                        {auditReport.report.executive_summary as string}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Summary Cards */}
+                  {auditReport.report && (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {auditReport.report.risk_summary && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Summary</h4>
+                          <div className="space-y-1 text-sm text-slate-700">
+                            <p>Total scored: <span className="font-medium">{String((auditReport.report.risk_summary as Record<string, unknown>).total)}</span></p>
+                            <p>Avg risk: <span className="font-medium">{Number((auditReport.report.risk_summary as Record<string, unknown>).average_risk_score)?.toFixed(2)}</span></p>
+                            <p>Total amount: <span className="font-medium">{formatCurrency(Number((auditReport.report.risk_summary as Record<string, unknown>).total_amount))}</span></p>
+                          </div>
+                        </div>
+                      )}
+                      {auditReport.report.execution_summary && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Execution Summary</h4>
+                          <div className="space-y-1 text-sm text-slate-700">
+                            <p>Lookups: <span className="font-medium">{String((auditReport.report.execution_summary as Record<string, unknown>).lookups_performed)}</span></p>
+                            <p>Submitted: <span className="font-medium">{String((auditReport.report.execution_summary as Record<string, unknown>).candidates_submitted)}</span></p>
+                          </div>
+                        </div>
+                      )}
+                      {auditReport.report.approval_summary && (
+                        <div className="rounded-xl border border-slate-200 bg-white p-4">
+                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Approval Summary</h4>
+                          <div className="space-y-1 text-sm text-slate-700">
+                            <p>Approved: <span className="font-medium text-emerald-700">{String((auditReport.report.approval_summary as Record<string, unknown>).approved)}</span></p>
+                            <p>Rejected: <span className="font-medium text-red-600">{String((auditReport.report.approval_summary as Record<string, unknown>).rejected)}</span></p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Audit Trail */}
+                  {(auditReport.audit_trail ?? auditReport.entries ?? []).length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                        Agent Activity Trail
+                      </h3>
+                      <div className="space-y-2">
+                        {(auditReport.audit_trail ?? auditReport.entries ?? []).map((entry: AuditEntry) => (
+                          <div
+                            key={entry.id}
+                            className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                          >
+                            <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-amber-500" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-slate-900">
+                                  {entry.action.replaceAll("_", " ")}
+                                </span>
+                                {entry.agent_type && (
+                                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                                    {entry.agent_type}
+                                  </span>
+                                )}
+                              </div>
+                              {entry.detail && (
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                  {typeof entry.detail === "object"
+                                    ? Object.entries(entry.detail)
+                                      .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
+                                      .map(([k, v]) =>
+                                        typeof v === "object"
+                                          ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
+                                          : `${k.replaceAll("_", " ")}: ${v}`
+                                      )
+                                      .join(" · ")
+                                    : String(entry.detail)}
+                                </p>
+                              )}
+                              <p className="mt-0.5 text-xs text-slate-400">
+                                {formatDateTime(entry.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
