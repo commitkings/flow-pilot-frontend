@@ -188,19 +188,19 @@ export function completeOnboarding(payload: OnboardingPayload): Promise<Onboardi
 // ── Runs ─────────────────────────────────────────────────────
 
 export function createRun(payload: CreateRunPayload): Promise<ApiRunRecord> {
-  return apiFetch<ApiRunRecord>("/runs", { method: "POST", body: payload });
+  return apiFetch<ApiRunRecord>("/runs", { method: "POST", body: payload, auth: true });
 }
 
 export function listRuns(): Promise<ApiRunRecord[]> {
-  return apiFetch<ApiRunRecord[]>("/runs");
+  return apiFetch<ApiRunRecord[]>("/runs", { auth: true });
 }
 
 export function getRun(runId: string): Promise<ApiRunRecord> {
-  return apiFetch<ApiRunRecord>(`/runs/${runId}`);
+  return apiFetch<ApiRunRecord>(`/runs/${runId}`, { auth: true });
 }
 
 export function getRunStatus(runId: string): Promise<RunStatusResponse> {
-  return apiFetch<RunStatusResponse>(`/runs/${runId}/status`);
+  return apiFetch<RunStatusResponse>(`/runs/${runId}/status`, { auth: true });
 }
 
 // ── Candidates ───────────────────────────────────────────────
@@ -219,7 +219,7 @@ export function listCandidates(
   approvalStatus?: string,
 ): Promise<CandidatesResponse> {
   const qs = approvalStatus ? `?approval_status=${approvalStatus}` : "";
-  return apiFetch<CandidatesResponse>(`/runs/${runId}/candidates${qs}`);
+  return apiFetch<CandidatesResponse>(`/runs/${runId}/candidates${qs}`, { auth: true });
 }
 
 // ── Actions ──────────────────────────────────────────────────
@@ -231,6 +231,7 @@ export function approveCandidates(
   return apiFetch<ApproveResponse>(`/runs/${runId}/approve`, {
     method: "POST",
     body: { candidate_ids: candidateIds } satisfies ApproveRejectPayload,
+    auth: true,
   });
 }
 
@@ -244,17 +245,18 @@ export function rejectCandidates(
   return apiFetch<RejectResponse>(`/runs/${runId}/reject`, {
     method: "POST",
     body: payload,
+    auth: true,
   });
 }
 
 // ── Audit ────────────────────────────────────────────────────
 
 export function getRunReport(runId: string): Promise<AuditReport> {
-  return apiFetch<AuditReport>(`/runs/${runId}/report`);
+  return apiFetch<AuditReport>(`/runs/${runId}/report`, { auth: true });
 }
 
 export async function downloadRunReport(runId: string): Promise<Blob> {
-  const res = await apiFetch<Response>(`/runs/${runId}/report/download`, { raw: true });
+  const res = await apiFetch<Response>(`/runs/${runId}/report/download`, { raw: true, auth: true });
   if (!res.ok) {
     throw new ApiError(res.status, { detail: res.statusText });
   }

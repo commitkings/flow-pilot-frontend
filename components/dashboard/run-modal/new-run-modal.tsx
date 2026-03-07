@@ -13,6 +13,19 @@ import {
 } from "@/components/ui/form-fields";
 import { SelectInput } from "@/components/ui/form-fields";
 import { institutions, naira } from "@/lib/mock-data";
+import { useAuth } from "@/context/auth-context";
+import { useCreateRun } from "@/hooks/use-run-mutations";
+
+const INSTITUTION_CODES: Record<string, string> = {
+  "GTBank": "058",
+  "Access Bank": "044",
+  "First Bank": "011",
+  "Zenith Bank": "057",
+  "UBA": "033",
+  "Stanbic IBTC": "039",
+  "Fidelity Bank": "070",
+  "Wema Bank": "035",
+};
 
 type Recipient = {
   id: string;
@@ -42,14 +55,19 @@ export function NewRunModal({
   onClose: () => void;
 }) {
   const router = useRouter();
-  const [objective, setObjective] = useState(
-    "Reconcile all transactions from Feb 1 to Feb 14 and execute approved payroll payouts under risk threshold 0.35."
-  );
-  const [fromDate, setFromDate] = useState("2026-02-01");
-  const [toDate, setToDate] = useState("2026-02-14");
+  const { user } = useAuth();
+  const businessId = user?.memberships?.[0]?.business_id ?? "";
+  
+  const createRunMutation = useCreateRun((runId) => {
+    closeAndReset();
+    router.push(`/dashboard/runs/${runId}`);
+  });
+
+  const [objective, setObjective] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [riskTolerance, setRiskTolerance] = useState(0.35);
   const [budgetCap, setBudgetCap] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -105,22 +123,7 @@ export function NewRunModal({
     a.click();
     URL.revokeObjectURL(url);
   };
-  const [recipients, setRecipients] = useState<Recipient[]>([
-    recipientRow({
-      beneficiaryName: "Chukwuemeka Adeyemi",
-      institution: "GTBank",
-      accountNumber: "054221789",
-      amount: "450000",
-      purpose: "February Salary",
-    }),
-    recipientRow({
-      beneficiaryName: "Fatima Bello",
-      institution: "Access Bank",
-      accountNumber: "031998442",
-      amount: "320000",
-      purpose: "Contractor Fee",
-    }),
-  ]);
+  const [recipients, setRecipients] = useState<Recipient[]>([recipientRow()]);
 
   const total = useMemo(
     () => recipients.reduce((acc, row) => acc + (Number(row.amount) || 0), 0),
@@ -158,15 +161,23 @@ export function NewRunModal({
       prev.length > 1 ? prev.filter((row) => row.id !== id) : prev
     );
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setSubmitted(true);
     if (!canSubmit) return;
-    setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    const newRunId = crypto.randomUUID();
-    setSubmitting(false);
-    closeAndReset();
-    router.push(`/dashboard/runs/${newRunId}`);
+    createRunMutation.mutate({
+      business_id: businessId,
+      created_by: user?.id,
+      objective: objective.trim(),
+      risk_tolerance: riskTolerance,
+      budget_cap: budgetCap ? Number(budgetCap) : undefined,
+      candidates: recipients.map((r) => ({
+        institution_code: INSTITUTION_CODES[r.institution] ?? r.institution.slice(0, 10),
+        beneficiary_name: r.beneficiaryName,
+        account_number: r.accountNumber,
+        amount: Number(r.amount),
+        purpose: r.purpose || undefined,
+      })),
+    });
   };
 
   return (
@@ -190,7 +201,7 @@ export function NewRunModal({
             )}
             <Button
               onClick={onSubmit}
-              loading={submitting}
+              loading={createRunMutation.isPending}
               className="rounded-xl bg-brand text-white hover:opacity-90"
             >
               <Rocket className="h-4 w-4" />
@@ -346,89 +357,59 @@ export function NewRunModal({
                     </button>
                   </div>
 
-                  {/* Responsive Grid Layout */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
-                    {/* Name Field - Spans more space on large screens */}
-                    <div className="lg:col-span-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
                       <Field label="Beneficiary Name">
                         <TextInput
                           value={row.beneficiaryName}
-                          onChange={(v) =>
-                            updateRow(row.id, { beneficiaryName: v })
-                          }
+                          onChange={(v) => updateRow(row.id, { beneficiaryName: v })}
                           placeholder="Full name"
-                          className={
-                            invalid && !row.beneficiaryName.trim()
-                              ? "border-red-500 bg-red-50/30"
-                              : ""
-                          }
+                          className={invalid && !row.beneficiaryName.trim() ? "border-red-500 bg-red-50/30" : ""}
                         />
                       </Field>
                     </div>
 
-                    {/* Bank Selection */}
-                    <div className="lg:col-span-3">
-                      <Field label="Bank/Institution">
+                    <div className="col-span-2">
+                      <Field label="Bank / Institution">
                         <SelectInput
                           value={row.institution}
-                          onChange={(v) =>
-                            updateRow(row.id, { institution: v })
-                          }
+                          onChange={(v) => updateRow(row.id, { institution: v })}
                           placeholder="Select bank"
                           options={institutions}
                         />
                       </Field>
                     </div>
 
-                    {/* Account Number */}
-                    <div className="lg:col-span-2">
-                      <Field label="Account No.">
-                        <TextInput
-                          value={row.accountNumber}
-                          onChange={(v) =>
-                            updateRow(row.id, { accountNumber: v })
-                          }
-                          placeholder="0000000000"
-                          inputMode="numeric"
-                          className={
-                            invalid && !row.accountNumber.trim()
-                              ? "border-red-500 bg-red-50/30"
-                              : ""
-                          }
-                        />
-                      </Field>
-                    </div>
-
-                    {/* Amount */}
-                    <div className="lg:col-span-3">
-                      <Field label="Amount (₦)">
-                        <TextInput
-                          value={row.amount}
-                          onChange={(v) => updateRow(row.id, { amount: v })}
-                          placeholder="0.00"
-                          inputMode="decimal"
-                          className={
-                            invalid && !row.amount.trim()
-                              ? "border-red-500 bg-red-50/30"
-                              : ""
-                          }
-                        />
-                      </Field>
-                    </div>
-                  </div>
-                  <div className="col-span-full mt-3">
-                    <Field label="Purpose">
-                      <TextareaInput
-                        value={row.purpose}
-                        onChange={(v) => updateRow(row.id, { purpose: v })}
-                        placeholder="e.g. February Salary"
-                        className={`min-h-20 md:min-h-15 w-full resize-none ${
-                          invalid && !row.purpose.trim()
-                            ? "border-red-500 bg-red-50/30"
-                            : ""
-                        }`}
+                    <Field label="Account No.">
+                      <TextInput
+                        value={row.accountNumber}
+                        onChange={(v) => updateRow(row.id, { accountNumber: v })}
+                        placeholder="0000000000"
+                        inputMode="numeric"
+                        className={invalid && !row.accountNumber.trim() ? "border-red-500 bg-red-50/30" : ""}
                       />
                     </Field>
+
+                    <Field label="Amount (₦)">
+                      <TextInput
+                        value={row.amount}
+                        onChange={(v) => updateRow(row.id, { amount: v })}
+                        placeholder="0.00"
+                        inputMode="decimal"
+                        className={invalid && !row.amount.trim() ? "border-red-500 bg-red-50/30" : ""}
+                      />
+                    </Field>
+
+                    <div className="col-span-2">
+                      <Field label="Purpose">
+                        <TextInput
+                          value={row.purpose}
+                          onChange={(v) => updateRow(row.id, { purpose: v })}
+                          placeholder="e.g. February Salary"
+                          className={invalid && !row.purpose.trim() ? "border-red-500 bg-red-50/30" : ""}
+                        />
+                      </Field>
+                    </div>
                   </div>
                 </div>
               );

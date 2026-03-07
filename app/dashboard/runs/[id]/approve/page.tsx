@@ -7,35 +7,35 @@ import { AlertTriangle, ArrowLeft, Check, Loader2, ShieldCheck, X } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { maskAccount, naira, truncateRunId, type PayoutCandidate } from "@/lib/mock-data";
-import { listCandidates, adaptCandidate, approveCandidates } from "@/lib/api-client";
+import { maskAccount, naira, truncateRunId } from "@/lib/mock-data";
+import { useCandidates } from "@/hooks/use-candidate-queries";
+import { useApproveCandidates } from "@/hooks/use-candidate-mutations";
 
 export default function ApprovalGatePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [allCandidates, setAllCandidates] = useState<PayoutCandidate[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [overrideDecision, setOverrideDecision] = useState("review");
   const [overrideReason, setOverrideReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
-  const [approving, setApproving] = useState(false);
 
-  const [loadingCandidates, setLoadingCandidates] = useState(true);
-  const [candidatesError, setCandidatesError] = useState(false);
+  const {
+    data: allCandidates = [],
+    isLoading: loadingCandidates,
+    isError: candidatesError,
+  } = useCandidates(id);
 
+  const approveMutation = useApproveCandidates(id, () => {
+    router.push(`/dashboard/runs/${id}?phase=executing`);
+  });
+
+  // Pre-select already-approved candidates when data loads
   useEffect(() => {
-    let cancelled = false;
-    listCandidates(id).then((res) => {
-      if (cancelled) return;
-      const adapted = res.candidates.map(adaptCandidate);
-      setAllCandidates(adapted);
-      setSelectedIds(adapted.filter((c) => c.approvalStatus === "selected").map((c) => c.id));
-    }).catch(() => { if (!cancelled) setCandidatesError(true); }).finally(() => { if (!cancelled) setLoadingCandidates(false); });
-    return () => { cancelled = true; };
-  }, [id]);
+    setSelectedIds(allCandidates.filter((c) => c.approvalStatus === "selected").map((c) => c.id));
+  }, [allCandidates]);
 
   const rows = useMemo(
     () =>
@@ -66,19 +66,9 @@ export default function ApprovalGatePage() {
     );
   };
 
-  const [approveError, setApproveError] = useState(false);
-
-  const onApprove = async () => {
-    if (!confirmChecked || approving) return;
-    setApproving(true);
-    setApproveError(false);
-    try {
-      await approveCandidates(id, selectedIds);
-      router.push(`/dashboard/runs/${id}?phase=executing`);
-    } catch {
-      setApproveError(true);
-      setApproving(false);
-    }
+  const onApprove = () => {
+    if (!confirmChecked || approveMutation.isPending) return;
+    approveMutation.mutate(selectedIds);
   };
 
   if (loadingCandidates) {
@@ -116,7 +106,7 @@ export default function ApprovalGatePage() {
       <Card className="rounded-xl border-slate-200 bg-white">
         <CardContent className="space-y-4 py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-slate-700">{selectedIds.length} of 6 candidates selected</p>
+            <p className="text-sm font-medium text-slate-700">{selectedIds.length} of {allCandidates.length} candidates selected</p>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" className="rounded-lg" onClick={selectAllSafe}>Select All Safe</Button>
               <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setSelectedIds([])}>Deselect All</Button>
@@ -291,10 +281,10 @@ export default function ApprovalGatePage() {
             </label>
 
             <div className="mt-4 space-y-2">
-              {approveError && <p className="text-sm text-red-600">Approval failed. Please try again.</p>}
-              <Button className="h-11 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!confirmChecked || approving} onClick={onApprove}>
+              {approveMutation.isError && <p className="text-sm text-red-600">Approval failed. Please try again.</p>}
+              <Button className="h-11 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!confirmChecked || approveMutation.isPending} onClick={onApprove}>
                 <Check className="h-4 w-4" />
-                {approving ? "Processing…" : "Confirm and Execute Payouts"}
+                {approveMutation.isPending ? "Processing…" : "Confirm and Execute Payouts"}
               </Button>
               <Button variant="ghost" className="h-11 w-full rounded-xl" onClick={() => setConfirmOpen(false)}>
                 Go Back and Review

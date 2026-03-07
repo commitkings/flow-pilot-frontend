@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { maskAccount, naira, transactionRows, truncateRunId, type RunRecord, type PayoutCandidate } from "@/lib/mock-data";
-import { getRun, adaptRun, listCandidates, adaptCandidate } from "@/lib/api-client";
+import { maskAccount, naira, transactionRows, truncateRunId } from "@/lib/mock-data";
+import { useRun } from "@/hooks/use-run-queries";
+import { useCandidates } from "@/hooks/use-candidate-queries";
 
 const planSteps = [
   ["Create Plan", "PlannerAgent"],
@@ -28,17 +29,9 @@ export default function RunDetailPage() {
   const [activeTab, setActiveTab] = useState("transactions");
   const [openCallCard, setOpenCallCard] = useState<number | null>(0);
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
-  const [run, setRun] = useState<RunRecord | null>(null);
-  const [candidates, setCandidates] = useState<PayoutCandidate[]>([]);
-  const [runError, setRunError] = useState(false);
-  const [candidatesError, setCandidatesError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    getRun(id).then((r) => { if (!cancelled) setRun(adaptRun(r)); }).catch(() => { if (!cancelled) setRunError(true); });
-    listCandidates(id).then((res) => { if (!cancelled) setCandidates(res.candidates.map(adaptCandidate)); }).catch(() => { if (!cancelled) setCandidatesError(true); });
-    return () => { cancelled = true; };
-  }, [id]);
+  const { data: run, isError: runError } = useRun(id);
+  const { data: candidates = [], isError: candidatesError } = useCandidates(id);
 
   const phase = searchParams.get("phase") === "executing" ? "executing" : "running";
   const status = phase === "executing" ? "executing" : (run?.status ?? "running");

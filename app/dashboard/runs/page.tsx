@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, FileSearch, Loader2, ShieldAlert, Wallet, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -97,26 +98,13 @@ export default function RunsPage() {
   const [dismissedWelcome, setDismissedWelcome] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [fromDate, setFromDate] = useState("2026-02-01");
-  const [toDate, setToDate] = useState("2026-02-24");
-  const [rows, setRows] = useState<RunRecord[]>([]);
-  const [loadingRuns, setLoadingRuns] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    listRuns()
-      .then((apiRuns) => {
-        if (!cancelled) setRows(apiRuns.map(adaptRun));
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRuns(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
+  const { data: rows = [], isLoading: loadingRuns, isError: loadError } = useQuery({
+    queryKey: ["runs"],
+    queryFn: () => listRuns().then((r) => r.map(adaptRun)),
+  });
 
   const showWelcome = searchParams.get("welcome") === "1" && !dismissedWelcome;
 
