@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDownUp, BadgeAlert, Download, Layers, Wallet } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowDownUp, BadgeAlert, Download, Layers, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   SearchInput,
@@ -13,15 +13,23 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { RightModal } from "@/components/modals/RightModal";
-import { transactionRows, naira } from "@/lib/mock-data";
+import { naira } from "@/lib/mock-data";
+import { listTransactions, type TransactionFilters } from "@/lib/api-client";
+import type { TransactionRow, TransactionSummary } from "@/lib/api-types";
 
-type TransactionRow = (typeof transactionRows)[number];
+// Map DB channel values to display-friendly labels
+const CHANNEL_DISPLAY: Record<string, string> = {
+  CARD: "Card",
+  TRANSFER: "Transfer",
+  USSD: "USSD",
+  QR: "QR",
+};
 
 const CHANNEL_STYLES: Record<string, string> = {
-  WEB: "bg-blue-100 text-blue-700",
+  CARD: "bg-blue-100 text-blue-700",
+  TRANSFER: "bg-teal-100 text-teal-700",
   USSD: "bg-purple-100 text-purple-700",
-  POS: "bg-teal-100 text-teal-700",
-  MOBILE: "bg-indigo-100 text-indigo-700",
+  QR: "bg-indigo-100 text-indigo-700",
 };
 
 function ChannelBadge({ value }: { value: string }) {
@@ -29,13 +37,41 @@ function ChannelBadge({ value }: { value: string }) {
     <span
       className={`rounded-full px-2.5 py-1 text-xs font-semibold ${CHANNEL_STYLES[value] ?? "bg-slate-100 text-slate-700"}`}
     >
-      {value}
+      {CHANNEL_DISPLAY[value] ?? value}
     </span>
   );
 }
 
-const STATUS_OPTIONS = ["Completed", "Pending", "Failed"];
-const CHANNEL_OPTIONS = ["WEB", "USSD", "POS", "MOBILE"];
+// Map DB status values to StatusBadge variants
+function statusVariant(s: string): "completed" | "pending" | "failed" {
+  if (s === "SUCCESS") return "completed";
+  if (s === "PENDING") return "pending";
+  return "failed"; // FAILED, REVERSED
+}
+function statusLabel(s: string): string {
+  if (s === "SUCCESS") return "Completed";
+  if (s === "PENDING") return "Pending";
+  if (s === "REVERSED") return "Reversed";
+  return "Failed";
+}
+
+const STATUS_OPTIONS = ["SUCCESS", "PENDING", "FAILED", "REVERSED"];
+const STATUS_LABELS: Record<string, string> = {
+  SUCCESS: "Completed",
+  PENDING: "Pending",
+  FAILED: "Failed",
+  REVERSED: "Reversed",
+};
+const CHANNEL_OPTIONS = ["CARD", "TRANSFER", "USSD", "QR"];
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleString("en-NG", {
+    month: "short", day: "numeric", year: "numeric",
+    hour: "numeric", minute: "2-digit", hour12: true,
+  });
+}
 
 const columns: TableColumn<TransactionRow>[] = [
   {
@@ -63,23 +99,14 @@ const columns: TableColumn<TransactionRow>[] = [
     id: "status",
     header: "Status",
     cell: (row) => (
-      <StatusBadge
-        status={
-          row.status === "Completed"
-            ? "completed"
-            : row.status === "Pending"
-              ? "pending"
-              : "failed"
-        }
-        label={row.status}
-      />
+      <StatusBadge status={statusVariant(row.status)} label={statusLabel(row.status)} />
     ),
   },
   {
     id: "date",
     header: "Date",
     cell: (row) => (
-      <span className="text-muted-foreground">{row.date}</span>
+      <span className="text-muted-foreground">{formatDate(row.date)}</span>
     ),
   },
   {
@@ -94,26 +121,50 @@ const columns: TableColumn<TransactionRow>[] = [
   },
 ];
 
+const emptySummary: TransactionSummary = {
+  total_transactions: 0,
+  total_volume: 0,
+  anomaly_count: 0,
+  failed_count: 0,
+};
+
 export default function TransactionsPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [channelFilter, setChannelFilter] = useState("");
-  const [fromDate, setFromDate] = useState("2026-02-01");
-  const [toDate, setToDate] = useState("2026-02-24");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [selectedRef, setSelectedRef] = useState<string | null>(null);
 
-  const selected = transactionRows.find((r) => r.reference === selectedRef) ?? null;
+  const [rows, setRows] = useState<TransactionRow[]>([]);
+  const [summary, setSummary] = useState<TransactionSummary>(emptySummary);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const filteredRows = useMemo(
-    () =>
-      transactionRows.filter((row) => {
-        const q = query.toLowerCase();
-        const matchesQuery = row.reference.toLowerCase().includes(q);
-        const matchesStatus = !statusFilter || row.status === statusFilter;
-        const matchesChannel = !channelFilter || row.channel === channelFilter;
-        return matchesQuery && matchesStatus && matchesChannel;
-      }),
-    [query, statusFilter, channelFilter]
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    const filters: TransactionFilters = {};
+    if (statusFilter) filters.status = statusFilter;
+    if (channelFilter) filters.channel = channelFilter;
+    if (query) filters.search = query;
+    if (fromDate) filters.from_date = fromDate;
+    if (toDate) filters.to_date = toDate;
+
+    listTransactions(filters)
+      .then((res) => {
+        setRows(res.transactions);
+        setSummary(res.summary);
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, [statusFilter, channelFilter, query, fromDate, toDate]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const selected = useMemo(
+    () => rows.find((r) => r.reference === selectedRef) ?? null,
+    [rows, selectedRef],
   );
 
   return (
@@ -128,32 +179,32 @@ export default function TransactionsPage() {
         </Button>
       </PageHeader>
 
-      {/* Metric cards */}
+      {/* Metric cards — live from API summary */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Total Transactions"
-          value="2,847"
+          value={summary.total_transactions.toLocaleString()}
           subtext="Across all runs"
           icon={<Layers className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
           label="Total Volume"
-          value="₦284.75M"
-          subtext="Settled this month"
+          value={naira(summary.total_volume)}
+          subtext="Settled this period"
           icon={<Wallet className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
           label="Anomalies Detected"
-          value="23"
+          value={summary.anomaly_count.toLocaleString()}
           subtext="Requires review"
           icon={<BadgeAlert className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
           label="Failed Transactions"
-          value="14"
+          value={summary.failed_count.toLocaleString()}
           subtext="Immediate action required"
           icon={<ArrowDownUp className="h-4 w-4" />}
           accent="red"
@@ -191,22 +242,37 @@ export default function TransactionsPage() {
         </div>
 
         {/* Table */}
-        <DataTable
-          columns={columns}
-          data={filteredRows}
-          keyExtractor={(row) => row.reference}
-          onRowClick={(row) => setSelectedRef(row.reference)}
-          emptyState={
-            <div className="space-y-2 flex items-center flex-col justify-center py-10">
-              <p className="text-base font-black text-foreground">
-                No transactions found
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Try adjusting your filters.
-              </p>
-            </div>
-          }
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-16">
+            <p className="text-sm font-semibold text-destructive">
+              Failed to load transactions
+            </p>
+            <Button size="sm" variant="outline" onClick={fetchData}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={rows}
+            keyExtractor={(row) => row.reference}
+            onRowClick={(row) => setSelectedRef(row.reference)}
+            emptyState={
+              <div className="space-y-2 flex items-center flex-col justify-center py-10">
+                <p className="text-base font-black text-foreground">
+                  No transactions found
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Try adjusting your filters.
+                </p>
+              </div>
+            }
+          />
+        )}
       </div>
 
       {/* Detail panel */}
@@ -219,14 +285,18 @@ export default function TransactionsPage() {
         {selected && (
           <div className="space-y-0">
             <DetailRow label="Reference" value={selected.reference} mono />
-            <DetailRow label="Channel" value={selected.channel} />
+            <DetailRow label="Channel" value={CHANNEL_DISPLAY[selected.channel] ?? selected.channel} />
             <DetailRow label="Amount" value={naira(selected.amount)} />
-            <DetailRow label="Status" value={selected.status} />
-            <DetailRow label="Date" value={selected.date} />
+            <DetailRow label="Status" value={statusLabel(selected.status)} />
+            <DetailRow label="Direction" value={selected.direction || "—"} />
+            <DetailRow label="Date" value={formatDate(selected.date)} />
+            <DetailRow label="Counterparty" value={selected.counterparty_name || "—"} />
+            <DetailRow label="Bank" value={selected.counterparty_bank || "—"} />
+            <DetailRow label="Narration" value={selected.narration || "—"} />
             <DetailRow label="Anomaly" value={selected.anomaly} />
-            <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-              Raw payload summary with sensitive fields redacted.
-            </div>
+            {selected.anomaly_count > 0 && (
+              <DetailRow label="Anomaly Count" value={String(selected.anomaly_count)} />
+            )}
           </div>
         )}
       </RightModal>

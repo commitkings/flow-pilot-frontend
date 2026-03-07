@@ -19,6 +19,7 @@ import {
   type OnboardingPayload,
   type OnboardingResponse,
   type RunStatusResponse,
+  type TransactionsResponse,
   type UploadCandidatesResponse,
   type User,
 } from "./api-types";
@@ -188,19 +189,19 @@ export function completeOnboarding(payload: OnboardingPayload): Promise<Onboardi
 // ── Runs ─────────────────────────────────────────────────────
 
 export function createRun(payload: CreateRunPayload): Promise<ApiRunRecord> {
-  return apiFetch<ApiRunRecord>("/runs", { method: "POST", body: payload });
+  return apiFetch<ApiRunRecord>("/runs", { method: "POST", body: payload, auth: true });
 }
 
 export function listRuns(): Promise<ApiRunRecord[]> {
-  return apiFetch<ApiRunRecord[]>("/runs");
+  return apiFetch<ApiRunRecord[]>("/runs", { auth: true });
 }
 
 export function getRun(runId: string): Promise<ApiRunRecord> {
-  return apiFetch<ApiRunRecord>(`/runs/${runId}`);
+  return apiFetch<ApiRunRecord>(`/runs/${runId}`, { auth: true });
 }
 
 export function getRunStatus(runId: string): Promise<RunStatusResponse> {
-  return apiFetch<RunStatusResponse>(`/runs/${runId}/status`);
+  return apiFetch<RunStatusResponse>(`/runs/${runId}/status`, { auth: true });
 }
 
 // ── Candidates ───────────────────────────────────────────────
@@ -211,7 +212,7 @@ export function uploadCandidates(
 ): Promise<UploadCandidatesResponse> {
   const fd = new FormData();
   fd.append("file", file);
-  return apiUpload<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd);
+  return apiUpload<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd, true);
 }
 
 export function listCandidates(
@@ -219,7 +220,7 @@ export function listCandidates(
   approvalStatus?: string,
 ): Promise<CandidatesResponse> {
   const qs = approvalStatus ? `?approval_status=${approvalStatus}` : "";
-  return apiFetch<CandidatesResponse>(`/runs/${runId}/candidates${qs}`);
+  return apiFetch<CandidatesResponse>(`/runs/${runId}/candidates${qs}`, { auth: true });
 }
 
 // ── Actions ──────────────────────────────────────────────────
@@ -231,6 +232,7 @@ export function approveCandidates(
   return apiFetch<ApproveResponse>(`/runs/${runId}/approve`, {
     method: "POST",
     body: { candidate_ids: candidateIds } satisfies ApproveRejectPayload,
+    auth: true,
   });
 }
 
@@ -244,17 +246,18 @@ export function rejectCandidates(
   return apiFetch<RejectResponse>(`/runs/${runId}/reject`, {
     method: "POST",
     body: payload,
+    auth: true,
   });
 }
 
 // ── Audit ────────────────────────────────────────────────────
 
 export function getRunReport(runId: string): Promise<AuditReport> {
-  return apiFetch<AuditReport>(`/runs/${runId}/report`);
+  return apiFetch<AuditReport>(`/runs/${runId}/report`, { auth: true });
 }
 
 export async function downloadRunReport(runId: string): Promise<Blob> {
-  const res = await apiFetch<Response>(`/runs/${runId}/report/download`, { raw: true });
+  const res = await apiFetch<Response>(`/runs/${runId}/report/download`, { raw: true, auth: true });
   if (!res.ok) {
     throw new ApiError(res.status, { detail: res.statusText });
   }
@@ -264,7 +267,16 @@ export async function downloadRunReport(runId: string): Promise<Blob> {
 // ── Institutions ─────────────────────────────────────────────
 
 export function listInstitutions(): Promise<InstitutionsResponse> {
-  return apiFetch<InstitutionsResponse>("/institutions");
+  return apiFetch<InstitutionsResponse>("/institutions", { auth: true });
+}
+
+// ── Health (no auth) ─────────────────────────────────────────
+
+export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
+  const ROOT =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api/v1", "") ?? "http://127.0.0.1:8000";
+  const res = await fetch(`${ROOT}/health`);
+  return (await res.json()) as { payout_mode: string; status: string };
 }
 
 // ── Candidate type adapter (API → UI) ────────────────────────
@@ -281,8 +293,8 @@ const approvalStatusMap: Record<CandidateApprovalStatus, PayoutCandidate["approv
 
 /** Maps backend risk_decision → UI CandidateDecision */
 function mapRiskDecision(rd: string): PayoutCandidate["decision"] {
-  if (rd === "approve") return "allow";
-  if (rd === "reject") return "block";
+  if (rd === "approve" || rd === "allow") return "allow";
+  if (rd === "reject" || rd === "block") return "block";
   return "review";
 }
 
@@ -294,10 +306,10 @@ export function adaptCandidate(c: Candidate): PayoutCandidate {
     accountNumber: c.account_number,
     amount: c.amount,
     purpose: c.purpose ?? "",
-    riskScore: c.risk_score,
-    riskReasons: c.risk_reasons,
+    riskScore: c.risk_score ?? 0,
+    riskReasons: c.risk_reasons ?? [],
     lookupStatus: "verified",
-    decision: mapRiskDecision(c.risk_decision),
+    decision: mapRiskDecision(c.risk_decision ?? "review"),
     approvalStatus: approvalStatusMap[c.approval_status],
     similarity: 1,
     nameOnFile: c.beneficiary_name,
@@ -309,7 +321,7 @@ export function adaptCandidate(c: Candidate): PayoutCandidate {
 function mapRunStatus(s: string): RunStatus {
   const known: RunStatus[] = [
     "pending", "planning", "running", "awaiting_approval",
-    "executing", "completed", "failed",
+    "executing", "completed", "completed_with_errors", "failed",
   ];
   if ((known as string[]).includes(s)) return s as RunStatus;
   // Backend-only intermediate statuses map to "running"
@@ -350,4 +362,37 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
       timeZoneName: "short",
     }),
   };
+}
+
+// ── Transactions ──────────────────────────────────────────────
+
+export interface TransactionFilters {
+  run_id?: string;
+  status?: string;
+  channel?: string;
+  search?: string;
+  from_date?: string;
+  to_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function listTransactions(
+  filters: TransactionFilters = {},
+): Promise<TransactionsResponse> {
+  const params = new URLSearchParams();
+  if (filters.run_id) params.set("run_id", filters.run_id);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.channel) params.set("channel", filters.channel);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.from_date) params.set("from_date", filters.from_date);
+  if (filters.to_date) params.set("to_date", filters.to_date);
+  if (filters.limit) params.set("limit", String(filters.limit));
+  if (filters.offset) params.set("offset", String(filters.offset));
+
+  const qs = params.toString();
+  return apiFetch<TransactionsResponse>(
+    `/transactions${qs ? `?${qs}` : ""}`,
+    { auth: true },
+  );
 }

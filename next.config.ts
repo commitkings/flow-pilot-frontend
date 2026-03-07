@@ -3,7 +3,10 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: path.resolve(__dirname),
+    root: process.cwd(),
+    resolveAlias: {
+      tailwindcss: path.join(process.cwd(), "node_modules", "tailwindcss"),
+    },
   },
 };
 

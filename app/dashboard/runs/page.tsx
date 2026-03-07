@@ -166,28 +166,28 @@ export default function RunsPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           label="Total Runs"
-          value="24"
+          value={loadingRuns ? "…" : String(rows.length)}
           subtext="Active automation"
           icon={<Zap className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
           label="Total Disbursed"
-          value="₦48.25M"
+          value="—"
           subtext="Settled this month"
           icon={<Wallet className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
           label="Pending Approvals"
-          value="2"
+          value={loadingRuns ? "…" : String(rows.filter(r => r.status === "awaiting_approval").length)}
           subtext="Requires authorization"
           icon={<FileSearch className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
           label="Failed Runs"
-          value="1"
+          value={loadingRuns ? "…" : String(rows.filter(r => r.status === "failed").length)}
           subtext="Immediate action required"
           icon={<ShieldAlert className="h-4 w-4" />}
           accent="red"
@@ -224,28 +224,28 @@ export default function RunsPage() {
         ) : loadError ? (
           <div className="flex justify-center py-12"><p className="text-sm text-red-600">Failed to load runs. Please refresh the page.</p></div>
         ) : (
-        <DataTable
-          columns={columns}
-          data={filteredRows}
-          keyExtractor={(run) => run.id}
-          onRowClick={(run) => router.push(`/dashboard/runs/${run.id}`)}
-          emptyState={
-            <div className="space-y-3">
-              <p className="text-base font-black text-foreground">
-                No runs found
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Create your first run to start automated treasury execution.
-              </p>
-              <Button
-                className="mt-1 rounded-full bg-brand px-6 text-white hover:opacity-90"
-                onClick={openNewRun}
-              >
-                Start Your First Run
-              </Button>
-            </div>
-          }
-        />
+          <DataTable
+            columns={columns}
+            data={filteredRows}
+            keyExtractor={(run) => run.id}
+            onRowClick={(run) => router.push(`/dashboard/runs/${run.id}`)}
+            emptyState={
+              <div className="space-y-3">
+                <p className="text-base font-black text-foreground">
+                  No runs found
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Create your first run to start automated treasury execution.
+                </p>
+                <Button
+                  className="mt-1 rounded-full bg-brand px-6 text-white hover:opacity-90"
+                  onClick={openNewRun}
+                >
+                  Start Your First Run
+                </Button>
+              </div>
+            }
+          />
         )}
       </div>
     </div>
