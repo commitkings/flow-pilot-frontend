@@ -5,10 +5,10 @@ import { Navbar } from "@/components/dashboard/navbar";
 import { DashboardShellProvider } from "@/components/dashboard-shell-context";
 import { NewRunModal } from "@/components/dashboard/run-modal/new-run-modal";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { fetchHealth } from "@/lib/api-client";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -17,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false);
   const [newRunOpen, setNewRunOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [payoutMode, setPayoutMode] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoading) return;
@@ -28,6 +29,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace("/onboarding");
     }
   }, [isLoading, isAuthenticated, user, router]);
+
+  // Fetch payout mode for simulated banner
+  useEffect(() => {
+    let cancelled = false;
+    fetchHealth()
+      .then((h) => { if (!cancelled) setPayoutMode(h.payout_mode); })
+      .catch(() => { /* silently ignore */ });
+    return () => { cancelled = true; };
+  }, []);
 
   if (isLoading) {
     return (
@@ -58,6 +68,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           "ml-0",
           collapsed ? "md:ml-20" : "md:ml-64"
         )}>
+          {payoutMode === "simulated" && (
+            <div className="flex items-center justify-center gap-2 bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              Demo Mode — Payouts are simulated. No real funds will move.
+            </div>
+          )}
           <Navbar />
           <main className="flex-1 p-4 md:p-8 lg:p-10 pb-20 md:pb-8">
             <div className="mx-auto max-w-7xl">

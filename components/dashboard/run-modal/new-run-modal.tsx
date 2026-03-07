@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Plus, Rocket, Trash2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,10 @@ import {
   DateRangeInput,
 } from "@/components/ui/form-fields";
 import { SelectInput } from "@/components/ui/form-fields";
-import { institutions, naira } from "@/lib/mock-data";
+import { institutions as fallbackInstitutions, naira } from "@/lib/mock-data";
+import { createRun, listInstitutions } from "@/lib/api-client";
+import type { CandidateInput } from "@/lib/api-types";
+import { useAuth } from "@/context/auth-context";
 
 type Recipient = {
   id: string;
@@ -27,7 +30,7 @@ function recipientRow(values: Partial<Recipient> = {}): Recipient {
   return {
     id: crypto.randomUUID(),
     beneficiaryName: values.beneficiaryName ?? "",
-    institution: values.institution ?? institutions[0],
+    institution: values.institution ?? "",
     accountNumber: values.accountNumber ?? "",
     amount: values.amount ?? "",
     purpose: values.purpose ?? "",
@@ -42,6 +45,8 @@ export function NewRunModal({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { user } = useAuth();
+  const [institutions, setInstitutions] = useState<string[]>(fallbackInstitutions);
   const [objective, setObjective] = useState(
     "Reconcile all transactions from Feb 1 to Feb 14 and execute approved payroll payouts under risk threshold 0.35."
   );
@@ -51,8 +56,23 @@ export function NewRunModal({
   const [budgetCap, setBudgetCap] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
+
+  // Load institutions from API, fall back to hardcoded list
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    listInstitutions()
+      .then((res) => {
+        if (!cancelled && res.data.length > 0) {
+          setInstitutions(res.data.map((i) => i.institutionName));
+        }
+      })
+      .catch(() => { /* keep fallback */ });
+    return () => { cancelled = true; };
+  }, [open]);
 
   const parseCsv = (text: string): Recipient[] => {
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -160,13 +180,36 @@ export function NewRunModal({
 
   const onSubmit = async () => {
     setSubmitted(true);
+    setSubmitError(null);
     if (!canSubmit) return;
     setSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    const newRunId = crypto.randomUUID();
-    setSubmitting(false);
-    closeAndReset();
-    router.push(`/dashboard/runs/${newRunId}`);
+    try {
+      const businessId = user?.memberships?.[0]?.business_id;
+      if (!businessId) throw new Error("No business found on your account.");
+
+      const candidates: CandidateInput[] = recipients.map((r) => ({
+        institution_code: r.institution,
+        beneficiary_name: r.beneficiaryName,
+        account_number: r.accountNumber,
+        amount: Number(r.amount),
+        purpose: r.purpose,
+      }));
+
+      const result = await createRun({
+        business_id: businessId,
+        objective,
+        risk_tolerance: riskTolerance,
+        budget_cap: budgetCap ? Number(budgetCap) : undefined,
+        candidates,
+      });
+
+      setSubmitting(false);
+      closeAndReset();
+      router.push(`/dashboard/runs/${result.run_id}`);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to create run.");
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -185,7 +228,10 @@ export function NewRunModal({
             Cancel
           </Button>
           <div className="flex items-center gap-3">
-            {submitted && !canSubmit && (
+            {submitError && (
+              <p className="text-xs text-red-500">{submitError}</p>
+            )}
+            {submitted && !canSubmit && !submitError && (
               <p className="text-xs text-red-500">Fill all required fields.</p>
             )}
             <Button
@@ -422,11 +468,10 @@ export function NewRunModal({
                         value={row.purpose}
                         onChange={(v) => updateRow(row.id, { purpose: v })}
                         placeholder="e.g. February Salary"
-                        className={`min-h-20 md:min-h-15 w-full resize-none ${
-                          invalid && !row.purpose.trim()
+                        className={`min-h-20 md:min-h-15 w-full resize-none ${invalid && !row.purpose.trim()
                             ? "border-red-500 bg-red-50/30"
                             : ""
-                        }`}
+                          }`}
                       />
                     </Field>
                   </div>

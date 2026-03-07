@@ -7,8 +7,9 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, Loader2, XCircle }
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
-import { maskAccount, naira, transactionRows, truncateRunId, type RunRecord, type PayoutCandidate } from "@/lib/mock-data";
-import { getRun, adaptRun, listCandidates, adaptCandidate } from "@/lib/api-client";
+import { maskAccount, naira, truncateRunId, type RunRecord, type PayoutCandidate } from "@/lib/mock-data";
+import { getRun, adaptRun, listCandidates, adaptCandidate, listTransactions } from "@/lib/api-client";
+import type { TransactionRow } from "@/lib/api-types";
 
 const planSteps = [
   ["Create Plan", "PlannerAgent"],
@@ -30,6 +31,8 @@ export default function RunDetailPage() {
   const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null);
   const [run, setRun] = useState<RunRecord | null>(null);
   const [candidates, setCandidates] = useState<PayoutCandidate[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const [txnLoading, setTxnLoading] = useState(true);
   const [runError, setRunError] = useState(false);
   const [candidatesError, setCandidatesError] = useState(false);
 
@@ -37,6 +40,10 @@ export default function RunDetailPage() {
     let cancelled = false;
     getRun(id).then((r) => { if (!cancelled) setRun(adaptRun(r)); }).catch(() => { if (!cancelled) setRunError(true); });
     listCandidates(id).then((res) => { if (!cancelled) setCandidates(res.candidates.map(adaptCandidate)); }).catch(() => { if (!cancelled) setCandidatesError(true); });
+    listTransactions({ run_id: id })
+      .then((res) => { if (!cancelled) setTransactions(res.transactions); })
+      .catch(() => { /* silently ignore, show empty table */ })
+      .finally(() => { if (!cancelled) setTxnLoading(false); });
     return () => { cancelled = true; };
   }, [id]);
 
@@ -46,89 +53,89 @@ export default function RunDetailPage() {
   const timelineCards =
     phase === "executing"
       ? [
-          {
-            agent: "Execution",
-            color: "bg-indigo-100 text-indigo-700",
-            step: "Sending payout to Amina Suleiman",
-            status: "running",
-            progress: 72,
-            message: "Submitting ₦260,000 to Stanbic IBTC account 408***991 via Interswitch",
-            time: "Just now",
-            calls: 1,
-          },
-          {
-            agent: "Execution",
-            color: "bg-indigo-100 text-indigo-700",
-            step: "Payout confirmed — Ngozi Eze",
-            status: "completed",
-            progress: 100,
-            message: "₦175,000 successfully sent to Zenith Bank. Reference: ISW-2024-789441",
-            time: "15 sec ago",
-            calls: 1,
-          },
-          {
-            agent: "Execution",
-            color: "bg-indigo-100 text-indigo-700",
-            step: "Payout confirmed — Fatima Bello",
-            status: "completed",
-            progress: 100,
-            message: "₦320,000 successfully sent to Access Bank. Reference: ISW-2024-789440",
-            time: "28 sec ago",
-            calls: 1,
-          },
-          {
-            agent: "Execution",
-            color: "bg-indigo-100 text-indigo-700",
-            step: "Payout confirmed — Chukwuemeka Adeyemi",
-            status: "completed",
-            progress: 100,
-            message: "₦450,000 successfully sent to GTBank. Reference: ISW-2024-789439",
-            time: "41 sec ago",
-            calls: 1,
-          },
-          {
-            agent: "Execution",
-            color: "bg-indigo-100 text-indigo-700",
-            step: "Recipient verification complete",
-            status: "completed",
-            progress: 100,
-            message: "4 recipients verified. 1 mismatch flagged for manual review. 1 blocked.",
-            time: "3 min ago",
-            calls: 2,
-          },
-        ]
+        {
+          agent: "Execution",
+          color: "bg-indigo-100 text-indigo-700",
+          step: "Sending payout to Amina Suleiman",
+          status: "running",
+          progress: 72,
+          message: "Submitting ₦260,000 to Stanbic IBTC account 408***991 via Interswitch",
+          time: "Just now",
+          calls: 1,
+        },
+        {
+          agent: "Execution",
+          color: "bg-indigo-100 text-indigo-700",
+          step: "Payout confirmed — Ngozi Eze",
+          status: "completed",
+          progress: 100,
+          message: "₦175,000 successfully sent to Zenith Bank. Reference: ISW-2024-789441",
+          time: "15 sec ago",
+          calls: 1,
+        },
+        {
+          agent: "Execution",
+          color: "bg-indigo-100 text-indigo-700",
+          step: "Payout confirmed — Fatima Bello",
+          status: "completed",
+          progress: 100,
+          message: "₦320,000 successfully sent to Access Bank. Reference: ISW-2024-789440",
+          time: "28 sec ago",
+          calls: 1,
+        },
+        {
+          agent: "Execution",
+          color: "bg-indigo-100 text-indigo-700",
+          step: "Payout confirmed — Chukwuemeka Adeyemi",
+          status: "completed",
+          progress: 100,
+          message: "₦450,000 successfully sent to GTBank. Reference: ISW-2024-789439",
+          time: "41 sec ago",
+          calls: 1,
+        },
+        {
+          agent: "Execution",
+          color: "bg-indigo-100 text-indigo-700",
+          step: "Recipient verification complete",
+          status: "completed",
+          progress: 100,
+          message: "4 recipients verified. 1 mismatch flagged for manual review. 1 blocked.",
+          time: "3 min ago",
+          calls: 2,
+        },
+      ]
       : [
-          {
-            agent: "Reconciliation",
-            color: "bg-blue-100 text-blue-700",
-            step: "Reconciling transaction ledger",
-            status: "running",
-            progress: 67,
-            message: "Processing 467 of 700 transactions — detecting anomalies",
-            time: "Just now",
-            calls: 3,
-          },
-          {
-            agent: "Reconciliation",
-            color: "bg-blue-100 text-blue-700",
-            step: "Fetching transactions from Interswitch",
-            status: "completed",
-            progress: 100,
-            message: "Successfully pulled 700 transactions for Feb 1–14",
-            time: "2 min ago",
-            calls: 2,
-          },
-          {
-            agent: "Planner",
-            color: "bg-purple-100 text-purple-700",
-            step: "Creating execution plan",
-            status: "completed",
-            progress: 100,
-            message: "Plan created with 8 steps and 6 dependencies",
-            time: "4 min ago",
-            calls: 1,
-          },
-        ];
+        {
+          agent: "Reconciliation",
+          color: "bg-blue-100 text-blue-700",
+          step: "Reconciling transaction ledger",
+          status: "running",
+          progress: 67,
+          message: "Processing 467 of 700 transactions — detecting anomalies",
+          time: "Just now",
+          calls: 3,
+        },
+        {
+          agent: "Reconciliation",
+          color: "bg-blue-100 text-blue-700",
+          step: "Fetching transactions from Interswitch",
+          status: "completed",
+          progress: 100,
+          message: "Successfully pulled 700 transactions for Feb 1–14",
+          time: "2 min ago",
+          calls: 2,
+        },
+        {
+          agent: "Planner",
+          color: "bg-purple-100 text-purple-700",
+          step: "Creating execution plan",
+          status: "completed",
+          progress: 100,
+          message: "Plan created with 8 steps and 6 dependencies",
+          time: "4 min ago",
+          calls: 1,
+        },
+      ];
 
   const selected = useMemo(
     () => candidates.find((candidate) => candidate.id === selectedCandidate) ?? null,
@@ -222,13 +229,12 @@ export default function RunDetailPage() {
           {timelineCards.map((card, index) => (
             <Card
               key={`${card.step}-${index}`}
-              className={`rounded-xl border-slate-200 bg-white ${
-                card.status === "running"
+              className={`rounded-xl border-slate-200 bg-white ${card.status === "running"
                   ? "border-l-4 border-l-blue-500"
                   : card.status === "completed"
                     ? "border-l-4 border-l-emerald-500"
                     : "border-l-4 border-l-red-500"
-              }`}
+                }`}
             >
               <CardContent className="space-y-3 py-4">
                 <div className="flex items-center justify-between gap-3">
@@ -319,30 +325,36 @@ export default function RunDetailPage() {
 
           {activeTab === "transactions" && (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="border-b border-slate-200 text-slate-600">
-                  <tr>
-                    <th className="py-2">Reference</th>
-                    <th className="py-2">Channel</th>
-                    <th className="py-2">Amount</th>
-                    <th className="py-2">Status</th>
-                    <th className="py-2">Date</th>
-                    <th className="py-2">Anomaly</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactionRows.slice(0, 6).map((row) => (
-                    <tr key={row.reference} className="border-b border-slate-100">
-                      <td className="py-2">{row.reference}</td>
-                      <td className="py-2"><ChannelBadge value={row.channel} /></td>
-                      <td className="py-2">{naira(row.amount)}</td>
-                      <td className="py-2"><StatusBadge status={row.status === "Completed" ? "completed" : row.status === "Pending" ? "awaiting_approval" : "failed"} label={row.status} /></td>
-                      <td className="py-2">{row.date}</td>
-                      <td className="py-2">{row.anomaly === "Clean" ? <StatusBadge status="verified" label="Clean" /> : <StatusBadge status="failed" label={row.anomaly} />}</td>
+              {txnLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+              ) : transactions.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500">No transactions found for this run.</p>
+              ) : (
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="border-b border-slate-200 text-slate-600">
+                    <tr>
+                      <th className="py-2">Reference</th>
+                      <th className="py-2">Channel</th>
+                      <th className="py-2">Amount</th>
+                      <th className="py-2">Status</th>
+                      <th className="py-2">Date</th>
+                      <th className="py-2">Anomaly</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {transactions.map((row) => (
+                      <tr key={row.id} className="border-b border-slate-100">
+                        <td className="py-2">{row.reference}</td>
+                        <td className="py-2"><ChannelBadge value={row.channel} /></td>
+                        <td className="py-2">{naira(row.amount)}</td>
+                        <td className="py-2"><StatusBadge status={row.status === "SUCCESS" ? "completed" : row.status === "PENDING" ? "awaiting_approval" : "failed"} label={row.status} /></td>
+                        <td className="py-2">{row.date ?? "—"}</td>
+                        <td className="py-2">{row.anomaly === "Clean" ? <StatusBadge status="verified" label="Clean" /> : <StatusBadge status="failed" label={row.anomaly} />}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
 
