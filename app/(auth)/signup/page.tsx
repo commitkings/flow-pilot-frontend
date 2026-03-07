@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { AccountStep } from "@/components/auth/AccountStep";
 import { BusinessStep } from "@/components/auth/BusinessStep";
-import { setPendingVerificationEmail, upsertUser } from "@/lib/auth-storage";
 import { StepIndicator } from "@/components/ui/StepIndicator";
+import { useRegister } from "@/hooks/use-auth-mutations";
 
 const SIGNUP_STEPS = ["Your Account", "Business Info"];
 
 export default function SignupPage() {
   const router = useRouter();
+  const registerMutation = useRegister();
+
   const [step, setStep] = useState<1 | 2>(1);
 
   // Step 1
@@ -38,7 +40,6 @@ export default function SignupPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [step2Submitted, setStep2Submitted] = useState(false);
 
-
   const canContinue = !!(
     firstName.trim() && lastName.trim() && workEmail.trim() &&
     password.trim() && confirmPassword.trim() && password === confirmPassword
@@ -54,26 +55,19 @@ export default function SignupPage() {
     e.preventDefault();
     setStep1Submitted(true);
     if (!canContinue) return;
-    setStep(2);
+
+    const name = `${firstName.trim()} ${lastName.trim()}`;
+    registerMutation.mutate(
+      { name, email: workEmail.trim().toLowerCase(), password },
+      { onSuccess: () => setStep(2) },
+    );
   };
 
   const onSubmit = (e: { preventDefault(): void }) => {
     e.preventDefault();
     setStep2Submitted(true);
     if (!canSubmit) return;
-
-    upsertUser({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: workEmail.trim().toLowerCase(),
-      password,
-      businessName: businessName.trim(),
-      verified: false,
-      onboarded: false,
-    });
-
-    setPendingVerificationEmail(workEmail.trim().toLowerCase());
-    router.push(`/verify-email?email=${encodeURIComponent(workEmail.trim().toLowerCase())}`);
+    router.push("/dashboard");
   };
 
   return (
@@ -93,7 +87,6 @@ export default function SignupPage() {
 
       <section className="px-4 py-8 md:px-10 md:py-12 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl rounded-2xl md:p-8">
-
           <StepIndicator steps={SIGNUP_STEPS} current={step} onStepClick={(s) => setStep(s as 1 | 2)} />
 
           {step === 1 ? (
@@ -107,6 +100,7 @@ export default function SignupPage() {
               showConfirm={showConfirm} onToggleConfirm={() => setShowConfirm((p) => !p)}
               passwordMismatch={step1Submitted && confirmPassword.length > 0 && password !== confirmPassword}
               onSubmit={onContinue}
+              loading={registerMutation.isPending}
             />
           ) : (
             <BusinessStep

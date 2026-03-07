@@ -11,7 +11,7 @@ import React, {
 import { useRouter } from "next/navigation";
 import type { User } from "@/lib/api-types";
 import { getToken, setToken, clearToken } from "@/lib/token-storage";
-import { fetchMe, logout as apiLogout, googleLoginUrl } from "@/lib/api-client";
+import { fetchMe, logout as apiLogout, googleLoginUrl, login as apiLogin, register as apiRegister } from "@/lib/api-client";
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +21,10 @@ interface AuthContextType {
   refreshUser: () => Promise<User | null>;
   /** Store token and hydrate user from /auth/me */
   loginWithToken: (token: string) => Promise<void>;
+  /** Sign in with email + password */
+  loginWithCredentials: (email: string, password: string) => Promise<void>;
+  /** Register new account, store token, hydrate user */
+  registerUser: (name: string, email: string, password: string) => Promise<void>;
   /** Redirect browser to backend Google OAuth */
   loginWithGoogle: () => void;
   logout: () => Promise<void>;
@@ -81,6 +85,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const loginWithCredentials = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { token } = await apiLogin(email, password);
+      setToken(token);
+      const me = await fetchMe();
+      setUser(me);
+    } catch {
+      clearToken();
+      throw new Error("Invalid email or password");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const registerUser = useCallback(async (name: string, email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const { token } = await apiRegister(name, email, password);
+      setToken(token);
+      const me = await fetchMe();
+      setUser(me);
+    } catch {
+      clearToken();
+      throw new Error("Registration failed");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const loginWithGoogle = useCallback(() => {
     window.location.href = googleLoginUrl();
   }, []);
@@ -103,10 +137,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       refreshUser,
       loginWithToken,
+      loginWithCredentials,
+      registerUser,
       loginWithGoogle,
       logout,
     }),
-    [user, isLoading, refreshUser, loginWithToken, loginWithGoogle, logout],
+    [user, isLoading, refreshUser, loginWithToken, loginWithCredentials, registerUser, loginWithGoogle, logout],
   );
 
   return (
