@@ -74,6 +74,27 @@ function humanize(value: string | null | undefined): string {
   return value.replaceAll("_", " ");
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatOptionalCurrency(value: unknown): string {
+  const amount = asNumber(value);
+  return amount === null ? "—" : formatCurrency(amount);
+}
+
 function toBadgeStatus(status: string): BadgeStatus {
   if (status === "reconciling" || status === "scoring" || status === "forecasting") {
     return "running";
@@ -123,6 +144,16 @@ export default function RunDetailPage() {
   const [runError, setRunError] = useState<string | null>(null);
   const [transactionsError, setTransactionsError] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const reportFetchedRef = useRef(false);
+
+  function handleTabChange(nextTab: string): void {
+    setActiveTab(nextTab);
+
+    if (nextTab === "audit" && !reportFetchedRef.current && !loadingReport) {
+      setReportError(null);
+      setLoadingReport(true);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -166,12 +197,10 @@ export default function RunDetailPage() {
     };
   }, [id]);
 
-  // Fetch audit report when the tab is activated (fetch-once pattern)
-  const reportFetchedRef = useRef(false);
   useEffect(() => {
     if (activeTab !== "audit" || reportFetchedRef.current) return;
     reportFetchedRef.current = true;
-    setLoadingReport(true);
+
     getRunReport(id)
       .then((data) => setAuditReport(data))
       .catch((err: Error) => setReportError(err.message || "Failed to load report."))
@@ -207,6 +236,11 @@ export default function RunDetailPage() {
     failed_count: 0,
   };
   const candidates = run.candidates ?? [];
+  const auditReportData = asRecord(auditReport?.report);
+  const executiveSummary = asString(auditReportData?.executive_summary);
+  const riskSummary = asRecord(auditReportData?.risk_summary);
+  const executionSummary = asRecord(auditReportData?.execution_summary);
+  const approvalSummary = asRecord(auditReportData?.approval_summary);
 
   return (
     <div className="space-y-5">
@@ -355,7 +389,7 @@ export default function RunDetailPage() {
               <button
                 key={key}
                 type="button"
-                onClick={() => setActiveTab(key)}
+                onClick={() => handleTabChange(key)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium ${activeTab === key
                   ? "bg-slate-900 text-white"
                   : "bg-slate-100 text-slate-700"
@@ -494,46 +528,44 @@ export default function RunDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {/* Executive Summary */}
-                  {auditReport.report?.executive_summary && (
+                  {executiveSummary && (
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
                       <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">
                         Executive Summary
                       </h3>
                       <p className="whitespace-pre-line text-sm leading-relaxed text-emerald-900">
-                        {auditReport.report.executive_summary as string}
+                        {executiveSummary}
                       </p>
                     </div>
                   )}
 
-                  {/* Summary Cards */}
-                  {auditReport.report && (
+                  {auditReportData && (
                     <div className="grid gap-3 sm:grid-cols-3">
-                      {auditReport.report.risk_summary && (
+                      {riskSummary && (
                         <div className="rounded-xl border border-slate-200 bg-white p-4">
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Summary</h4>
                           <div className="space-y-1 text-sm text-slate-700">
-                            <p>Total scored: <span className="font-medium">{String((auditReport.report.risk_summary as Record<string, unknown>).total)}</span></p>
-                            <p>Avg risk: <span className="font-medium">{Number((auditReport.report.risk_summary as Record<string, unknown>).average_risk_score)?.toFixed(2)}</span></p>
-                            <p>Total amount: <span className="font-medium">{formatCurrency(Number((auditReport.report.risk_summary as Record<string, unknown>).total_amount))}</span></p>
+                            <p>Total scored: <span className="font-medium">{String(riskSummary.total ?? "—")}</span></p>
+                            <p>Avg risk: <span className="font-medium">{asNumber(riskSummary.average_risk_score)?.toFixed(2) ?? "—"}</span></p>
+                            <p>Total amount: <span className="font-medium">{formatOptionalCurrency(riskSummary.total_amount)}</span></p>
                           </div>
                         </div>
                       )}
-                      {auditReport.report.execution_summary && (
+                      {executionSummary && (
                         <div className="rounded-xl border border-slate-200 bg-white p-4">
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Execution Summary</h4>
                           <div className="space-y-1 text-sm text-slate-700">
-                            <p>Lookups: <span className="font-medium">{String((auditReport.report.execution_summary as Record<string, unknown>).lookups_performed)}</span></p>
-                            <p>Submitted: <span className="font-medium">{String((auditReport.report.execution_summary as Record<string, unknown>).candidates_submitted)}</span></p>
+                            <p>Lookups: <span className="font-medium">{String(executionSummary.lookups_performed ?? "—")}</span></p>
+                            <p>Submitted: <span className="font-medium">{String(executionSummary.candidates_submitted ?? "—")}</span></p>
                           </div>
                         </div>
                       )}
-                      {auditReport.report.approval_summary && (
+                      {approvalSummary && (
                         <div className="rounded-xl border border-slate-200 bg-white p-4">
                           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Approval Summary</h4>
                           <div className="space-y-1 text-sm text-slate-700">
-                            <p>Approved: <span className="font-medium text-emerald-700">{String((auditReport.report.approval_summary as Record<string, unknown>).approved)}</span></p>
-                            <p>Rejected: <span className="font-medium text-red-600">{String((auditReport.report.approval_summary as Record<string, unknown>).rejected)}</span></p>
+                            <p>Approved: <span className="font-medium text-emerald-700">{String(approvalSummary.approved ?? "—")}</span></p>
+                            <p>Rejected: <span className="font-medium text-red-600">{String(approvalSummary.rejected ?? "—")}</span></p>
                           </div>
                         </div>
                       )}
