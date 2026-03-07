@@ -24,6 +24,7 @@ interface AccountStepProps {
   onToggleConfirm: () => void;
   passwordMismatch: boolean;
   onSubmit: (e: { preventDefault(): void }) => void;
+  loading?: boolean;
 }
 
 export function AccountStep({
@@ -42,6 +43,7 @@ export function AccountStep({
   showConfirm,
   onToggleConfirm,
   onSubmit,
+  loading = false,
 }: AccountStepProps) {
   return (
     <>
@@ -120,9 +122,10 @@ export function AccountStep({
 
         <Button
           type="submit"
-          className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5"
+          disabled={loading}
+          className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5 disabled:opacity-60"
         >
-          Continue
+          {loading ? "Creating account…" : "Continue"}
         </Button>
 
         <p className="text-center text-sm font-medium text-muted-foreground">

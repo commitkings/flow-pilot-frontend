@@ -4,6 +4,15 @@
 
 // ── Auth / User ──────────────────────────────────────────────
 
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    display_name: string;
+  };
+}
+
 export interface Membership {
   business_id: string;
   role: string;

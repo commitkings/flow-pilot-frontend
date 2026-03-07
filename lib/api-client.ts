@@ -8,6 +8,7 @@ import {
   type ApiRunRecord,
   type ApproveRejectPayload,
   type ApproveResponse,
+  type AuthResponse,
   type RejectResponse,
   type AuditReport,
   type Candidate,
@@ -141,6 +142,22 @@ async function apiUpload<T>(path: string, formData: FormData, auth = false): Pro
 /** URL to redirect the browser to for Google OAuth */
 export function googleLoginUrl(): string {
   return `${BASE}/auth/google/login`;
+}
+
+/** Register a new account with name, email, and password */
+export function register(name: string, email: string, password: string): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: { name, email, password },
+  });
+}
+
+/** Sign in with email and password */
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: { email, password },
+  });
 }
 
 /** Fetch authenticated user profile */
