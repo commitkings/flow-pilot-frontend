@@ -224,6 +224,41 @@ export interface InstitutionsResponse {
   data: Institution[];
 }
 
+// ── Transactions ─────────────────────────────────────────────
+
+export interface TransactionRow {
+  id: string;
+  run_id: string;
+  reference: string;
+  channel: string;
+  amount: number;
+  currency: string;
+  direction: string;
+  status: string;
+  narration: string;
+  counterparty_name: string;
+  counterparty_bank: string;
+  date: string | null;
+  settlement_date: string | null;
+  anomaly: string;
+  anomaly_count: number;
+}
+
+export interface TransactionSummary {
+  total_transactions: number;
+  total_volume: number;
+  anomaly_count: number;
+  failed_count: number;
+}
+
+export interface TransactionsResponse {
+  transactions: TransactionRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  summary: TransactionSummary;
+}
+
 // ── Errors ───────────────────────────────────────────────────
 
 export interface ApiErrorBody {
