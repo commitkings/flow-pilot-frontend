@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { AccountStep } from "@/components/auth/AccountStep";
 import { BusinessStep } from "@/components/auth/BusinessStep";
 import { StepIndicator } from "@/components/ui/StepIndicator";
-import { useRegister } from "@/hooks/use-auth-mutations";
+import { useOnboarding, useRegister } from "@/hooks/use-auth-mutations";
 
 const SIGNUP_STEPS = ["Your Account", "Business Info"];
 
 export default function SignupPage() {
-  const router = useRouter();
   const registerMutation = useRegister();
+
+  const onboardingMutation = useOnboarding();
 
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -67,7 +67,10 @@ export default function SignupPage() {
     e.preventDefault();
     setStep2Submitted(true);
     if (!canSubmit) return;
-    router.push("/dashboard");
+    onboardingMutation.mutate({
+      business_name: businessName.trim(),
+      business_type: businessType || undefined,
+    });
   };
 
   return (
@@ -119,6 +122,7 @@ export default function SignupPage() {
               step2Submitted={step2Submitted}
               onSubmit={onSubmit}
               onBack={() => setStep(1)}
+              loading={onboardingMutation.isPending}
             />
           )}
         </div>

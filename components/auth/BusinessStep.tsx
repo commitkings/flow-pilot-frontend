@@ -50,6 +50,7 @@ interface BusinessStepProps {
   step2Submitted: boolean;
   onSubmit: (e: { preventDefault(): void }) => void;
   onBack: () => void;
+  loading?: boolean;
 }
 
 export function BusinessStep({
@@ -68,6 +69,7 @@ export function BusinessStep({
   step2Submitted,
   onSubmit,
   // onBack,
+  loading = false,
 }: BusinessStepProps) {
   return (
     <>
@@ -143,10 +145,10 @@ export function BusinessStep({
 
         <Button
           type="submit"
-          disabled={!canSubmit}
-          className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5"
+          disabled={!canSubmit || loading}
+          className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5 disabled:opacity-60"
         >
-          Create Business Account
+          {loading ? "Creating account…" : "Create Business Account"}
         </Button>
       </form>
     </>
