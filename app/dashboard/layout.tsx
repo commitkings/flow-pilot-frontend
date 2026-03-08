@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar />
         <div className={cn(
           "flex flex-col min-h-screen transition-all duration-300 ease-in-out",
-          "ml-0",
+          "ml-0 bg-white",
           collapsed ? "md:ml-20" : "md:ml-64"
         )}>
           {payoutMode === "simulated" && (

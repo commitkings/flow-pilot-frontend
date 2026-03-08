@@ -60,8 +60,8 @@
   /* Accent border (used on cards, dividers) */
   --border-strong: #d4cfc6;
 
-  /* Page background — warm off-white, not stark white */
-  --background: oklch(0.975 0.006 75);
+  /* Page background — pure white to match sidebar */
+  --background: oklch(1 0 0);
 
   /* Body text — deep blue-black ink, not flat neutral */
   --foreground: oklch(0.16 0.028 258);
