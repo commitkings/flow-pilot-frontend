@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
-import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/context/auth-context";
 import { QueryProvider } from "@/context/query-provider";
 import { Toaster } from "sonner";
@@ -28,19 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={`${plusJakartaSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <QueryProvider>
-            <AuthProvider>{children}</AuthProvider>
-            <Toaster position="top-right" richColors />
-          </QueryProvider>
-        </ThemeProvider>
+        <QueryProvider>
+          <AuthProvider>{children}</AuthProvider>
+          <Toaster position="top-right" richColors />
+        </QueryProvider>
       </body>
     </html>
   );

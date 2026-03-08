@@ -1,370 +1,145 @@
-/* ──────────────────────────────────────────────────────────────
-   api-client.ts — Typed HTTP client for FlowPilot backend API
-   ────────────────────────────────────────────────────────────── */
+/**
+ * api-client.ts — FlowPilot API endpoints
+ *
+ * All HTTP calls go through the shared Axios instance in lib/axios.ts.
+ * That instance handles: base URL, Bearer token injection, error normalisation, 401 clearing.
+ *
+ * Sections:
+ *  1. Auth
+ *  2. Onboarding
+ *  3. Runs
+ *  4. Candidates
+ *  5. Approvals
+ *  6. Audit / Reports
+ *  7. Institutions
+ *  8. Transactions
+ *  9. Health
+ */
 
-import { getToken, clearToken } from "./token-storage";
-import {
-  ApiError,
-  type ApiRunRecord,
-  type ApproveRejectPayload,
-  type ApproveResponse,
-  type AuthResponse,
-  type RejectResponse,
-  type AuditReport,
-  type Candidate,
-  type CandidateApprovalStatus,
-  type CandidatesResponse,
-  type CreateRunPayload,
-  type InstitutionsResponse,
-  type OnboardingPayload,
-  type OnboardingResponse,
-  type RunStatusResponse,
-  type TransactionsResponse,
-  type UploadCandidatesResponse,
-  type User,
+import apiClient from "./axios";
+import type {
+  ApiRunRecord,
+  ApproveRejectPayload,
+  ApproveResponse,
+  AuthResponse,
+  RejectResponse,
+  AuditReport,
+  CandidatesResponse,
+  CreateRunPayload,
+  InstitutionsResponse,
+  OnboardingPayload,
+  OnboardingResponse,
+  RunStatusResponse,
+  TransactionsResponse,
+  UploadCandidatesResponse,
+  User,
 } from "./api-types";
+import { transactionRows } from "./mock-data";
 
-const BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+// ── 1. Auth ──────────────────────────────────────────────────────────────────
 
-// ── Generic fetch wrapper ────────────────────────────────────
-
-interface FetchOptions {
-  method?: string;
-  body?: unknown;
-  auth?: boolean;
-  headers?: Record<string, string>;
-  raw?: boolean; // return raw Response instead of parsed JSON
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function apiFetch<T>(
-  path: string,
-  opts: FetchOptions & { raw: true },
-): Promise<Response>;
-async function apiFetch<T>(
-  path: string,
-  opts?: FetchOptions,
-): Promise<T>;
-async function apiFetch<T>(
-  path: string,
-  opts: FetchOptions = {},
-): Promise<T | Response> {
-  const { method = "GET", body, auth = false, headers = {}, raw = false } = opts;
-
-  const reqHeaders: Record<string, string> = { ...headers };
-
-  if (auth) {
-    const token = getToken();
-    if (token) {
-      reqHeaders["Authorization"] = `Bearer ${token}`;
-    }
-  }
-
-  const init: RequestInit = { method, headers: reqHeaders };
-
-  if (body !== undefined) {
-    reqHeaders["Content-Type"] = "application/json";
-    init.body = JSON.stringify(body);
-  }
-
-  init.headers = reqHeaders;
-
-  const res = await fetch(`${BASE}${path}`, init);
-
-  if (raw) {
-    if (res.status === 401) clearToken();
-    return res;
-  }
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      clearToken();
-    }
-    let detail: string = res.statusText;
-    try {
-      const errBody = (await res.json()) as { detail?: string | Array<{ msg: string }> };
-      if (typeof errBody.detail === "string") {
-        detail = errBody.detail;
-      } else if (Array.isArray(errBody.detail)) {
-        detail = errBody.detail.map((e) => e.msg).join("; ");
-      }
-    } catch {
-      // response body not JSON — keep statusText
-    }
-    throw new ApiError(res.status, { detail });
-  }
-
-  // 204 No Content
-  if (res.status === 204) return undefined as unknown as T;
-
-  return (await res.json()) as T;
-}
-
-// ── Multipart helper (for CSV upload) ────────────────────────
-
-async function apiUpload<T>(path: string, formData: FormData, auth = false): Promise<T> {
-  const reqHeaders: Record<string, string> = {};
-
-  if (auth) {
-    const token = getToken();
-    if (token) {
-      reqHeaders["Authorization"] = `Bearer ${token}`;
-    }
-  }
-
-  const res = await fetch(`${BASE}${path}`, {
-    method: "POST",
-    headers: reqHeaders,
-    body: formData,
-  });
-
-  if (!res.ok) {
-    if (res.status === 401) clearToken();
-    let detail: string = res.statusText;
-    try {
-      const errBody = (await res.json()) as { detail?: string | Array<{ msg: string }> };
-      if (typeof errBody.detail === "string") {
-        detail = errBody.detail;
-      } else if (Array.isArray(errBody.detail)) {
-        detail = errBody.detail.map((e) => e.msg).join("; ");
-      }
-    } catch {
-      // keep statusText
-    }
-    throw new ApiError(res.status, { detail });
-  }
-
-  return (await res.json()) as T;
-}
-
-// ── Auth endpoints ───────────────────────────────────────────
-
-/** URL to redirect the browser to for Google OAuth */
+/** URL to redirect the browser to for Google OAuth (no HTTP call needed) */
 export function googleLoginUrl(): string {
-  return `${BASE}/auth/google/login`;
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+  return `${base}/auth/google/login`;
 }
 
-/** Register a new account with name, email, and password */
 export function register(name: string, email: string, password: string): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/register", {
-    method: "POST",
-    body: { name, email, password },
-  });
+  return apiClient.post<AuthResponse>("/auth/register", { name, email, password }).then((r) => r.data);
 }
 
-/** Sign in with email and password */
 export function login(email: string, password: string): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/login", {
-    method: "POST",
-    body: { email, password },
-  });
+  return apiClient.post<AuthResponse>("/auth/login", { email, password }).then((r) => r.data);
 }
 
-/** Fetch authenticated user profile */
 export function fetchMe(): Promise<User> {
-  return apiFetch<User>("/auth/me", { auth: true });
+  return apiClient.get<User>("/auth/me").then((r) => r.data);
 }
 
-/** Update user profile */
 export function updateMe(data: Partial<Pick<User, "display_name" | "avatar_url">>): Promise<User> {
-  return apiFetch<User>("/auth/me", { method: "PATCH", body: data, auth: true });
+  return apiClient.patch<User>("/auth/me", data).then((r) => r.data);
 }
 
-/** Server-side logout (invalidate token) */
 export function logout(): Promise<void> {
-  return apiFetch<void>("/auth/logout", { method: "POST", auth: true });
+  return apiClient.post<void>("/auth/logout").then(() => undefined);
 }
 
-// ── Onboarding ───────────────────────────────────────────────
+// ── 2. Onboarding ────────────────────────────────────────────────────────────
 
 export function completeOnboarding(payload: OnboardingPayload): Promise<OnboardingResponse> {
-  return apiFetch<OnboardingResponse>("/onboarding/complete", {
-    method: "POST",
-    body: payload,
-    auth: true,
-  });
+  return apiClient.post<OnboardingResponse>("/onboarding/complete", payload).then((r) => r.data);
 }
 
-// ── Runs ─────────────────────────────────────────────────────
+// ── 3. Runs ──────────────────────────────────────────────────────────────────
 
 export function createRun(payload: CreateRunPayload): Promise<ApiRunRecord> {
-  return apiFetch<ApiRunRecord>("/runs", { method: "POST", body: payload, auth: true });
+  return apiClient.post<ApiRunRecord>("/runs", payload).then((r) => r.data);
 }
 
 export function listRuns(): Promise<ApiRunRecord[]> {
-  return apiFetch<ApiRunRecord[]>("/runs", { auth: true });
+  return apiClient.get<ApiRunRecord[]>("/runs").then((r) => r.data);
 }
 
 export function getRun(runId: string): Promise<ApiRunRecord> {
-  return apiFetch<ApiRunRecord>(`/runs/${runId}`, { auth: true });
+  return apiClient.get<ApiRunRecord>(`/runs/${runId}`).then((r) => r.data);
 }
 
 export function getRunStatus(runId: string): Promise<RunStatusResponse> {
-  return apiFetch<RunStatusResponse>(`/runs/${runId}/status`, { auth: true });
+  return apiClient.get<RunStatusResponse>(`/runs/${runId}/status`).then((r) => r.data);
 }
 
-// ── Candidates ───────────────────────────────────────────────
+// ── 4. Candidates ────────────────────────────────────────────────────────────
 
-export function uploadCandidates(
-  runId: string,
-  file: File,
-): Promise<UploadCandidatesResponse> {
+export function uploadCandidates(runId: string, file: File): Promise<UploadCandidatesResponse> {
   const fd = new FormData();
   fd.append("file", file);
-  return apiUpload<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd, true);
+  return apiClient
+    .post<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((r) => r.data);
 }
 
-export function listCandidates(
-  runId: string,
-  approvalStatus?: string,
-): Promise<CandidatesResponse> {
-  const qs = approvalStatus ? `?approval_status=${approvalStatus}` : "";
-  return apiFetch<CandidatesResponse>(`/runs/${runId}/candidates${qs}`, { auth: true });
+export function listCandidates(runId: string, approvalStatus?: string): Promise<CandidatesResponse> {
+  return apiClient
+    .get<CandidatesResponse>(`/runs/${runId}/candidates`, {
+      params: approvalStatus ? { approval_status: approvalStatus } : undefined,
+    })
+    .then((r) => r.data);
 }
 
-// ── Actions ──────────────────────────────────────────────────
+// ── 5. Approvals ─────────────────────────────────────────────────────────────
 
-export function approveCandidates(
-  runId: string,
-  candidateIds: string[],
-): Promise<ApproveResponse> {
-  return apiFetch<ApproveResponse>(`/runs/${runId}/approve`, {
-    method: "POST",
-    body: { candidate_ids: candidateIds } satisfies ApproveRejectPayload,
-    auth: true,
-  });
+export function approveCandidates(runId: string, candidateIds: string[]): Promise<ApproveResponse> {
+  const payload: ApproveRejectPayload = { candidate_ids: candidateIds };
+  return apiClient.post<ApproveResponse>(`/runs/${runId}/approve`, payload).then((r) => r.data);
 }
 
-export function rejectCandidates(
-  runId: string,
-  candidateIds: string[],
-  reason?: string,
-): Promise<RejectResponse> {
+export function rejectCandidates(runId: string, candidateIds: string[], reason?: string): Promise<RejectResponse> {
   const payload: ApproveRejectPayload = { candidate_ids: candidateIds };
   if (reason) payload.reason = reason;
-  return apiFetch<RejectResponse>(`/runs/${runId}/reject`, {
-    method: "POST",
-    body: payload,
-    auth: true,
-  });
+  return apiClient.post<RejectResponse>(`/runs/${runId}/reject`, payload).then((r) => r.data);
 }
 
-// ── Audit ────────────────────────────────────────────────────
+// ── 6. Audit / Reports ───────────────────────────────────────────────────────
 
 export function getRunReport(runId: string): Promise<AuditReport> {
-  return apiFetch<AuditReport>(`/runs/${runId}/report`, { auth: true });
+  return apiClient.get<AuditReport>(`/runs/${runId}/report`).then((r) => r.data);
 }
 
-export async function downloadRunReport(runId: string): Promise<Blob> {
-  const res = await apiFetch<Response>(`/runs/${runId}/report/download`, { raw: true, auth: true });
-  if (!res.ok) {
-    throw new ApiError(res.status, { detail: res.statusText });
-  }
-  return res.blob();
+export function downloadRunReport(runId: string): Promise<Blob> {
+  return apiClient
+    .get(`/runs/${runId}/report/download`, { responseType: "blob" })
+    .then((r) => r.data as Blob);
 }
 
-// ── Institutions ─────────────────────────────────────────────
+// ── 7. Institutions ──────────────────────────────────────────────────────────
 
 export function listInstitutions(): Promise<InstitutionsResponse> {
-  return apiFetch<InstitutionsResponse>("/institutions", { auth: true });
+  return apiClient.get<InstitutionsResponse>("/institutions").then((r) => r.data);
 }
 
-// ── Health (no auth) ─────────────────────────────────────────
-
-export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
-  const ROOT =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace("/api/v1", "") ?? "http://127.0.0.1:8000";
-  const res = await fetch(`${ROOT}/health`);
-  return (await res.json()) as { payout_mode: string; status: string };
-}
-
-// ── Candidate type adapter (API → UI) ────────────────────────
-
-/** Maps snake_case API candidate to camelCase used in existing UI */
-import type { PayoutCandidate, RunRecord, RunStatus } from "@/lib/mock-data";
-
-/** Maps API approval_status → UI approvalStatus */
-const approvalStatusMap: Record<CandidateApprovalStatus, PayoutCandidate["approvalStatus"]> = {
-  pending: "unselected",
-  approved: "selected",
-  rejected: "blocked",
-};
-
-/** Maps backend risk_decision → UI CandidateDecision */
-function mapRiskDecision(rd: string): PayoutCandidate["decision"] {
-  if (rd === "approve" || rd === "allow") return "allow";
-  if (rd === "reject" || rd === "block") return "block";
-  return "review";
-}
-
-export function adaptCandidate(c: Candidate): PayoutCandidate {
-  return {
-    id: c.id,
-    beneficiaryName: c.beneficiary_name,
-    institution: c.institution_code,
-    accountNumber: c.account_number,
-    amount: c.amount,
-    purpose: c.purpose ?? "",
-    riskScore: c.risk_score ?? 0,
-    riskReasons: c.risk_reasons ?? [],
-    lookupStatus: "verified",
-    decision: mapRiskDecision(c.risk_decision ?? "review"),
-    approvalStatus: approvalStatusMap[c.approval_status],
-    similarity: 1,
-    nameOnFile: c.beneficiary_name,
-    returnedName: c.beneficiary_name,
-  };
-}
-
-/** Maps backend API status strings to UI RunStatus, collapsing unknown values */
-function mapRunStatus(s: string): RunStatus {
-  const known: RunStatus[] = [
-    "pending", "planning", "running", "awaiting_approval",
-    "executing", "completed", "completed_with_errors", "failed",
-  ];
-  if ((known as string[]).includes(s)) return s as RunStatus;
-  // Backend-only intermediate statuses map to "running"
-  if (s === "reconciling" || s === "scoring" || s === "forecasting") return "running";
-  if (s === "cancelled") return "failed";
-  return "running";
-}
-
-/** Maps snake_case API run to the shape expected by existing UI components */
-export function adaptRun(r: ApiRunRecord): RunRecord {
-  const started = new Date(r.created_at);
-  const now = new Date();
-  const diffMs = now.getTime() - started.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  let startedRelative: string;
-  if (diffMins < 60) startedRelative = `${diffMins} minutes ago`;
-  else if (diffHours < 24) startedRelative = `${diffHours} hours ago`;
-  else if (diffDays === 1) startedRelative = "Yesterday";
-  else if (diffDays < 7) startedRelative = `${diffDays} days ago`;
-  else startedRelative = "Last week";
-
-  return {
-    id: r.run_id,
-    objective: r.objective,
-    status: mapRunStatus(r.status),
-    candidates: r.candidate_count ?? 0,
-    startedRelative,
-    startedAt: started.toLocaleString("en-NG", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZoneName: "short",
-    }),
-  };
-}
-
-// ── Transactions ──────────────────────────────────────────────
+// ── 8. Transactions ──────────────────────────────────────────────────────────
 
 export interface TransactionFilters {
   run_id?: string;
@@ -377,22 +152,53 @@ export interface TransactionFilters {
   offset?: number;
 }
 
-export async function listTransactions(
-  filters: TransactionFilters = {},
-): Promise<TransactionsResponse> {
-  const params = new URLSearchParams();
-  if (filters.run_id) params.set("run_id", filters.run_id);
-  if (filters.status) params.set("status", filters.status);
-  if (filters.channel) params.set("channel", filters.channel);
-  if (filters.search) params.set("search", filters.search);
-  if (filters.from_date) params.set("from_date", filters.from_date);
-  if (filters.to_date) params.set("to_date", filters.to_date);
-  if (filters.limit) params.set("limit", String(filters.limit));
-  if (filters.offset) params.set("offset", String(filters.offset));
+export function listTransactions(filters: TransactionFilters = {}): Promise<TransactionsResponse> {
+  // Commenting out real API call since endpoint is not done yet
+  /*
+  return apiClient
+    .get<TransactionsResponse>("/transactions", { params: filters })
+    .then((r) => r.data);
+  */
+  
+  const mockRows = transactionRows.map((r, i) => ({
+    id: `mock-tx-${i}`,
+    run_id: "mock-run-id",
+    reference: r.reference,
+    channel: r.channel,
+    amount: r.amount,
+    currency: "NGN",
+    direction: "credit",
+    status: r.status.toUpperCase(),
+    narration: "Mock narration",
+    counterparty_name: "Mock Counterparty",
+    counterparty_bank: "Mock Bank",
+    date: r.date,
+    settlement_date: r.date,
+    anomaly: r.anomaly,
+    anomaly_count: r.anomaly === "Clean" ? 0 : 1,
+  })) as any;
 
-  const qs = params.toString();
-  return apiFetch<TransactionsResponse>(
-    `/transactions${qs ? `?${qs}` : ""}`,
-    { auth: true },
+  return Promise.resolve({
+    transactions: mockRows,
+    total: mockRows.length,
+    limit: 50,
+    offset: 0,
+    summary: { 
+      total_transactions: mockRows.length, 
+      total_volume: mockRows.reduce((acc: number, curr: any) => acc + curr.amount, 0), 
+      anomaly_count: mockRows.filter((r: any) => r.anomaly_count > 0).length, 
+      failed_count: mockRows.filter((r: any) => r.status === "FAILED").length 
+    }
+  });
+}
+
+// ── 9. Health (unauthenticated) ───────────────────────────────────────────────
+
+export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
+  const root = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1").replace(
+    "/api/v1",
+    "",
   );
+  const res = await fetch(`${root}/health`);
+  return res.json() as Promise<{ payout_mode: string; status: string }>;
 }

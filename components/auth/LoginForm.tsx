@@ -25,24 +25,16 @@ export function LoginForm({
   rememberMe, setRememberMe,
   showPassword, onTogglePassword,
   loading,
-  credentialsError,
-  submitted,
+  // credentialsError,
+  // submitted,
   onSubmit,
   onGoogle,
 }: LoginFormProps) {
-  const emailEmpty = submitted && !email.trim();
-  const passwordEmpty = submitted && !password.trim();
 
   return (
     <>
       <h2 className="text-2xl font-semibold text-foreground">Log in to your workspace.</h2>
       <p className="mt-2 text-sm text-muted-foreground">Enter your credentials to access your dashboard.</p>
-
-      {credentialsError && (
-        <div className="mt-4 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          Wrong credentials. Check your email/password or verify your email first.
-        </div>
-      )}
 
       <form onSubmit={onSubmit} className="mt-6 space-y-5">
         <Button
@@ -69,6 +61,7 @@ export function LoginForm({
               value={email}
               onChange={setEmail}
               placeholder="you@company.com"
+              required
             />
           </Field>
 
@@ -78,6 +71,7 @@ export function LoginForm({
               onChange={setPassword}
               show={showPassword}
               onToggle={onTogglePassword}
+              required
             />
           </Field>
         </div>

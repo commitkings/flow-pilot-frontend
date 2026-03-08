@@ -10,14 +10,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
-    if (user?.has_completed_onboarding) {
-      router.replace("/dashboard");
-    } else {
-      router.replace("/onboarding");
-    }
+    router.replace(user?.has_completed_onboarding ? "/dashboard" : "/onboarding");
   }, [isAuthenticated, isLoading, user, router]);
 
-  if (isLoading || isAuthenticated) return null;
+  if (isAuthenticated) return null;
 
   return <>{children}</>;
 }

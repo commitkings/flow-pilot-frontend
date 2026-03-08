@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { User } from "@/lib/api-types";
 import { getToken, setToken, clearToken } from "@/lib/token-storage";
 import { fetchMe, logout as apiLogout, googleLoginUrl, login as apiLogin, register as apiRegister } from "@/lib/api-client";
@@ -92,9 +93,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(token);
       const me = await fetchMe();
       setUser(me);
-    } catch {
+    } catch (err) {
       clearToken();
-      throw new Error("Invalid email or password");
+      const message = err instanceof Error ? err.message : "Invalid email or password";
+      toast.error(message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -107,9 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(token);
       const me = await fetchMe();
       setUser(me);
-    } catch {
+    } catch (err) {
       clearToken();
-      throw new Error("Registration failed");
+      const message = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      toast.error(message);
+      throw err;
     } finally {
       setIsLoading(false);
     }

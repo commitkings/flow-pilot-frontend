@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { AccountStep } from "@/components/auth/AccountStep";
-import { useRegister } from "@/hooks/use-auth-mutations";
+import { useAuth } from "@/context/auth-context";
 
 export default function SignupPage() {
-  const registerMutation = useRegister();
+  const { registerUser } = useAuth();
+  const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -16,22 +19,35 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const canContinue = !!(
     firstName.trim() && lastName.trim() && workEmail.trim() &&
     password.trim() && confirmPassword.trim() && password === confirmPassword
   );
 
-  const onSubmit = (e: { preventDefault(): void }) => {
+  const onSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     setSubmitted(true);
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
     if (!canContinue) return;
-    const name = `${firstName.trim()} ${lastName.trim()}`;
-    registerMutation.mutate({ name, email: workEmail.trim().toLowerCase(), password });
+    setLoading(true);
+    try {
+      const name = `${firstName.trim()} ${lastName.trim()}`;
+      await registerUser(name, workEmail.trim().toLowerCase(), password);
+      router.push("/onboarding");
+    } catch {
+      // error toast is handled in auth context
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <main className="min-h-screen md:grid md:grid-cols-[420px_1fr] h-screen">
+    <main className="h-screen md:grid md:grid-cols-[420px_1fr]">
       <AuthAside
         title="Built for businesses that move money at scale."
         features={[
@@ -45,8 +61,8 @@ export default function SignupPage() {
         }}
       />
 
-      <section className="px-4 py-8 md:px-10 md:py-12 overflow-y-auto">
-        <div className="mx-auto w-full max-w-md rounded-2xl md:p-8">
+      <section className="flex items-center overflow-y-auto px-4 py-8 md:px-10">
+        <div className="mx-auto w-full max-w-md">
           <AccountStep
             firstName={firstName} setFirstName={setFirstName}
             lastName={lastName} setLastName={setLastName}
@@ -57,7 +73,7 @@ export default function SignupPage() {
             showConfirm={showConfirm} onToggleConfirm={() => setShowConfirm((p) => !p)}
             passwordMismatch={submitted && confirmPassword.length > 0 && password !== confirmPassword}
             onSubmit={onSubmit}
-            loading={registerMutation.isPending}
+            loading={loading}
           />
         </div>
       </section>

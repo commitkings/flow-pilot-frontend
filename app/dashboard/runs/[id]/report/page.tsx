@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Download, Link2, Loader2 } from "lucide-react";
@@ -8,39 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { naira, truncateRunId } from "@/lib/mock-data";
-import { downloadRunReport, getRunReport } from "@/lib/api-client";
-import type { AuditReport } from "@/lib/api-types";
+import { downloadRunReport } from "@/lib/api-client";
+import { useRunReport } from "@/hooks/use-run-queries";
+import { downloadBlob } from "@/utils/useHelper";
 
 export default function RunReportPage() {
   const { id } = useParams<{ id: string }>();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState(false);
-  const [report, setReport] = useState<AuditReport | null>(null);
-  const [reportLoading, setReportLoading] = useState(true);
-  const [reportError, setReportError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    getRunReport(id)
-      .then((r) => { if (!cancelled) setReport(r); })
-      .catch(() => { if (!cancelled) setReportError(true); })
-      .finally(() => { if (!cancelled) setReportLoading(false); });
-    return () => { cancelled = true; };
-  }, [id]);
+  const { data: report, isLoading: reportLoading, isError: reportError } = useRunReport(id, true);
 
   const handleDownload = async () => {
     setDownloading(true);
     setDownloadError(false);
     try {
       const blob = await downloadRunReport(id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `run-${id}-report.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      downloadBlob(blob, `run-${id}-report.json`);
     } catch {
       setDownloadError(true);
     } finally {
@@ -90,7 +74,7 @@ export default function RunReportPage() {
         <>
           {summary && (
             <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              {summary}
+              {String(summary)}
             </div>
           )}
 
@@ -101,7 +85,7 @@ export default function RunReportPage() {
                 <KV label="Run ID" value={truncateRunId(id)} />
                 <KV label="Status" value={<StatusBadge status="completed" />} />
               </div>
-              {report.report?.risk_overview && (
+              {!!report.report?.risk_overview && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
                   <p className="font-medium text-slate-900">Risk Overview</p>
                   <pre className="mt-2 text-xs text-slate-600 whitespace-pre-wrap">{JSON.stringify(report.report.risk_overview, null, 2)}</pre>

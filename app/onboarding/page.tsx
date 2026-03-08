@@ -8,9 +8,9 @@ import { AuthAside } from "@/components/auth/AuthAside";
 import { Step1BusinessProfile, type RiskAppetite } from "@/components/onboarding/Step1BusinessProfile";
 import { Step2FinancialSetup } from "@/components/onboarding/Step2FinancialSetup";
 import { Step3InviteTeam, type InviteRow } from "@/components/onboarding/Step3InviteTeam";
-import { completeOnboarding } from "@/lib/api-client";
-import { ApiError, type OnboardingPayload } from "@/lib/api-types";
+import type { OnboardingPayload } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
+import { useCompleteOnboarding } from "@/hooks/use-onboarding-mutations";
 
 const STEPS = ["Business Profile", "Financial Setup", "Invite Team"];
 
@@ -25,8 +25,17 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { user, isLoading, refreshUser } = useAuth();
   const [step, setStep] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const onboardingMutation = useCompleteOnboarding(
+    async () => {
+      await refreshUser();
+      router.push("/dashboard/runs?welcome=1");
+    },
+    async () => {
+      await refreshUser();
+      router.push("/dashboard/runs");
+    },
+  );
 
   // Step 1
   const [businessName, setBusinessName] = useState("");
@@ -72,39 +81,17 @@ export default function OnboardingPage() {
     setStep((p) => p - 1);
   };
 
-  const finishSetup = async () => {
-    let navigated = false;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const payload: OnboardingPayload = {
-        business_name: businessName.trim(),
-        business_type: undefined,
-        monthly_txn_volume_range: transactionVolume || undefined,
-        avg_monthly_payouts_range: monthlyPayouts || undefined,
-        primary_bank: primaryBank || undefined,
-        primary_use_cases: selectedUseCases.length ? selectedUseCases : undefined,
-        risk_appetite: riskAppetite || undefined,
-      };
-      await completeOnboarding(payload);
-      await refreshUser();
-      navigated = true;
-      router.push("/dashboard/runs?welcome=1");
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        await refreshUser();
-        navigated = true;
-        router.push("/dashboard/runs");
-        return;
-      }
-      if (!navigated) {
-        setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
-      }
-    } finally {
-      if (!navigated) {
-        setSubmitting(false);
-      }
-    }
+  const finishSetup = () => {
+    const payload: OnboardingPayload = {
+      business_name: businessName.trim(),
+      business_type: undefined,
+      monthly_txn_volume_range: transactionVolume || undefined,
+      avg_monthly_payouts_range: monthlyPayouts || undefined,
+      primary_bank: primaryBank || undefined,
+      primary_use_cases: selectedUseCases.length ? selectedUseCases : undefined,
+      risk_appetite: riskAppetite || undefined,
+    };
+    onboardingMutation.mutate(payload);
   };
 
   const { title, subtitle } = STEP_META[step - 1];
@@ -172,9 +159,6 @@ export default function OnboardingPage() {
             )}
           </div>
 
-          {error && (
-            <p className="mt-4 text-sm text-destructive">{error}</p>
-          )}
 
           <div className="mt-10 flex flex-col items-center justify-between gap-4 md:flex-row">
             <Button type="button" variant="outline" onClick={handleBack} className="w-full rounded-full md:w-auto">
@@ -185,7 +169,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={finishSetup}
-                disabled={submitting}
+                disabled={onboardingMutation.isPending}
                 className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
               >
                 Skip for now
@@ -195,10 +179,10 @@ export default function OnboardingPage() {
             <Button
               type="button"
               onClick={step === 3 ? finishSetup : () => canContinue && setStep((p) => p + 1)}
-              disabled={!canContinue || submitting}
+              disabled={!canContinue || onboardingMutation.isPending}
               className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5 md:w-auto md:px-8"
             >
-              {step === 3 ? (submitting ? "Submitting..." : "Finish Setup") : "Continue"}
+              {step === 3 ? (onboardingMutation.isPending ? "Submitting..." : "Finish Setup") : "Continue"}
             </Button>
           </div>
         </div>

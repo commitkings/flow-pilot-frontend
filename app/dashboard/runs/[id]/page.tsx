@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  FileSearch,
+  Loader2,
+  ShieldAlert,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRun, listTransactions, getRunReport } from "@/lib/api-client";
-import type {
-  ApiRunRecord,
-  AuditEntry,
-  AuditReport,
-  Candidate,
-  TransactionSummary,
-  TransactionsResponse,
-} from "@/lib/api-types";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import type { AuditEntry, TransactionSummary } from "@/lib/api-types";
+import { useRun, useRunReport } from "@/hooks/use-run-queries";
+import { useTransactions } from "@/hooks/use-transaction-queries";
+import { useCandidates } from "@/hooks/use-candidate-queries";
 
 type BadgeStatus =
   | "pending"
@@ -49,24 +52,12 @@ function formatDateTime(value: string): string {
 function formatRelative(value: string): string {
   const createdAt = new Date(value).getTime();
   const diffMinutes = Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
-
   if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
-  }
-
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
-  }
-
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
-}
-
-function maskAccount(accountNumber: string): string {
-  if (accountNumber.length <= 4) return accountNumber;
-  return `${accountNumber.slice(0, 3)}***${accountNumber.slice(-3)}`;
+  return `${diffDays}d ago`;
 }
 
 function humanize(value: string | null | undefined): string {
@@ -75,10 +66,7 @@ function humanize(value: string | null | undefined): string {
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
 }
 
@@ -96,15 +84,8 @@ function formatOptionalCurrency(value: unknown): string {
 }
 
 function toBadgeStatus(status: string): BadgeStatus {
-  if (status === "reconciling" || status === "scoring" || status === "forecasting") {
-    return "running";
-  }
-  if (status === "cancelled") {
-    return "failed";
-  }
-  if (status === "completed_with_errors") {
-    return "completed_with_errors";
-  }
+  if (["reconciling", "scoring", "forecasting"].includes(status)) return "running";
+  if (status === "cancelled") return "failed";
   return status as BadgeStatus;
 }
 
@@ -114,103 +95,28 @@ function transactionStatus(status: string): "pending" | "completed" | "failed" {
   return "completed";
 }
 
-function approvalLabel(candidate: Candidate): string {
-  if (candidate.approval_status === "approved") return "Approved";
-  if (candidate.approval_status === "rejected") return "Rejected";
-  return "Pending";
-}
-
-function approvalClass(candidate: Candidate): string {
-  if (candidate.approval_status === "approved") {
-    return "border-emerald-300 bg-emerald-50 text-emerald-700";
-  }
-  if (candidate.approval_status === "rejected") {
-    return "border-red-300 bg-red-50 text-red-700";
-  }
-  return "border-slate-300 bg-slate-50 text-slate-700";
-}
+const TABS = [
+  { key: "transactions", label: "Transactions" },
+  { key: "candidates", label: "Candidates" },
+  { key: "audit", label: "Audit Report" },
+];
 
 export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("transactions");
-  const [run, setRun] = useState<ApiRunRecord | null>(null);
-  const [transactionsResponse, setTransactionsResponse] =
-    useState<TransactionsResponse | null>(null);
-  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
-  const [loadingRun, setLoadingRun] = useState(true);
-  const [loadingTransactions, setLoadingTransactions] = useState(true);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-  const [transactionsError, setTransactionsError] = useState<string | null>(null);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const reportFetchedRef = useRef(false);
 
-  function handleTabChange(nextTab: string): void {
-    setActiveTab(nextTab);
-
-    if (nextTab === "audit" && !reportFetchedRef.current && !loadingReport) {
-      setReportError(null);
-      setLoadingReport(true);
-    }
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-
-    getRun(id)
-      .then((response) => {
-        if (!cancelled) {
-          setRun(response);
-        }
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setRunError(error.message || "Failed to load run.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingRun(false);
-        }
-      });
-
-    listTransactions({ run_id: id })
-      .then((response) => {
-        if (!cancelled) {
-          setTransactionsResponse(response);
-        }
-      })
-      .catch((error: Error) => {
-        if (!cancelled) {
-          setTransactionsError(error.message || "Failed to load transactions.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingTransactions(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    if (activeTab !== "audit" || reportFetchedRef.current) return;
-    reportFetchedRef.current = true;
-
-    getRunReport(id)
-      .then((data) => setAuditReport(data))
-      .catch((err: Error) => setReportError(err.message || "Failed to load report."))
-      .finally(() => setLoadingReport(false));
-  }, [activeTab, id]);
+  const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
+  const { data: transactionsResponse, isLoading: loadingTransactions, isError: transactionsError } =
+    useTransactions({ run_id: id });
+  const { data: candidates = [], isLoading: loadingCandidates } = useCandidates(id);
+  const { data: auditReport, isLoading: loadingReport, isError: reportError } =
+    useRunReport(id, activeTab === "audit");
 
   if (loadingRun) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -218,16 +124,13 @@ export default function RunDetailPage() {
   if (runError || !run) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-red-600">{runError ?? "Run not found."}</p>
+        <p className="text-sm text-destructive">Failed to load run. Please go back and try again.</p>
       </div>
     );
   }
 
   const status = toBadgeStatus(run.status);
-  const statusLabel =
-    run.status === "completed_with_errors"
-      ? "Completed With Errors"
-      : humanize(run.status);
+  const statusLabel = run.status === "completed_with_errors" ? "Completed With Errors" : humanize(run.status);
   const transactions = transactionsResponse?.transactions ?? [];
   const summary: TransactionSummary = transactionsResponse?.summary ?? {
     total_transactions: 0,
@@ -235,7 +138,6 @@ export default function RunDetailPage() {
     anomaly_count: 0,
     failed_count: 0,
   };
-  const candidates = run.candidates ?? [];
   const auditReportData = asRecord(auditReport?.report);
   const executiveSummary = asString(auditReportData?.executive_summary);
   const riskSummary = asRecord(auditReportData?.risk_summary);
@@ -243,220 +145,134 @@ export default function RunDetailPage() {
   const approvalSummary = asRecord(auditReportData?.approval_summary);
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
             href="/dashboard/runs"
-            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Runs / Run {truncateRunId(id)}
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back to Runs
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-            Run Details
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-black tracking-tight text-foreground">
+              Run <span className="font-mono text-muted-foreground">{truncateRunId(id)}</span>
+            </h1>
+            <StatusBadge status={status} label={statusLabel} />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-xl">{run.objective}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <StatusBadge status={status} label={statusLabel} />
-          <span className="text-sm text-slate-500">
-            Started {formatRelative(run.created_at)}
-          </span>
-        </div>
+        <p className="text-sm text-muted-foreground self-end">Started {formatRelative(run.startedAt)}</p>
       </div>
 
-      {run.error && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4" />
-          <div>
-            <p className="font-medium">Run error</p>
-            <p>{run.error}</p>
-          </div>
-        </div>
-      )}
-
+      {/* Approval banner */}
       {run.status === "awaiting_approval" && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
-          <div className="flex items-start gap-2 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 h-4 w-4" />
-            Agents completed pre-execution analysis. Approval is required before
-            payouts can execute.
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-900 dark:bg-amber-950/30">
+          <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Agents completed pre-execution analysis. Approval is required before payouts can execute.
           </div>
           <Button
-            className="rounded-xl bg-amber-500 text-white hover:bg-amber-600"
+            className="rounded-full bg-amber-500 px-6 text-white hover:bg-amber-600"
             onClick={() => router.push(`/dashboard/runs/${id}/approve`)}
           >
-            Review and Approve
+            Review &amp; Approve
           </Button>
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="space-y-4">
-          <Card className="rounded-xl border-slate-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Run Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <KeyValue label="Objective" value={run.objective} />
-              <KeyValue label="Current Step" value={humanize(run.current_step)} />
-              <KeyValue
-                label="Candidates"
-                value={String(run.candidate_count ?? candidates.length)}
-              />
-              <KeyValue
-                label="Transactions"
-                value={String(summary.total_transactions)}
-              />
-              <KeyValue label="Created" value={formatDateTime(run.created_at)} />
-              <KeyValue
-                label="Status"
-                value={<StatusBadge status={status} label={statusLabel} />}
-              />
-            </CardContent>
-          </Card>
+      {/* Metric cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Candidates"
+          value={String(run.candidates)}
+          subtext="Payout recipients"
+          icon={<Zap className="h-4 w-4" />}
+          accent="brand"
+        />
+        <MetricCard
+          label="Transactions"
+          value={String(summary.total_transactions)}
+          subtext="Reconciled"
+          icon={<TrendingUp className="h-4 w-4" />}
+          accent="green"
+        />
+        <MetricCard
+          label="Anomalies"
+          value={String(summary.anomaly_count)}
+          subtext="Flagged"
+          icon={<FileSearch className="h-4 w-4" />}
+          accent="amber"
+        />
+        <MetricCard
+          label="Failed"
+          value={String(summary.failed_count)}
+          subtext="Transactions"
+          icon={<ShieldAlert className="h-4 w-4" />}
+          accent="red"
+        />
+      </div>
 
-          <Card className="rounded-xl border-slate-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Transaction Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
-              <MiniStat
-                label="Total Transactions"
-                value={String(summary.total_transactions)}
-              />
-              <MiniStat
-                label="Total Volume"
-                value={formatCurrency(summary.total_volume)}
-              />
-              <MiniStat
-                label="Anomalies"
-                value={String(summary.anomaly_count)}
-              />
-              <MiniStat
-                label="Failed Transactions"
-                value={String(summary.failed_count)}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="xl:col-span-2">
-          <Card className="rounded-xl border-slate-200 bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Execution Plan</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {run.plan_steps?.length ? (
-                run.plan_steps
-                  .slice()
-                  .sort((left, right) => left.order - right.order)
-                  .map((step) => (
-                    <div
-                      key={`${step.agent_type}-${step.order}`}
-                      className="flex items-start justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-slate-900">
-                          {step.description}
-                        </p>
-                        <p className="text-xs text-slate-500">{step.agent_type}</p>
-                      </div>
-                      <StatusBadge
-                        status={toBadgeStatus(step.status)}
-                        label={humanize(step.status)}
-                      />
-                    </div>
-                  ))
-              ) : (
-                <p className="text-sm text-slate-500">
-                  No execution plan has been recorded for this run yet.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+      {/* Run info strip */}
+      <div className="rounded-2xl border border-border bg-card px-6 py-5">
+        <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Run Details</p>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Detail label="Run ID" value={<span className="font-mono text-xs">{id}</span>} />
+          <Detail label="Status" value={<StatusBadge status={status} label={statusLabel} />} />
+          <Detail label="Total Volume" value={formatCurrency(summary.total_volume)} />
+          <Detail label="Created" value={formatDateTime(run.startedAt)} />
         </div>
       </div>
 
-      <Card className="rounded-xl border-slate-200 bg-white">
-        <CardContent className="py-4">
-          <div className="mb-4 flex flex-wrap gap-2">
-            {[
-              ["transactions", "Transactions"],
-              ["candidates", "Candidates"],
-              ["audit", "Audit Report"],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleTabChange(key)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${activeTab === key
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700"
-                  }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+      {/* Tabbed section */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <div className="flex border-b border-border px-6 pt-4 gap-1">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${
+                activeTab === key
+                  ? "bg-background text-foreground border border-b-transparent border-border -mb-px"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
+        <div className="p-6">
+          {/* Transactions */}
           {activeTab === "transactions" && (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-left text-slate-500">
-                    <th className="pb-2 font-medium">Reference</th>
-                    <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Amount</th>
-                    <th className="pb-2 font-medium">Channel</th>
-                    <th className="pb-2 font-medium">Counterparty</th>
-                    <th className="pb-2 font-medium">Date</th>
+                  <tr className="border-b border-border text-left">
+                    {["Reference", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
+                      <th key={h} className="pb-3 pr-6 text-xs font-black uppercase tracking-wider text-muted-foreground">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loadingTransactions ? (
-                    <tr>
-                      <td colSpan={6} className="py-10 text-center">
-                        <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400" />
-                      </td>
-                    </tr>
+                    <tr><td colSpan={6} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
                   ) : transactionsError ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-red-600">
-                        {transactionsError}
-                      </td>
-                    </tr>
+                    <tr><td colSpan={6} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
                   ) : transactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500">
-                        No transactions found for this run.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
                   ) : (
-                    transactions.map((transaction) => (
-                      <tr
-                        key={transaction.id}
-                        className="border-b border-slate-100 text-slate-700 last:border-0"
-                      >
-                        <td className="py-3 font-mono text-xs">
-                          {transaction.reference}
-                        </td>
-                        <td className="py-3">
-                          <StatusBadge
-                            status={transactionStatus(transaction.status)}
-                            label={transaction.status}
-                          />
-                        </td>
-                        <td className="py-3">
-                          {formatCurrency(transaction.amount)}
-                        </td>
-                        <td className="py-3">{transaction.channel || "—"}</td>
-                        <td className="py-3">
-                          {transaction.counterparty_name || "—"}
-                        </td>
-                        <td className="py-3">
-                          {transaction.date ? formatDateTime(transaction.date) : "—"}
-                        </td>
+                    transactions.map((tx) => (
+                      <tr key={tx.id} className="border-b border-border last:border-0">
+                        <td className="py-3 pr-6 font-mono text-xs text-foreground">{tx.reference}</td>
+                        <td className="py-3 pr-6"><StatusBadge status={transactionStatus(tx.status)} label={tx.status} /></td>
+                        <td className="py-3 pr-6 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
+                        <td className="py-3 pr-6 text-muted-foreground">{tx.channel || "—"}</td>
+                        <td className="py-3 pr-6 text-muted-foreground">{tx.counterparty_name || "—"}</td>
+                        <td className="py-3 text-muted-foreground">{tx.date ? formatDateTime(tx.date) : "—"}</td>
                       </tr>
                     ))
                   )}
@@ -465,46 +281,33 @@ export default function RunDetailPage() {
             </div>
           )}
 
+          {/* Candidates */}
           {activeTab === "candidates" && (
-            <div className="grid gap-3 lg:grid-cols-2">
-              {candidates.length === 0 ? (
-                <p className="text-sm text-slate-500">
+            <div className="grid gap-4 lg:grid-cols-2">
+              {loadingCandidates ? (
+                <div className="col-span-2 flex justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : candidates.length === 0 ? (
+                <p className="col-span-2 py-10 text-center text-sm text-muted-foreground">
                   No payout candidates have been attached to this run.
                 </p>
               ) : (
                 candidates.map((candidate) => (
-                  <div
-                    key={candidate.id}
-                    className="rounded-xl border border-slate-200 p-4 text-left"
-                  >
-                    <div className="flex items-center justify-between gap-2">
+                  <div key={candidate.id} className="rounded-xl border border-border bg-background p-4">
+                    <div className="flex items-start justify-between gap-2 mb-3">
                       <div>
-                        <p className="font-semibold text-slate-900">
-                          {candidate.beneficiary_name}
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          {candidate.institution_code} · {maskAccount(candidate.account_number)}
+                        <p className="font-semibold text-foreground">{candidate.beneficiaryName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {candidate.institution} · {candidate.accountNumber.slice(0, 3)}***{candidate.accountNumber.slice(-3)}
                         </p>
                       </div>
-                      <StatusBadge
-                        status={(candidate.risk_decision ?? "review") as "allow" | "review" | "block"}
-                      />
+                      <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
                     </div>
-                    <div className="mt-3 space-y-2 text-sm text-slate-600">
-                      <p>Amount: {formatCurrency(candidate.amount)}</p>
-                      <p>Purpose: {candidate.purpose || "—"}</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">Approval</span>
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-xs ${approvalClass(candidate)}`}
-                        >
-                          {approvalLabel(candidate)}
-                        </span>
-                      </div>
-                      <p>Execution: {humanize(candidate.execution_status)}</p>
-                      <p>
-                        Risk Score: {candidate.risk_score === null ? "Pending" : candidate.risk_score.toFixed(2)}
-                      </p>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>Amount: <span className="font-semibold text-foreground">{formatCurrency(candidate.amount)}</span></span>
+                      <span>Risk: <span className="font-semibold text-foreground">{candidate.riskScore === null ? "—" : candidate.riskScore.toFixed(2)}</span></span>
+                      <span>Purpose: <span className="text-foreground">{candidate.purpose || "—"}</span></span>
                     </div>
                   </div>
                 ))
@@ -512,107 +315,92 @@ export default function RunDetailPage() {
             </div>
           )}
 
+          {/* Audit */}
           {activeTab === "audit" && (
             <div>
               {loadingReport ? (
                 <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : reportError ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  {reportError}
-                </div>
+                <p className="py-10 text-center text-sm text-destructive">Failed to load audit report.</p>
               ) : !auditReport ? (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                <p className="py-10 text-center text-sm text-muted-foreground">
                   Audit report has not been generated for this run yet.
-                </div>
+                </p>
               ) : (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   {executiveSummary && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">
-                        Executive Summary
-                      </h3>
-                      <p className="whitespace-pre-line text-sm leading-relaxed text-emerald-900">
-                        {executiveSummary}
-                      </p>
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
+                      <p className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2">Executive Summary</p>
+                      <p className="whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-300">{executiveSummary}</p>
                     </div>
                   )}
 
                   {auditReportData && (
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       {riskSummary && (
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Risk Summary</h4>
-                          <div className="space-y-1 text-sm text-slate-700">
-                            <p>Total scored: <span className="font-medium">{String(riskSummary.total ?? "—")}</span></p>
-                            <p>Avg risk: <span className="font-medium">{asNumber(riskSummary.average_risk_score)?.toFixed(2) ?? "—"}</span></p>
-                            <p>Total amount: <span className="font-medium">{formatOptionalCurrency(riskSummary.total_amount)}</span></p>
+                        <div className="rounded-xl border border-border bg-background p-4">
+                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Risk Summary</p>
+                          <div className="space-y-2 text-sm">
+                            <Row label="Total scored" value={String(riskSummary.total ?? "—")} />
+                            <Row label="Avg risk" value={asNumber(riskSummary.average_risk_score)?.toFixed(2) ?? "—"} />
+                            <Row label="Total amount" value={formatOptionalCurrency(riskSummary.total_amount)} />
                           </div>
                         </div>
                       )}
                       {executionSummary && (
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Execution Summary</h4>
-                          <div className="space-y-1 text-sm text-slate-700">
-                            <p>Lookups: <span className="font-medium">{String(executionSummary.lookups_performed ?? "—")}</span></p>
-                            <p>Submitted: <span className="font-medium">{String(executionSummary.candidates_submitted ?? "—")}</span></p>
+                        <div className="rounded-xl border border-border bg-background p-4">
+                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Execution</p>
+                          <div className="space-y-2 text-sm">
+                            <Row label="Lookups" value={String(executionSummary.lookups_performed ?? "—")} />
+                            <Row label="Submitted" value={String(executionSummary.candidates_submitted ?? "—")} />
                           </div>
                         </div>
                       )}
                       {approvalSummary && (
-                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Approval Summary</h4>
-                          <div className="space-y-1 text-sm text-slate-700">
-                            <p>Approved: <span className="font-medium text-emerald-700">{String(approvalSummary.approved ?? "—")}</span></p>
-                            <p>Rejected: <span className="font-medium text-red-600">{String(approvalSummary.rejected ?? "—")}</span></p>
+                        <div className="rounded-xl border border-border bg-background p-4">
+                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Approvals</p>
+                          <div className="space-y-2 text-sm">
+                            <Row label="Approved" value={String(approvalSummary.approved ?? "—")} valueClass="text-emerald-600" />
+                            <Row label="Rejected" value={String(approvalSummary.rejected ?? "—")} valueClass="text-destructive" />
                           </div>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Audit Trail */}
                   {(auditReport.audit_trail ?? auditReport.entries ?? []).length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
-                        Agent Activity Trail
-                      </h3>
+                      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Agent Activity Trail</p>
                       <div className="space-y-2">
                         {(auditReport.audit_trail ?? auditReport.entries ?? []).map((entry: AuditEntry) => (
-                          <div
-                            key={entry.id}
-                            className="flex items-start gap-3 rounded-lg border border-slate-200 px-3 py-2"
-                          >
-                            <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-amber-500" />
+                          <div key={entry.id} className="flex items-start gap-3 rounded-xl border border-border bg-background px-4 py-3">
+                            <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-slate-900">
-                                  {entry.action.replaceAll("_", " ")}
-                                </span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold text-foreground">{entry.action.replaceAll("_", " ")}</span>
                                 {entry.agent_type && (
-                                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">
+                                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                                     {entry.agent_type}
                                   </span>
                                 )}
                               </div>
                               {entry.detail && (
-                                <p className="mt-0.5 text-xs text-slate-500">
+                                <p className="mt-0.5 text-xs text-muted-foreground">
                                   {typeof entry.detail === "object"
                                     ? Object.entries(entry.detail)
-                                      .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
-                                      .map(([k, v]) =>
-                                        typeof v === "object"
-                                          ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
-                                          : `${k.replaceAll("_", " ")}: ${v}`
-                                      )
-                                      .join(" · ")
+                                        .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
+                                        .map(([k, v]) =>
+                                          typeof v === "object"
+                                            ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
+                                            : `${k.replaceAll("_", " ")}: ${v}`
+                                        )
+                                        .join(" · ")
                                     : String(entry.detail)}
                                 </p>
                               )}
-                              <p className="mt-0.5 text-xs text-slate-400">
-                                {formatDateTime(entry.created_at)}
-                              </p>
+                              <p className="mt-1 text-[10px] text-muted-foreground/60">{formatDateTime(entry.created_at)}</p>
                             </div>
                           </div>
                         ))}
@@ -623,26 +411,26 @@ export default function RunDetailPage() {
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
-function KeyValue({ label, value }: { label: string; value: React.ReactNode }) {
+function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <div className="text-sm text-slate-900">{value}</div>
+      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground/60">{label}</p>
+      <div className="text-sm text-foreground">{value}</div>
     </div>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function Row({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-slate-900">{value}</p>
+    <div className="flex justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-semibold text-foreground ${valueClass ?? ""}`}>{value}</span>
     </div>
   );
 }

@@ -1,23 +1,29 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Copy, FileSearch, Loader2, ShieldAlert, Wallet, X, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
-  SearchInput,
-  SelectInput,
-  DateRangeInput,
-} from "@/components/ui/form-fields";
+  Copy,
+  Download,
+  FileSearch,
+  Loader2,
+  ShieldAlert,
+  SlidersHorizontal,
+  X,
+  Zap,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/form-fields";
 import { DataTable, type TableColumn } from "@/components/ui/data-table";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { StatusBadge } from "@/components/status-badge";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { truncateRunId, type RunRecord } from "@/lib/mock-data";
 import { PageHeader } from "@/components/ui/page-header";
-import { listRuns, adaptRun } from "@/lib/api-client";
-
-const STATUS_OPTIONS = ["Running", "Awaiting Approval", "Completed", "Failed"];
+import { useRuns } from "@/hooks/use-run-queries";
+import { RunFilterModal } from "@/components/dashboard/run/RunFilterModal";
+import { ExportRunsModal } from "@/components/dashboard/run/ExportRunsModal";
 
 const columns: TableColumn<RunRecord>[] = [
   {
@@ -78,16 +84,8 @@ const columns: TableColumn<RunRecord>[] = [
       </span>
     ),
   },
-  // {
-  //   id: "actions",
-  //   header: "",
-  //   cell: () => (
-  //     <Button size="sm" variant="outline" className="rounded-full text-xs">
-  //       View
-  //     </Button>
-  //   ),
-  // },
 ];
+
 
 export default function RunsPage() {
   const router = useRouter();
@@ -96,51 +94,28 @@ export default function RunsPage() {
 
   const [dismissedWelcome, setDismissedWelcome] = useState(false);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [fromDate, setFromDate] = useState("2026-02-01");
-  const [toDate, setToDate] = useState("2026-02-24");
-  const [rows, setRows] = useState<RunRecord[]>([]);
-  const [loadingRuns, setLoadingRuns] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<import("@/components/dashboard/run/RunFilterModal").RunFilters>({
+    runId: "", status: "", minCandidates: "", fromDate: "", toDate: "",
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-    listRuns()
-      .then((apiRuns) => {
-        if (!cancelled) setRows(apiRuns.map(adaptRun));
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRuns(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
+  const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
+
+  const {
+    data: rows = [],
+    isLoading: loadingRuns,
+    isError: loadError,
+  } = useRuns();
 
   const showWelcome = searchParams.get("welcome") === "1" && !dismissedWelcome;
 
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((run) => {
-        const q = query.toLowerCase();
-        const matchesQuery =
-          run.id.toLowerCase().includes(q) ||
-          run.objective.toLowerCase().includes(q);
-        const matchesStatus =
-          !statusFilter ||
-          run.status === statusFilter.toLowerCase().replace(" ", "_");
-        return matchesQuery && matchesStatus;
-      }),
-    [query, rows, statusFilter]
-  );
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome banner */}
       {showWelcome && (
-        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 dark:border-emerald-900 dark:bg-emerald-950/40">
-          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5">
+          <p className="text-sm font-semibold text-emerald-800">
             Welcome to FlowPilot — your workspace is ready.
           </p>
           <button
@@ -148,22 +123,20 @@ export default function RunsPage() {
               setDismissedWelcome(true);
               router.replace("/dashboard/runs");
             }}
-            className="text-emerald-600 hover:text-emerald-900 dark:text-emerald-400"
+            className="text-emerald-600 hover:text-emerald-900"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      <div>
-        <PageHeader
-          title="Runs"
-          description="Monitor and manage all your automated treasury runs."
-        />
-      </div>
+      <PageHeader
+        title="Runs"
+        description="Monitor and manage all your automated treasury runs."
+      />
 
       {/* Metric cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard
           label="Total Runs"
           value={loadingRuns ? "…" : String(rows.length)}
@@ -171,23 +144,33 @@ export default function RunsPage() {
           icon={<Zap className="h-4 w-4" />}
           accent="brand"
         />
-        <MetricCard
+        {/* <MetricCard
           label="Total Disbursed"
           value="—"
           subtext="Settled this month"
           icon={<Wallet className="h-4 w-4" />}
           accent="green"
-        />
+        /> */}
         <MetricCard
           label="Pending Approvals"
-          value={loadingRuns ? "…" : String(rows.filter(r => r.status === "awaiting_approval").length)}
+          value={
+            loadingRuns
+              ? "…"
+              : String(
+                rows.filter((r) => r.status === "awaiting_approval").length
+              )
+          }
           subtext="Requires authorization"
           icon={<FileSearch className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
           label="Failed Runs"
-          value={loadingRuns ? "…" : String(rows.filter(r => r.status === "failed").length)}
+          value={
+            loadingRuns
+              ? "…"
+              : String(rows.filter((r) => r.status === "failed").length)
+          }
           subtext="Immediate action required"
           icon={<ShieldAlert className="h-4 w-4" />}
           accent="red"
@@ -195,38 +178,70 @@ export default function RunsPage() {
       </div>
 
       {/* Runs table */}
-      <div className="rounded-2xl border border-border bg-card">
+      <div className="">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4">
+        <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <SearchInput
             value={query}
             onChange={setQuery}
             placeholder="Search by objective or run ID..."
-            className="min-w-50 flex-1"
+            className="w-full md:w-80"
           />
-          <SelectInput
-            value={statusFilter}
-            onChange={setStatusFilter}
-            placeholder="All Statuses"
-            options={STATUS_OPTIONS}
+          <div className="flex w-full items-center gap-3 md:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilterOpen(true)}
+              className="relative h-12 gap-2 rounded-full px-5 text-sm font-semibold"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-black text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportOpen(true)}
+              className="h-12 gap-2 rounded-full px-5 text-sm font-semibold"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          </div>
+
+          <RunFilterModal
+            open={filterOpen}
+            onClose={() => setFilterOpen(false)}
+            onApply={(f) => { setAppliedFilters(f); setFilterOpen(false); }}
+            current={appliedFilters}
           />
-          <DateRangeInput
-            from={fromDate}
-            to={toDate}
-            onFromChange={setFromDate}
-            onToChange={setToDate}
+
+          <ExportRunsModal
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+            rows={rows}
           />
         </div>
 
         {/* Table */}
         {loadingRuns ? (
-          <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
         ) : loadError ? (
-          <div className="flex justify-center py-12"><p className="text-sm text-red-600">Failed to load runs. Please refresh the page.</p></div>
+          <div className="flex justify-center py-12">
+            <p className="text-sm text-destructive">
+              Failed to load runs. Please refresh the page.
+            </p>
+          </div>
         ) : (
           <DataTable
             columns={columns}
-            data={filteredRows}
+            data={rows}
             keyExtractor={(run) => run.id}
             onRowClick={(run) => router.push(`/dashboard/runs/${run.id}`)}
             emptyState={
