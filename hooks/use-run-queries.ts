@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { listRuns, getRun, adaptRun } from "@/lib/api-client";
+import { listRuns, getRun, getRunReport } from "@/lib/api-client";
+import { adaptRun } from "@/utils/useHelper";
 
 export function useRuns() {
   return useQuery({
@@ -15,5 +16,13 @@ export function useRun(id: string) {
     queryKey: ["run", id],
     queryFn: () => getRun(id).then(adaptRun),
     enabled: !!id,
+  });
+}
+
+export function useRunReport(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["run-report", id],
+    queryFn: () => getRunReport(id),
+    enabled: !!id && enabled,
   });
 }

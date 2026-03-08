@@ -1,24 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Building2, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { listInstitutions } from "@/lib/api-client";
-import type { Institution } from "@/lib/api-types";
+import { useInstitutions } from "@/hooks/use-institutions";
 
 export default function InstitutionsPage() {
-  const [institutions, setInstitutions] = useState<Institution[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    listInstitutions()
-      .then((res) => { if (!cancelled) setInstitutions(res.data); })
-      .catch(() => { if (!cancelled) setError(true); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
+  const { data, isLoading: loading, isError: error } = useInstitutions();
+  const institutions = data?.data ?? [];
 
   return (
     <div className="space-y-6">

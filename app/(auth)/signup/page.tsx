@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { AccountStep } from "@/components/auth/AccountStep";
-import { useRegister } from "@/hooks/use-auth-mutations";
+import { useAuth } from "@/context/auth-context";
 
 export default function SignupPage() {
-  const registerMutation = useRegister();
+  const { registerUser } = useAuth();
+  const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -16,18 +18,27 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const canContinue = !!(
     firstName.trim() && lastName.trim() && workEmail.trim() &&
     password.trim() && confirmPassword.trim() && password === confirmPassword
   );
 
-  const onSubmit = (e: { preventDefault(): void }) => {
+  const onSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     setSubmitted(true);
     if (!canContinue) return;
-    const name = `${firstName.trim()} ${lastName.trim()}`;
-    registerMutation.mutate({ name, email: workEmail.trim().toLowerCase(), password });
+    setLoading(true);
+    try {
+      const name = `${firstName.trim()} ${lastName.trim()}`;
+      await registerUser(name, workEmail.trim().toLowerCase(), password);
+      router.push("/onboarding");
+    } catch {
+      // error toast is handled in auth context
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,7 +68,7 @@ export default function SignupPage() {
             showConfirm={showConfirm} onToggleConfirm={() => setShowConfirm((p) => !p)}
             passwordMismatch={submitted && confirmPassword.length > 0 && password !== confirmPassword}
             onSubmit={onSubmit}
-            loading={registerMutation.isPending}
+            loading={loading}
           />
         </div>
       </section>

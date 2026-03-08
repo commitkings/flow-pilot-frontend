@@ -7,9 +7,8 @@ import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getRunReport } from "@/lib/api-client";
-import type { AuditEntry, AuditReport, TransactionSummary } from "@/lib/api-types";
-import { useRun } from "@/hooks/use-run-queries";
+import type { AuditEntry, TransactionSummary } from "@/lib/api-types";
+import { useRun, useRunReport } from "@/hooks/use-run-queries";
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 
@@ -96,28 +95,16 @@ export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("transactions");
-  const [auditReport, setAuditReport] = useState<AuditReport | null>(null);
-  const [loadingReport, setLoadingReport] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const reportFetched = useState(false);
 
   const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
   const { data: transactionsResponse, isLoading: loadingTransactions, isError: transactionsError } =
     useTransactions({ run_id: id });
   const { data: candidates = [], isLoading: loadingCandidates } = useCandidates(id);
+  const { data: auditReport, isLoading: loadingReport, isError: reportError } =
+    useRunReport(id, activeTab === "audit");
 
   function handleTabChange(nextTab: string): void {
     setActiveTab(nextTab);
-
-    if (nextTab === "audit" && !reportFetched[0] && !loadingReport) {
-      reportFetched[1](true);
-      setReportError(null);
-      setLoadingReport(true);
-      getRunReport(id)
-        .then((data) => setAuditReport(data))
-        .catch((err: Error) => setReportError(err.message || "Failed to load report."))
-        .finally(() => setLoadingReport(false));
-    }
   }
 
   if (loadingRun) {
@@ -317,7 +304,7 @@ export default function RunDetailPage() {
                 </div>
               ) : reportError ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  {reportError}
+                  Failed to load audit report.
                 </div>
               ) : !auditReport ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDownUp, BadgeAlert, Download, Layers, Loader2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { RightModal } from "@/components/modals/RightModal";
 import { naira } from "@/lib/mock-data";
-import { listTransactions, type TransactionFilters } from "@/lib/api-client";
 import type { TransactionRow, TransactionSummary } from "@/lib/api-types";
+import { useTransactions } from "@/hooks/use-transaction-queries";
 
 // Map DB channel values to display-friendly labels
 const CHANNEL_DISPLAY: Record<string, string> = {
@@ -136,31 +136,17 @@ export default function TransactionsPage() {
   const [toDate, setToDate] = useState("");
   const [selectedRef, setSelectedRef] = useState<string | null>(null);
 
-  const [rows, setRows] = useState<TransactionRow[]>([]);
-  const [summary, setSummary] = useState<TransactionSummary>(emptySummary);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const filters = useMemo(() => ({
+    ...(statusFilter && { status: statusFilter }),
+    ...(channelFilter && { channel: channelFilter }),
+    ...(query && { search: query }),
+    ...(fromDate && { from_date: fromDate }),
+    ...(toDate && { to_date: toDate }),
+  }), [statusFilter, channelFilter, query, fromDate, toDate]);
 
-  const fetchData = useCallback(() => {
-    setLoading(true);
-    setError(false);
-    const filters: TransactionFilters = {};
-    if (statusFilter) filters.status = statusFilter;
-    if (channelFilter) filters.channel = channelFilter;
-    if (query) filters.search = query;
-    if (fromDate) filters.from_date = fromDate;
-    if (toDate) filters.to_date = toDate;
-
-    listTransactions(filters)
-      .then((res) => {
-        setRows(res.transactions);
-        setSummary(res.summary);
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, [statusFilter, channelFilter, query, fromDate, toDate]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const { data, isLoading: loading, isError: error, refetch } = useTransactions(filters);
+  const rows: TransactionRow[] = data?.transactions ?? [];
+  const summary: TransactionSummary = data?.summary ?? emptySummary;
 
   const selected = useMemo(
     () => rows.find((r) => r.reference === selectedRef) ?? null,
@@ -251,7 +237,7 @@ export default function TransactionsPage() {
             <p className="text-sm font-semibold text-destructive">
               Failed to load transactions
             </p>
-            <Button size="sm" variant="outline" onClick={fetchData}>
+            <Button size="sm" variant="outline" onClick={() => refetch()}>
               Retry
             </Button>
           </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, FileSearch, Loader2, ShieldAlert, Wallet, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { truncateRunId, type RunRecord } from "@/lib/mock-data";
 import { PageHeader } from "@/components/ui/page-header";
-import { listRuns, adaptRun } from "@/lib/api-client";
+import { useRuns } from "@/hooks/use-run-queries";
 
 const STATUS_OPTIONS = ["Running", "Awaiting Approval", "Completed", "Failed"];
 
@@ -101,10 +100,7 @@ export default function RunsPage() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  const { data: rows = [], isLoading: loadingRuns, isError: loadError } = useQuery({
-    queryKey: ["runs"],
-    queryFn: () => listRuns().then((r) => r.map(adaptRun)),
-  });
+  const { data: rows = [], isLoading: loadingRuns, isError: loadError } = useRuns();
 
   const showWelcome = searchParams.get("welcome") === "1" && !dismissedWelcome;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Download, Plus, Rocket, Trash2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   SelectInput,
 } from "@/components/ui/form-fields";
 import { naira } from "@/lib/mock-data";
-import { listInstitutions } from "@/lib/api-client";
+import { useInstitutions } from "@/hooks/use-institutions";
 import type { Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 import { useCreateRun } from "@/hooks/use-run-mutations";
@@ -85,9 +85,12 @@ export function NewRunModal({
   const router = useRouter();
   const { user } = useAuth();
 
-  const [institutionOptions, setInstitutionOptions] = useState<InstitutionOption[]>([]);
-  const [loadingInstitutions, setLoadingInstitutions] = useState(false);
-  const [institutionsError, setInstitutionsError] = useState<string | null>(null);
+  const { data: institutionsData, isLoading: loadingInstitutions, isError: institutionsIsError } = useInstitutions(open);
+  const institutionOptions = useMemo(
+    () => buildInstitutionOptions(institutionsData?.data ?? []),
+    [institutionsData],
+  );
+  const institutionsError = institutionsIsError ? "Unable to load institutions. Refresh and try again." : null;
 
   const [objective, setObjective] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -104,33 +107,6 @@ export function NewRunModal({
     closeAndReset();
     router.push(`/dashboard/runs/${runId}`);
   });
-
-  // Load institutions from API when modal opens
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoadingInstitutions(true);
-    setInstitutionsError(null);
-    listInstitutions()
-      .then((res) => {
-        if (!cancelled) {
-          if (res.data.length > 0) {
-            setInstitutionOptions(buildInstitutionOptions(res.data));
-          } else {
-            setInstitutionsError("No institutions are available for payouts yet.");
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setInstitutionsError("Unable to load institutions. Refresh and try again.");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingInstitutions(false);
-      });
-    return () => { cancelled = true; };
-  }, [open]);
 
   const parseCsv = (text: string): Recipient[] => {
     if (institutionOptions.length === 0) {

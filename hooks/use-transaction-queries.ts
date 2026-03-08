@@ -7,6 +7,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
   return useQuery({
     queryKey: ["transactions", filters],
     queryFn: () => listTransactions(filters),
-    enabled: Object.values(filters).some(Boolean),
+    staleTime: 15_000,
+    retry: false,
   });
 }

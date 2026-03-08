@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { listCandidates, adaptCandidate } from "@/lib/api-client";
+import { listCandidates } from "@/lib/api-client";
+import { adaptCandidate } from "@/utils/useHelper";
 
 export function useCandidates(runId: string, approvalStatus?: string) {
   return useQuery({
