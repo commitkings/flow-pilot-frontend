@@ -7,6 +7,7 @@ type StatusType =
   | "awaiting_approval"
   | "executing"
   | "completed"
+  | "completed_with_errors"
   | "failed"
   | "allow"
   | "review"
@@ -26,6 +27,7 @@ const styles: Record<StatusType, string> = {
   awaiting_approval: "bg-amber-500/15 text-amber-800 border border-amber-300",
   executing: "bg-indigo-600 text-white",
   completed: "bg-emerald-500/15 text-emerald-800 border border-emerald-300",
+  completed_with_errors: "bg-orange-500/15 text-orange-800 border border-orange-300",
   failed: "bg-red-500/15 text-red-800 border border-red-300",
   allow: "border border-emerald-300 bg-emerald-50 text-emerald-700",
   review: "border border-amber-300 bg-amber-50 text-amber-700",

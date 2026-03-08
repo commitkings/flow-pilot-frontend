@@ -80,6 +80,7 @@ export type ApiRunStatus =
   | "awaiting_approval"
   | "executing"
   | "completed"
+  | "completed_with_errors"
   | "failed"
   | "cancelled";
 
@@ -128,6 +129,8 @@ export interface CreateRunPayload {
   objective: string;
   created_by?: string;
   constraints?: string;
+  date_from?: string;
+  date_to?: string;
   risk_tolerance?: number;
   budget_cap?: number;
   merchant_id?: string;
@@ -157,9 +160,9 @@ export interface Candidate {
   amount: number;
   currency: string;
   purpose: string | null;
-  risk_score: number;
-  risk_reasons: string[];
-  risk_decision: string;
+  risk_score: number | null;
+  risk_reasons: string[] | null;
+  risk_decision: string | null;
   approval_status: CandidateApprovalStatus;
   execution_status: string;
   approved_by: string | null;
@@ -209,11 +212,7 @@ export interface AuditEntry {
 
 export interface AuditReport {
   run_id: string;
-  report?: {
-    summary: string;
-    risk_overview?: Record<string, unknown>;
-    execution_results?: Record<string, unknown>;
-  };
+  report?: Record<string, unknown>;
   audit_trail?: AuditEntry[];
   entries?: AuditEntry[];
 }
@@ -223,6 +222,9 @@ export interface AuditReport {
 export interface Institution {
   institutionCode: string;
   institutionName: string;
+  shortName?: string | null;
+  nipCode?: string | null;
+  cbnCode?: string | null;
   isActive: boolean;
   lastSyncedAt: string | null;
 }
@@ -231,6 +233,41 @@ export interface InstitutionsResponse {
   count: number;
   source: string;
   data: Institution[];
+}
+
+// ── Transactions ─────────────────────────────────────────────
+
+export interface TransactionRow {
+  id: string;
+  run_id: string;
+  reference: string;
+  channel: string;
+  amount: number;
+  currency: string;
+  direction: string;
+  status: string;
+  narration: string;
+  counterparty_name: string;
+  counterparty_bank: string;
+  date: string | null;
+  settlement_date: string | null;
+  anomaly: string;
+  anomaly_count: number;
+}
+
+export interface TransactionSummary {
+  total_transactions: number;
+  total_volume: number;
+  anomaly_count: number;
+  failed_count: number;
+}
+
+export interface TransactionsResponse {
+  transactions: TransactionRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  summary: TransactionSummary;
 }
 
 // ── Errors ───────────────────────────────────────────────────

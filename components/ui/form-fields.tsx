@@ -52,6 +52,13 @@ export function TextInput({
   );
 }
 
+export type SelectOption =
+  | string
+  | {
+      label: string;
+      value: string;
+    };
+
 /**
  * Select Input: Styled for both modes
  */
@@ -64,7 +71,7 @@ export function SelectInput({
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  options: string[];
+  options: SelectOption[];
 }) {
   return (
     <div className="relative group">
@@ -80,11 +87,22 @@ export function SelectInput({
         <option value="" disabled className="bg-background">
           {placeholder}
         </option>
-        {options.map((option) => (
-          <option key={option} value={option} className="bg-background">
-            {option}
-          </option>
-        ))}
+        {options.map((option) => {
+          const normalizedOption =
+            typeof option === "string"
+              ? { label: option, value: option }
+              : option;
+
+          return (
+            <option
+              key={normalizedOption.value}
+              value={normalizedOption.value}
+              className="bg-background"
+            >
+              {normalizedOption.label}
+            </option>
+          );
+        })}
       </select>
       <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground group-hover:text-foreground transition-colors">
         <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">

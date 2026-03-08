@@ -5,6 +5,7 @@ export type RunStatus =
   | "awaiting_approval"
   | "executing"
   | "completed"
+  | "completed_with_errors"
   | "failed";
 
 export type CandidateDecision = "allow" | "review" | "block";
