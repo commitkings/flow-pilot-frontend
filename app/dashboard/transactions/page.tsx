@@ -13,8 +13,8 @@ import {
   EMPTY_TX_FILTERS,
   type TransactionFilters,
 } from "@/components/dashboard/transaction/TransactionFilterModal";
+import { ExportTransactionsModal } from "@/components/dashboard/transaction/ExportTransactionsModal";
 import type { TransactionFilters as ApiFilters } from "@/lib/api-client";
-import type { TransactionRow as TxRow } from "@/lib/api-types";
 
 function formatCurrency(value: number): string {
   return `₦${value.toLocaleString("en-NG")}`;
@@ -37,24 +37,10 @@ function txStatus(status: string): "pending" | "completed" | "failed" {
   return "completed";
 }
 
-function exportCSV(rows: TxRow[]) {
-  const header = "Reference,Status,Amount,Channel,Direction,Counterparty,Date";
-  const lines = rows.map((t) =>
-    [t.reference, t.status, t.amount, t.channel, t.direction, `"${(t.counterparty_name ?? "").replace(/"/g, '""')}"`, t.date ?? ""].join(",")
-  );
-  const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<TransactionFilters>(EMPTY_TX_FILTERS);
 
   const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
@@ -113,7 +99,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Table card */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className=" overflow-hidden">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
           <SearchInput
@@ -140,7 +126,7 @@ export default function TransactionsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => exportCSV(transactions)}
+              onClick={() => setExportOpen(true)}
               className="h-10 gap-2 rounded-full px-5 text-sm font-semibold"
             >
               <Download className="h-4 w-4" />
@@ -210,6 +196,12 @@ export default function TransactionsPage() {
         onClose={() => setFilterOpen(false)}
         onApply={(f) => { setAppliedFilters(f); setFilterOpen(false); }}
         current={appliedFilters}
+      />
+
+      <ExportTransactionsModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        rows={transactions}
       />
     </div>
   );

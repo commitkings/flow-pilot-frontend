@@ -34,6 +34,7 @@ import type {
   UploadCandidatesResponse,
   User,
 } from "./api-types";
+import { transactionRows } from "./mock-data";
 
 // ── 1. Auth ──────────────────────────────────────────────────────────────────
 
@@ -152,9 +153,43 @@ export interface TransactionFilters {
 }
 
 export function listTransactions(filters: TransactionFilters = {}): Promise<TransactionsResponse> {
+  // Commenting out real API call since endpoint is not done yet
+  /*
   return apiClient
     .get<TransactionsResponse>("/transactions", { params: filters })
     .then((r) => r.data);
+  */
+  
+  const mockRows = transactionRows.map((r, i) => ({
+    id: `mock-tx-${i}`,
+    run_id: "mock-run-id",
+    reference: r.reference,
+    channel: r.channel,
+    amount: r.amount,
+    currency: "NGN",
+    direction: "credit",
+    status: r.status.toUpperCase(),
+    narration: "Mock narration",
+    counterparty_name: "Mock Counterparty",
+    counterparty_bank: "Mock Bank",
+    date: r.date,
+    settlement_date: r.date,
+    anomaly: r.anomaly,
+    anomaly_count: r.anomaly === "Clean" ? 0 : 1,
+  })) as any;
+
+  return Promise.resolve({
+    transactions: mockRows,
+    total: mockRows.length,
+    limit: 50,
+    offset: 0,
+    summary: { 
+      total_transactions: mockRows.length, 
+      total_volume: mockRows.reduce((acc: number, curr: any) => acc + curr.amount, 0), 
+      anomaly_count: mockRows.filter((r: any) => r.anomaly_count > 0).length, 
+      failed_count: mockRows.filter((r: any) => r.status === "FAILED").length 
+    }
+  });
 }
 
 // ── 9. Health (unauthenticated) ───────────────────────────────────────────────
