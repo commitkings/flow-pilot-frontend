@@ -3,7 +3,6 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Navbar } from "@/components/dashboard/navbar";
 import { DashboardShellProvider } from "@/components/dashboard-shell-context";
-import { NewRunModal } from "@/components/dashboard/run-modal/new-run-modal";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -15,7 +14,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [newRunOpen, setNewRunOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [payoutMode, setPayoutMode] = useState<string | null>(null);
 
@@ -56,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       value={{
         collapsed,
         toggleSidebar: () => setCollapsed((prev) => !prev),
-        openNewRun: () => setNewRunOpen(true),
+        openNewRun: () => router.push("/dashboard/runs/new"),
         mobileMenuOpen,
         toggleMobileMenu: () => setMobileMenuOpen((prev) => !prev),
       }}
@@ -82,7 +80,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </main>
         </div>
       </div>
-      <NewRunModal open={newRunOpen} onClose={() => setNewRunOpen(false)} />
     </DashboardShellProvider>
   );
 }

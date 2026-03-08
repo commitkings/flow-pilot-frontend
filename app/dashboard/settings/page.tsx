@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Camera,
+  LogOut,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -12,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
 import { teamMembers } from "@/lib/mock-data";
+import { useAuth } from "@/context/auth-context";
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -19,6 +21,7 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<"info" | "prefs">("info");
   const [teamQuery, setTeamQuery] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
+  const { logout } = useAuth();
 
   const filteredMembers = useMemo(
     () => teamMembers.filter((member) => member.name.toLowerCase().includes(teamQuery.toLowerCase())),
@@ -237,6 +240,10 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between border-b border-red-200 pb-3">
                   <div><p className="font-medium text-slate-900">Export All Data</p><p className="text-slate-600">Download your workspace data.</p></div>
                   <Button variant="outline" className="rounded-lg">Export Data</Button>
+                </div>
+                <div className="flex items-center justify-between border-b border-red-200 pb-3">
+                  <div><p className="font-medium text-slate-900">Sign Out</p><p className="text-slate-600">Sign out of your current session.</p></div>
+                  <Button variant="outline" className="rounded-lg border-red-300 text-red-700" onClick={() => logout()}><LogOut className="h-4 w-4" />Sign Out</Button>
                 </div>
                 <div className="flex items-center justify-between">
                   <div><p className="font-medium text-red-700">Delete Account</p><p className="text-slate-600">Permanent deletion of account and data.</p></div>

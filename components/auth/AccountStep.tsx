@@ -79,8 +79,8 @@ export function AccountStep({
             <TextInput
               value={firstName}
               onChange={setFirstName}
-              className="h-11 rounded-xl"
               placeholder="Enter Your FirstName"
+              required
             />
           </Field>
 
@@ -88,8 +88,8 @@ export function AccountStep({
             <TextInput
               value={lastName}
               onChange={setLastName}
-              className="h-11 rounded-xl"
               placeholder="Enter Your LastName"
+              required
             />
           </Field>
 
@@ -98,8 +98,8 @@ export function AccountStep({
               type="email"
               value={workEmail}
               onChange={setWorkEmail}
-              className="h-11 rounded-xl"
               placeholder="Enter Your Email"
+              required
             />
           </Field>
           <Field label="Password">
@@ -108,6 +108,7 @@ export function AccountStep({
               onChange={setPassword}
               show={showPassword}
               onToggle={onTogglePassword}
+              required
             />
           </Field>
           <Field label="Confirm Password">
@@ -116,16 +117,17 @@ export function AccountStep({
               onChange={setConfirmPassword}
               show={showConfirm}
               onToggle={onToggleConfirm}
+              required
             />
           </Field>
         </div>
 
         <Button
           type="submit"
-          disabled={loading}
-          className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5 disabled:opacity-60"
+          loading={loading}
+          className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5"
         >
-          {loading ? "Creating account…" : "Continue"}
+          Continue
         </Button>
 
         <p className="text-center text-sm font-medium text-muted-foreground">

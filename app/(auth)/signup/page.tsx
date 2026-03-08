@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { AccountStep } from "@/components/auth/AccountStep";
 import { useAuth } from "@/context/auth-context";
@@ -28,6 +29,10 @@ export default function SignupPage() {
   const onSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     setSubmitted(true);
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
     if (!canContinue) return;
     setLoading(true);
     try {
@@ -42,7 +47,7 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="min-h-screen md:grid md:grid-cols-[420px_1fr] h-screen">
+    <main className="h-screen md:grid md:grid-cols-[420px_1fr]">
       <AuthAside
         title="Built for businesses that move money at scale."
         features={[
@@ -56,8 +61,8 @@ export default function SignupPage() {
         }}
       />
 
-      <section className="px-4 py-8 md:px-10 md:py-12 overflow-y-auto">
-        <div className="mx-auto w-full max-w-md rounded-2xl md:p-8">
+      <section className="flex items-center overflow-y-auto px-4 py-8 md:px-10">
+        <div className="mx-auto w-full max-w-md">
           <AccountStep
             firstName={firstName} setFirstName={setFirstName}
             lastName={lastName} setLastName={setLastName}

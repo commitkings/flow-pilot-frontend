@@ -237,12 +237,16 @@ export function PasswordInput({
   show,
   onToggle,
   placeholder = "••••••••",
+  error = false,
+  required,
 }: {
   value: string;
   onChange: (value: string) => void;
   show: boolean;
   onToggle: () => void;
   placeholder?: string;
+  error?: boolean;
+  required?: boolean;
 }) {
   return (
     <div className="relative group">
@@ -251,9 +255,11 @@ export function PasswordInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        required={required}
         className={cn(
           "h-12 rounded-full border-border bg-background px-5 pr-12 text-sm transition-all",
-          "focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10"
+          "focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10",
+          error && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/10"
         )}
       />
       <button

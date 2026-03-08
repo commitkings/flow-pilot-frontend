@@ -1,312 +1,216 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDownUp, BadgeAlert, Download, Layers, Loader2, Wallet } from "lucide-react";
+import { useState } from "react";
+import { Download, FileSearch, Loader2, ShieldAlert, SlidersHorizontal, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  SearchInput,
-  SelectInput,
-  DateRangeInput,
-} from "@/components/ui/form-fields";
-import { DataTable, type TableColumn } from "@/components/ui/data-table";
-import { MetricCard } from "@/components/dashboard/MetricCard";
+import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
+import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
-import { RightModal } from "@/components/modals/RightModal";
-import { naira } from "@/lib/mock-data";
-import type { TransactionRow, TransactionSummary } from "@/lib/api-types";
 import { useTransactions } from "@/hooks/use-transaction-queries";
+import {
+  TransactionFilterModal,
+  EMPTY_TX_FILTERS,
+  type TransactionFilters,
+} from "@/components/dashboard/transaction/TransactionFilterModal";
+import type { TransactionFilters as ApiFilters } from "@/lib/api-client";
+import type { TransactionRow as TxRow } from "@/lib/api-types";
 
-// Map DB channel values to display-friendly labels
-const CHANNEL_DISPLAY: Record<string, string> = {
-  CARD: "Card",
-  TRANSFER: "Transfer",
-  USSD: "USSD",
-  QR: "QR",
-};
-
-const CHANNEL_STYLES: Record<string, string> = {
-  CARD: "bg-blue-100 text-blue-700",
-  TRANSFER: "bg-teal-100 text-teal-700",
-  USSD: "bg-purple-100 text-purple-700",
-  QR: "bg-indigo-100 text-indigo-700",
-};
-
-function ChannelBadge({ value }: { value: string }) {
-  return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${CHANNEL_STYLES[value] ?? "bg-slate-100 text-slate-700"}`}
-    >
-      {CHANNEL_DISPLAY[value] ?? value}
-    </span>
-  );
+function formatCurrency(value: number): string {
+  return `₦${value.toLocaleString("en-NG")}`;
 }
 
-// Map DB status values to StatusBadge variants
-function statusVariant(s: string): "completed" | "pending" | "failed" {
-  if (s === "SUCCESS") return "completed";
-  if (s === "PENDING") return "pending";
-  return "failed"; // FAILED, REVERSED
-}
-function statusLabel(s: string): string {
-  if (s === "SUCCESS") return "Completed";
-  if (s === "PENDING") return "Pending";
-  if (s === "REVERSED") return "Reversed";
-  return "Failed";
-}
-
-const STATUS_OPTIONS = ["SUCCESS", "PENDING", "FAILED", "REVERSED"];
-const STATUS_LABELS: Record<string, string> = {
-  SUCCESS: "Completed",
-  PENDING: "Pending",
-  FAILED: "Failed",
-  REVERSED: "Reversed",
-};
-const CHANNEL_OPTIONS = ["CARD", "TRANSFER", "USSD", "QR"];
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleString("en-NG", {
-    month: "short", day: "numeric", year: "numeric",
-    hour: "numeric", minute: "2-digit", hour12: true,
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("en-NG", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
   });
 }
 
-const columns: TableColumn<TransactionRow>[] = [
-  {
-    id: "reference",
-    header: "Reference",
-    cell: (row) => (
-      <span className="font-mono text-xs font-semibold text-foreground">
-        {row.reference}
-      </span>
-    ),
-  },
-  {
-    id: "channel",
-    header: "Channel",
-    cell: (row) => <ChannelBadge value={row.channel} />,
-  },
-  {
-    id: "amount",
-    header: "Amount",
-    cell: (row) => (
-      <span className="font-semibold text-foreground">{naira(row.amount)}</span>
-    ),
-  },
-  {
-    id: "status",
-    header: "Status",
-    cell: (row) => (
-      <StatusBadge status={statusVariant(row.status)} label={statusLabel(row.status)} />
-    ),
-  },
-  {
-    id: "date",
-    header: "Date",
-    cell: (row) => (
-      <span className="text-muted-foreground">{formatDate(row.date)}</span>
-    ),
-  },
-  {
-    id: "anomaly",
-    header: "Anomaly",
-    cell: (row) =>
-      row.anomaly === "Clean" ? (
-        <StatusBadge status="verified" label="Clean" />
-      ) : (
-        <StatusBadge status="failed" label={row.anomaly} />
-      ),
-  },
-];
+function txStatus(status: string): "pending" | "completed" | "failed" {
+  if (status === "FAILED") return "failed";
+  if (status === "PENDING") return "pending";
+  return "completed";
+}
 
-const emptySummary: TransactionSummary = {
-  total_transactions: 0,
-  total_volume: 0,
-  anomaly_count: 0,
-  failed_count: 0,
-};
+function exportCSV(rows: TxRow[]) {
+  const header = "Reference,Status,Amount,Channel,Direction,Counterparty,Date";
+  const lines = rows.map((t) =>
+    [t.reference, t.status, t.amount, t.channel, t.direction, `"${(t.counterparty_name ?? "").replace(/"/g, '""')}"`, t.date ?? ""].join(",")
+  );
+  const csv = [header, ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function TransactionsPage() {
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [channelFilter, setChannelFilter] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [selectedRef, setSelectedRef] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<TransactionFilters>(EMPTY_TX_FILTERS);
 
-  const filters = useMemo(() => ({
-    ...(statusFilter && { status: statusFilter }),
-    ...(channelFilter && { channel: channelFilter }),
-    ...(query && { search: query }),
-    ...(fromDate && { from_date: fromDate }),
-    ...(toDate && { to_date: toDate }),
-  }), [statusFilter, channelFilter, query, fromDate, toDate]);
+  const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
 
-  const { data, isLoading: loading, isError: error, refetch } = useTransactions(filters);
-  const rows: TransactionRow[] = data?.transactions ?? [];
-  const summary: TransactionSummary = data?.summary ?? emptySummary;
+  const apiFilters: ApiFilters = {
+    run_id: appliedFilters.runId || undefined,
+    status: appliedFilters.status || undefined,
+    channel: appliedFilters.channel || undefined,
+    from_date: appliedFilters.fromDate || undefined,
+    to_date: appliedFilters.toDate || undefined,
+    search: search || undefined,
+  };
 
-  const selected = useMemo(
-    () => rows.find((r) => r.reference === selectedRef) ?? null,
-    [rows, selectedRef],
-  );
+  const { data, isLoading, isError } = useTransactions(apiFilters);
+
+  const transactions = data?.transactions ?? [];
+  const summary = data?.summary ?? { total_transactions: 0, total_volume: 0, anomaly_count: 0, failed_count: 0 };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Transactions"
-        description="Global view of reconciled transactions across all runs."
-      >
-        <Button variant="outline" className="rounded-xl">
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
-      </PageHeader>
+        description="View and audit all reconciled transactions across your runs."
+      />
 
-      {/* Metric cards — live from API summary */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Metric cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Total Transactions"
-          value={summary.total_transactions.toLocaleString()}
-          subtext="Across all runs"
-          icon={<Layers className="h-4 w-4" />}
+          label="Total"
+          value={isLoading ? "…" : String(summary.total_transactions)}
+          subtext="Reconciled transactions"
+          icon={<Zap className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
-          label="Total Volume"
-          value={naira(summary.total_volume)}
-          subtext="Settled this period"
-          icon={<Wallet className="h-4 w-4" />}
+          label="Volume"
+          value={isLoading ? "…" : formatCurrency(summary.total_volume)}
+          subtext="Total amount"
+          icon={<TrendingUp className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
-          label="Anomalies Detected"
-          value={summary.anomaly_count.toLocaleString()}
-          subtext="Requires review"
-          icon={<BadgeAlert className="h-4 w-4" />}
+          label="Anomalies"
+          value={isLoading ? "…" : String(summary.anomaly_count)}
+          subtext="Flagged"
+          icon={<FileSearch className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
-          label="Failed Transactions"
-          value={summary.failed_count.toLocaleString()}
-          subtext="Immediate action required"
-          icon={<ArrowDownUp className="h-4 w-4" />}
+          label="Failed"
+          value={isLoading ? "…" : String(summary.failed_count)}
+          subtext="Transactions"
+          icon={<ShieldAlert className="h-4 w-4" />}
           accent="red"
         />
       </div>
 
-      {/* Transactions table */}
-      <div className="rounded-2xl border border-border bg-card">
+      {/* Table card */}
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
           <SearchInput
-            value={query}
-            onChange={setQuery}
-            placeholder="Search by reference..."
-            className="min-w-50 flex-1"
+            value={search}
+            onChange={setSearch}
+            placeholder="Search by reference or narration…"
+            className="min-w-48 w-72 flex-1 md:flex-initial"
           />
-          <SelectInput
-            value={statusFilter}
-            onChange={setStatusFilter}
-            placeholder="All Statuses"
-            options={STATUS_OPTIONS}
-          />
-          <SelectInput
-            value={channelFilter}
-            onChange={setChannelFilter}
-            placeholder="All Channels"
-            options={CHANNEL_OPTIONS}
-          />
-          <DateRangeInput
-            from={fromDate}
-            to={toDate}
-            onFromChange={setFromDate}
-            onToChange={setToDate}
-          />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilterOpen(true)}
+              className="relative h-10 gap-2 rounded-full px-5 text-sm font-semibold"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filter
+              {activeFilterCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-black text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportCSV(transactions)}
+              className="h-10 gap-2 rounded-full px-5 text-sm font-semibold"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          </div>
         </div>
 
         {/* Table */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16">
-            <p className="text-sm font-semibold text-destructive">
-              Failed to load transactions
-            </p>
-            <Button size="sm" variant="outline" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={rows}
-            keyExtractor={(row) => row.reference}
-            onRowClick={(row) => setSelectedRef(row.reference)}
-            emptyState={
-              <div className="space-y-2 flex items-center flex-col justify-center py-10">
-                <p className="text-base font-black text-foreground">
-                  No transactions found
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Try adjusting your filters.
-                </p>
-              </div>
-            }
-          />
-        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                {["Reference", "Status", "Amount", "Channel", "Direction", "Counterparty", "Date"].map((h) => (
+                  <th key={h} className="px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                  </td>
+                </tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-sm text-destructive">
+                    Failed to load transactions. Please refresh.
+                  </td>
+                </tr>
+              ) : transactions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center">
+                    <p className="text-base font-black text-foreground">No transactions found</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {activeFilterCount > 0
+                        ? "Try adjusting your filters."
+                        : "Transactions will appear here after a run completes."}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                transactions.map((tx) => (
+                  <tr key={tx.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="px-6 py-3 font-mono text-xs text-foreground">{tx.reference}</td>
+                    <td className="px-6 py-3">
+                      <StatusBadge status={txStatus(tx.status)} label={tx.status} />
+                    </td>
+                    <td className="px-6 py-3 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{tx.channel || "—"}</td>
+                    <td className="px-6 py-3 text-muted-foreground capitalize">{tx.direction}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{tx.counterparty_name || "—"}</td>
+                    <td className="px-6 py-3 text-muted-foreground">{tx.date ? formatDateTime(tx.date) : "—"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Detail panel */}
-      <RightModal
-        open={!!selected}
-        onClose={() => setSelectedRef(null)}
-        title="Transaction Detail"
-        description={selected?.reference}
-      >
-        {selected && (
-          <div className="space-y-0">
-            <DetailRow label="Reference" value={selected.reference} mono />
-            <DetailRow label="Channel" value={CHANNEL_DISPLAY[selected.channel] ?? selected.channel} />
-            <DetailRow label="Amount" value={naira(selected.amount)} />
-            <DetailRow label="Status" value={statusLabel(selected.status)} />
-            <DetailRow label="Direction" value={selected.direction || "—"} />
-            <DetailRow label="Date" value={formatDate(selected.date)} />
-            <DetailRow label="Counterparty" value={selected.counterparty_name || "—"} />
-            <DetailRow label="Bank" value={selected.counterparty_bank || "—"} />
-            <DetailRow label="Narration" value={selected.narration || "—"} />
-            <DetailRow label="Anomaly" value={selected.anomaly} />
-            {selected.anomaly_count > 0 && (
-              <DetailRow label="Anomaly Count" value={String(selected.anomaly_count)} />
-            )}
-          </div>
-        )}
-      </RightModal>
-    </div>
-  );
-}
-
-function DetailRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between border-b border-border py-3.5">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span
-        className={`text-sm font-semibold text-foreground ${mono ? "font-mono" : ""}`}
-      >
-        {value}
-      </span>
+      <TransactionFilterModal
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        onApply={(f) => { setAppliedFilters(f); setFilterOpen(false); }}
+        current={appliedFilters}
+      />
     </div>
   );
 }
