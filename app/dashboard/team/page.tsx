@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SearchInput } from "@/components/ui/form-fields";
 import { DataTable, type TableColumn } from "@/components/ui/data-table";
+import { useDashboardShell } from "@/components/dashboard-shell-context";
 
 type TeamMember = typeof teamMembers[0];
 
@@ -73,8 +74,8 @@ const columns: TableColumn<TeamMember>[] = [
 ];
 
 export default function TeamPage() {
+  const { inviteOpen, setInviteOpen } = useDashboardShell();
   const [teamQuery, setTeamQuery] = useState("");
-  const [inviteOpen, setInviteOpen] = useState(false);
 
   const filteredMembers = useMemo(
     () =>
@@ -96,13 +97,6 @@ export default function TeamPage() {
           title="Team Members"
           description="Manage who has access to your FlowPilot workspace and control what they can do."
         />
-        <Button
-          className="rounded-full bg-brand px-6 text-white hover:opacity-90 shadow-sm"
-          onClick={() => setInviteOpen(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Invite Member
-        </Button>
       </div>
 
       <div className="rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-4 text-sm text-blue-900 shadow-sm transition-colors">
@@ -137,12 +131,12 @@ export default function TeamPage() {
 
       <div className="">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+        <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <SearchInput
             value={teamQuery}
             onChange={setTeamQuery}
             placeholder="Search by name or email…"
-            className="min-w-64 w-80 flex-1 md:flex-initial"
+            className="w-full md:w-80"
           />
         </div>
 

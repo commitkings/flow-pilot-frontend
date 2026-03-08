@@ -157,8 +157,8 @@ export default function RunsPage() {
             loadingRuns
               ? "…"
               : String(
-                  rows.filter((r) => r.status === "awaiting_approval").length
-                )
+                rows.filter((r) => r.status === "awaiting_approval").length
+              )
           }
           subtext="Requires authorization"
           icon={<FileSearch className="h-4 w-4" />}
@@ -180,14 +180,14 @@ export default function RunsPage() {
       {/* Runs table */}
       <div className="">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center py-4 justify-between">
+        <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <SearchInput
             value={query}
             onChange={setQuery}
             placeholder="Search by objective or run ID..."
-            className="min-w-48 w-100 flex-1 md:flex-initial"
+            className="w-full md:w-80"
           />
-          <div className="flex items-center gap-3">
+          <div className="flex w-full items-center gap-3 md:w-auto">
             <Button
               variant="outline"
               size="sm"
@@ -220,11 +220,11 @@ export default function RunsPage() {
             current={appliedFilters}
           />
 
-        <ExportRunsModal
-          open={exportOpen}
-          onClose={() => setExportOpen(false)}
-          rows={rows}
-        />
+          <ExportRunsModal
+            open={exportOpen}
+            onClose={() => setExportOpen(false)}
+            rows={rows}
+          />
         </div>
 
         {/* Table */}

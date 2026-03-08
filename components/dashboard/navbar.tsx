@@ -8,7 +8,7 @@ import { SearchInput } from "@/components/ui/form-fields";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 
 export function Navbar() {
-  const { openNewRun, toggleMobileMenu } = useDashboardShell();
+  const { openNewRun, toggleMobileMenu, setInviteOpen } = useDashboardShell();
   const [query, setQuery] = useState("");
   const pathname = usePathname();
 
@@ -40,6 +40,15 @@ export function Navbar() {
           >
             <Plus className="mr-1.5 h-4 w-4 stroke-[3]" />
             New Run
+          </Button>
+        )}
+        {isTeamPage && (
+          <Button
+            onClick={() => setInviteOpen(true)}
+            className="h-10 rounded-full bg-brand px-6 font-bold text-white transition-all shadow-sm hover:opacity-90"
+          >
+            <Users className="mr-1.5 h-4 w-4" />
+            Invite Member
           </Button>
         )}
       </div>

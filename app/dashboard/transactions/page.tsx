@@ -101,14 +101,14 @@ export default function TransactionsPage() {
       {/* Table card */}
       <div className=" overflow-hidden">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
+        <div className="flex flex-col gap-4 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <SearchInput
             value={search}
             onChange={setSearch}
             placeholder="Search by reference or narration…"
-            className="min-w-48 w-72 flex-1 md:flex-initial"
+            className="w-full md:w-80"
           />
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             <Button
               variant="outline"
               size="sm"

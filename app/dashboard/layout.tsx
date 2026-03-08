@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [payoutMode, setPayoutMode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,6 +58,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         openNewRun: () => router.push("/dashboard/runs/new"),
         mobileMenuOpen,
         toggleMobileMenu: () => setMobileMenuOpen((prev) => !prev),
+        inviteOpen,
+        setInviteOpen,
       }}
     >
       <div className="min-h-screen bg-background text-foreground">
@@ -73,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           )}
           <Navbar />
-          <main className="flex-1 p-4 md:p-8 lg:p-10 pb-20 md:pb-8">
+          <main className="flex-1 p-3 md:p-8 lg:p-10 pb-20 md:pb-8">
             <div className="mx-auto max-w-7xl">
               {children}
             </div>

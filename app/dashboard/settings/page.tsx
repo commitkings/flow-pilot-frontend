@@ -15,13 +15,13 @@ export default function SettingsPage() {
   const { logout } = useAuth();
 
   return (
-    <div className="mx-auto max-w-4xl space-y-12 pb-16">
+    <div className="mx-auto max-w-4xl space-y-8 md:space-y-12 pb-16">
       <PageHeader
         title="Settings"
         description="Profile and workspace preferences."
       />
 
-      <div className="space-y-10">
+      <div className="space-y-8 md:space-y-10">
         <Section title="Profile Photo" description="Update your avatar or business logo.">
           <div className="flex items-center gap-6">
             <span className="relative inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm">
@@ -326,7 +326,7 @@ function Section({
   variant?: 'default' | 'danger';
 }) {
   return (
-    <div className={`space-y-5 rounded-3xl p-6 md:p-8 transition-all ${variant === 'danger' ? '' : ''}`}>
+    <div className={`space-y-5 py-6 md:rounded-3xl md:p-8 transition-all ${variant === 'danger' ? '' : ''}`}>
       <div>
         <h2 className={`text-xl font-bold tracking-tight ${variant === 'danger' ? 'text-destructive' : 'text-foreground'}`}>
           {title}

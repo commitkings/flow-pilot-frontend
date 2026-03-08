@@ -8,6 +8,8 @@ type DashboardShellContextType = {
   openNewRun: () => void;
   mobileMenuOpen: boolean;
   toggleMobileMenu: () => void;
+  inviteOpen: boolean;
+  setInviteOpen: (open: boolean) => void;
 };
 
 const DashboardShellContext = createContext<DashboardShellContextType | null>(null);
