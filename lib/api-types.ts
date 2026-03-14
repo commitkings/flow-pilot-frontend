@@ -23,6 +23,12 @@ export interface User {
   email: string;
   display_name: string;
   avatar_url: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  job_title: string | null;
+  phone: string | null;
+  timezone: string | null;
+  department: string | null;
   is_active: boolean;
   last_login_at: string | null;
   memberships: Membership[];
@@ -268,6 +274,136 @@ export interface TransactionsResponse {
   limit: number;
   offset: number;
   summary: TransactionSummary;
+}
+
+// ── Approvals Queue ──────────────────────────────────────────
+
+export interface ApprovalCandidate {
+  id: string;
+  run_id: string;
+  institution_code: string;
+  beneficiary_name: string;
+  account_number: string;
+  amount: number;
+  currency: string;
+  purpose: string | null;
+  risk_score: number | null;
+  risk_reasons: string[] | null;
+  risk_decision: string | null;
+  approval_status: string;
+  execution_status: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  run_objective?: string;
+  run_status?: string;
+}
+
+export interface ApprovalsQueueResponse {
+  approvals: ApprovalCandidate[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// ── Audit (Global) ───────────────────────────────────────────
+
+export interface AuditListResponse {
+  entries: AuditEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// ── Notifications ────────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  total: number;
+  unread_count: number;
+  limit: number;
+  offset: number;
+}
+
+// ── Team ─────────────────────────────────────────────────────
+
+export interface TeamMember {
+  id: string;
+  user_id: string;
+  role: string;
+  joined_at: string | null;
+  created_at: string;
+  user: {
+    display_name: string | null;
+    email: string | null;
+    avatar_url: string | null;
+  } | null;
+}
+
+export interface TeamMembersResponse {
+  members: TeamMember[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface InviteMemberPayload {
+  email: string;
+  role?: string;
+}
+
+// ── Org Profile ──────────────────────────────────────────────
+
+export interface OrgProfile {
+  id: string;
+  business_name: string;
+  business_type: string | null;
+  rc_number: string | null;
+  tax_id: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  website: string | null;
+  phone: string | null;
+  interswitch_merchant_id: string | null;
+  is_active: boolean;
+  config: OrgConfig | null;
+}
+
+export interface OrgConfig {
+  monthly_txn_volume_range: string | null;
+  avg_monthly_payouts_range: string | null;
+  primary_bank: string | null;
+  primary_use_cases: string[] | null;
+  risk_appetite: string | null;
+  default_risk_tolerance: number | null;
+  default_budget_cap: number | null;
+  preferences: Record<string, unknown> | null;
+}
+
+// ── Connections ──────────────────────────────────────────────
+
+export interface ConnectionStatus {
+  provider: string;
+  connected: boolean;
+  email: string | null;
+}
+
+export interface ConnectionsResponse {
+  connections: ConnectionStatus[];
 }
 
 // ── Errors ───────────────────────────────────────────────────

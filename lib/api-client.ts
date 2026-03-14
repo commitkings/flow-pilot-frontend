@@ -21,20 +21,26 @@ import type {
   ApiRunRecord,
   ApproveRejectPayload,
   ApproveResponse,
+  ApprovalsQueueResponse,
+  AuditListResponse,
   AuthResponse,
   RejectResponse,
   AuditReport,
   CandidatesResponse,
+  ConnectionsResponse,
   CreateRunPayload,
   InstitutionsResponse,
+  InviteMemberPayload,
+  NotificationsResponse,
   OnboardingPayload,
   OnboardingResponse,
+  OrgProfile,
   RunStatusResponse,
+  TeamMembersResponse,
   TransactionsResponse,
   UploadCandidatesResponse,
   User,
 } from "./api-types";
-import { transactionRows } from "./mock-data";
 
 // ── 1. Auth ──────────────────────────────────────────────────────────────────
 
@@ -56,7 +62,7 @@ export function fetchMe(): Promise<User> {
   return apiClient.get<User>("/auth/me").then((r) => r.data);
 }
 
-export function updateMe(data: Partial<Pick<User, "display_name" | "avatar_url">>): Promise<User> {
+export function updateMe(data: Partial<Pick<User, "display_name" | "avatar_url" | "first_name" | "last_name" | "job_title" | "phone" | "timezone" | "department">>): Promise<User> {
   return apiClient.patch<User>("/auth/me", data).then((r) => r.data);
 }
 
@@ -153,46 +159,138 @@ export interface TransactionFilters {
 }
 
 export function listTransactions(filters: TransactionFilters = {}): Promise<TransactionsResponse> {
-  // Commenting out real API call since endpoint is not done yet
-  /*
   return apiClient
     .get<TransactionsResponse>("/transactions", { params: filters })
     .then((r) => r.data);
-  */
-  
-  const mockRows = transactionRows.map((r, i) => ({
-    id: `mock-tx-${i}`,
-    run_id: "mock-run-id",
-    reference: r.reference,
-    channel: r.channel,
-    amount: r.amount,
-    currency: "NGN",
-    direction: "credit",
-    status: r.status.toUpperCase(),
-    narration: "Mock narration",
-    counterparty_name: "Mock Counterparty",
-    counterparty_bank: "Mock Bank",
-    date: r.date,
-    settlement_date: r.date,
-    anomaly: r.anomaly,
-    anomaly_count: r.anomaly === "Clean" ? 0 : 1,
-  })) as any;
-
-  return Promise.resolve({
-    transactions: mockRows,
-    total: mockRows.length,
-    limit: 50,
-    offset: 0,
-    summary: { 
-      total_transactions: mockRows.length, 
-      total_volume: mockRows.reduce((acc: number, curr: any) => acc + curr.amount, 0), 
-      anomaly_count: mockRows.filter((r: any) => r.anomaly_count > 0).length, 
-      failed_count: mockRows.filter((r: any) => r.status === "FAILED").length 
-    }
-  });
 }
 
-// ── 9. Health (unauthenticated) ───────────────────────────────────────────────
+// ── 9. Approvals Queue ────────────────────────────────────────────────────────
+
+export interface ApprovalFilters {
+  approval_status?: string;
+  risk_decision?: string;
+  run_id?: string;
+  search?: string;
+  from_date?: string;
+  to_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listApprovals(filters: ApprovalFilters = {}): Promise<ApprovalsQueueResponse> {
+  return apiClient
+    .get<ApprovalsQueueResponse>("/approvals", { params: filters })
+    .then((r) => r.data);
+}
+
+// ── 10. Audit (Global) ───────────────────────────────────────────────────────
+
+export interface AuditFilters {
+  run_id?: string;
+  agent_type?: string;
+  action?: string;
+  from_date?: string;
+  to_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listAuditEntries(filters: AuditFilters = {}): Promise<AuditListResponse> {
+  return apiClient
+    .get<AuditListResponse>("/audit", { params: filters })
+    .then((r) => r.data);
+}
+
+// ── 11. Notifications ────────────────────────────────────────────────────────
+
+export function listNotifications(params: { is_read?: boolean; limit?: number; offset?: number } = {}): Promise<NotificationsResponse> {
+  return apiClient
+    .get<NotificationsResponse>("/notifications", { params })
+    .then((r) => r.data);
+}
+
+export function markNotificationRead(id: string): Promise<{ status: string }> {
+  return apiClient.patch<{ status: string }>(`/notifications/${id}/read`).then((r) => r.data);
+}
+
+export function markAllNotificationsRead(): Promise<{ marked_read: number }> {
+  return apiClient.post<{ marked_read: number }>("/notifications/read-all").then((r) => r.data);
+}
+
+export function deleteNotification(id: string): Promise<{ status: string }> {
+  return apiClient.delete<{ status: string }>(`/notifications/${id}`).then((r) => r.data);
+}
+
+// ── 12. Team ─────────────────────────────────────────────────────────────────
+
+export function listTeamMembers(params: { limit?: number; offset?: number } = {}): Promise<TeamMembersResponse> {
+  return apiClient
+    .get<TeamMembersResponse>("/team/members", { params })
+    .then((r) => r.data);
+}
+
+export function inviteTeamMember(payload: InviteMemberPayload): Promise<{ status: string; member: import("./api-types").TeamMember }> {
+  return apiClient.post("/team/invite", payload).then((r) => r.data);
+}
+
+export function updateTeamMemberRole(memberId: string, role: string): Promise<{ status: string; member: import("./api-types").TeamMember }> {
+  return apiClient.patch(`/team/members/${memberId}`, { role }).then((r) => r.data);
+}
+
+export function removeTeamMember(memberId: string): Promise<{ status: string }> {
+  return apiClient.delete<{ status: string }>(`/team/members/${memberId}`).then((r) => r.data);
+}
+
+// ── 13. Org Profile ──────────────────────────────────────────────────────────
+
+export function getOrgProfile(): Promise<OrgProfile> {
+  return apiClient.get<OrgProfile>("/org/profile").then((r) => r.data);
+}
+
+export function updateOrgProfile(data: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return apiClient.patch("/org/profile", data).then((r) => r.data);
+}
+
+export function updateOrgConfig(data: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return apiClient.patch("/org/profile/config", data).then((r) => r.data);
+}
+
+// ── 14. Auth (Extended) ──────────────────────────────────────────────────────
+
+export function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/auth/me/password", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    })
+    .then((r) => r.data);
+}
+
+export function uploadAvatar(file: File): Promise<{ avatar_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return apiClient
+    .post<{ avatar_url: string }>("/auth/me/avatar", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+    .then((r) => r.data);
+}
+
+export function removeAvatar(): Promise<{ message: string }> {
+  return apiClient.delete<{ message: string }>("/auth/me/avatar").then((r) => r.data);
+}
+
+export function getConnections(): Promise<ConnectionsResponse> {
+  return apiClient.get<ConnectionsResponse>("/auth/connections").then((r) => r.data);
+}
+
+export function exportAccountData(): Promise<Blob> {
+  return apiClient
+    .post("/account/export", {}, { responseType: "blob" })
+    .then((r) => r.data as Blob);
+}
+
+// ── 15. Health (unauthenticated) ──────────────────────────────────────────────
 
 export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
   const root = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1").replace(

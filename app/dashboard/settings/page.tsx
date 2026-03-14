@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
 import {
   Camera,
+  Loader2,
   LogOut,
   Trash2,
 } from "lucide-react";
@@ -10,9 +12,96 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  useOrgProfile,
+  useConnections,
+  useUpdateProfile,
+  useUploadAvatar,
+  useRemoveAvatar,
+  useChangePassword,
+  useUpdateOrgProfile,
+  useExportAccountData,
+} from "@/hooks/use-settings-queries";
 
 export default function SettingsPage() {
-  const { logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const orgQuery = useOrgProfile();
+  const connectionsQuery = useConnections();
+  const updateProfile = useUpdateProfile();
+  const uploadAvatarMut = useUploadAvatar();
+  const removeAvatarMut = useRemoveAvatar();
+  const changePasswordMut = useChangePassword();
+  const updateOrg = useUpdateOrgProfile();
+  const exportData = useExportAccountData();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile form state
+  const [firstName, setFirstName] = useState(user?.first_name ?? "");
+  const [lastName, setLastName] = useState(user?.last_name ?? "");
+  const [jobTitle, setJobTitle] = useState(user?.job_title ?? "");
+  const [department, setDepartment] = useState(user?.department ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
+  const [tz, setTz] = useState(user?.timezone ?? "Africa/Lagos");
+
+  // Password form state
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+
+  // Org edit state
+  const [orgEditing, setOrgEditing] = useState(false);
+  const [orgForm, setOrgForm] = useState<Record<string, string>>({});
+
+  const org = orgQuery.data;
+  const connections = connectionsQuery.data?.connections ?? [];
+
+  const initials = [user?.first_name?.[0], user?.last_name?.[0]]
+    .filter(Boolean)
+    .join("")
+    .toUpperCase() || user?.display_name?.slice(0, 2).toUpperCase() || "??";
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadAvatarMut.mutate(file, {
+        onSuccess: () => refreshUser(),
+      });
+    }
+  };
+
+  const handleProfileSave = () => {
+    updateProfile.mutate(
+      {
+        first_name: firstName || undefined,
+        last_name: lastName || undefined,
+        job_title: jobTitle || undefined,
+        department: department || undefined,
+        phone: phone || undefined,
+        timezone: tz || undefined,
+      } as any,
+      { onSuccess: () => refreshUser() }
+    );
+  };
+
+  const handlePasswordChange = () => {
+    if (newPw !== confirmPw) return;
+    changePasswordMut.mutate(
+      { current: currentPw, next: newPw },
+      {
+        onSuccess: () => {
+          setCurrentPw("");
+          setNewPw("");
+          setConfirmPw("");
+        },
+      }
+    );
+  };
+
+  const handleOrgSave = () => {
+    updateOrg.mutate(orgForm, {
+      onSuccess: () => setOrgEditing(false),
+    });
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 md:space-y-12 pb-16">
@@ -24,21 +113,40 @@ export default function SettingsPage() {
       <div className="space-y-8 md:space-y-10">
         <Section title="Profile Photo" description="Update your avatar or business logo.">
           <div className="flex items-center gap-6">
-            <span className="relative inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm">
-              OA
-              <span className="absolute bottom-0 right-0 inline-flex h-8 w-8 cursor-pointer flex-col items-center justify-center rounded-full bg-brand p-1.5 text-white shadow-md transition-transform hover:scale-105">
+            <span className="relative inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm overflow-hidden">
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials
+              )}
+              <span
+                className="absolute bottom-0 right-0 inline-flex h-8 w-8 cursor-pointer flex-col items-center justify-center rounded-full bg-brand p-1.5 text-white shadow-md transition-transform hover:scale-105"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Camera className="h-4 w-4" />
               </span>
             </span>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             <div className="space-y-1.5">
               <p className="text-sm text-muted-foreground">
                 Upload a square image, minimum 200x200px. JPG or PNG only.
               </p>
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <Button variant="outline" className="rounded-full shadow-sm">
+                <Button
+                  variant="outline"
+                  className="rounded-full shadow-sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadAvatarMut.isPending}
+                >
+                  {uploadAvatarMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Upload New Photo
                 </Button>
-                <Button variant="ghost" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive">
+                <Button
+                  variant="ghost"
+                  className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => removeAvatarMut.mutate(undefined, { onSuccess: () => refreshUser() })}
+                  disabled={removeAvatarMut.isPending}
+                >
                   Remove
                 </Button>
               </div>
@@ -50,217 +158,173 @@ export default function SettingsPage() {
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">First Name</label>
-              <Input defaultValue="Oluwaseun" className="h-10 rounded-xl" />
+              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-10 rounded-xl" />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Last Name</label>
-              <Input defaultValue="Adeyemi" className="h-10 rounded-xl" />
+              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-10 rounded-xl" />
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
               <label className="text-xs font-medium text-muted-foreground">Email Address</label>
               <div className="relative">
-                <Input defaultValue="oluwaseun@acmecorp.com" className="h-10 rounded-xl pr-28" />
+                <Input defaultValue={user?.email ?? ""} disabled className="h-10 rounded-xl pr-28" />
                 <span className="absolute right-2 top-1/2 -translate-y-1/2">
                   <StatusBadge status="verified" label="Verified" />
                 </span>
               </div>
-              <button className="mt-1 text-sm font-medium text-brand hover:underline">
-                Change email address
-              </button>
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Job Title</label>
-              <Input defaultValue="Chief Financial Officer" className="h-10 rounded-xl" />
+              <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className="h-10 rounded-xl" />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Department</label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
-                <option>Finance</option>
-              </select>
+              <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-10 rounded-xl" />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Mobile Phone</label>
-              <Input defaultValue="+234 0801 234 5678" className="h-10 rounded-xl" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Office Phone</label>
-              <Input defaultValue="+234 0801 000 0000" className="h-10 rounded-xl" />
+              <label className="text-xs font-medium text-muted-foreground">Phone</label>
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10 rounded-xl" />
             </div>
 
-            <div className="space-y-1.5 md:col-span-2">
+            <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Timezone</label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
-                <option>Africa/Lagos (WAT, UTC+1)</option>
+              <select
+                value={tz}
+                onChange={(e) => setTz(e.target.value)}
+                className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+              >
+                <option value="Africa/Lagos">Africa/Lagos (WAT, UTC+1)</option>
+                <option value="Africa/Accra">Africa/Accra (GMT, UTC+0)</option>
+                <option value="Europe/London">Europe/London (GMT/BST)</option>
+                <option value="America/New_York">America/New York (EST/EDT)</option>
               </select>
             </div>
           </div>
           <div className="mt-5 flex justify-end">
-            <Button className="rounded-full bg-brand px-6 text-white shadow-sm transition-all hover:opacity-90">
+            <Button
+              className="rounded-full bg-brand px-6 text-white shadow-sm transition-all hover:opacity-90"
+              onClick={handleProfileSave}
+              disabled={updateProfile.isPending}
+            >
+              {updateProfile.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save Changes
             </Button>
           </div>
         </Section>
 
         <Section title="Business Information" description="Official company details and registration.">
-          <div className="grid gap-4 md:grid-cols-2">
-            {[
-              ["Business Name", "Acme Corp Ltd"],
-              ["Business Type", "Manufacturing"],
-              ["RC Number", "RC-1234567"],
-              ["Tax ID", "TIN-987654321"],
-              ["City", "Lagos"],
-              ["State", "Lagos State"],
-              ["Country", "Nigeria"],
-              ["Business Phone", "+234 801 000 0000"],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-sm shadow-sm">
-                <span className="text-xs font-medium text-muted-foreground">{label}</span>
-                <p className="mt-0.5 font-semibold text-foreground">{value}</p>
+          {orgQuery.isLoading ? (
+            <div className="py-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : orgEditing ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {["business_name", "business_type", "rc_number", "tax_id", "city", "state", "country", "phone"].map((field) => (
+                <div key={field} className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground capitalize">{field.replace(/_/g, " ")}</label>
+                  <Input
+                    className="h-10 rounded-xl"
+                    defaultValue={(org as any)?.[field] ?? ""}
+                    onChange={(e) => setOrgForm((prev) => ({ ...prev, [field]: e.target.value }))}
+                  />
+                </div>
+              ))}
+              <div className="md:col-span-2 mt-2 flex gap-3 justify-end">
+                <Button variant="ghost" className="rounded-full" onClick={() => setOrgEditing(false)}>Cancel</Button>
+                <Button className="rounded-full bg-brand text-white" onClick={handleOrgSave} disabled={updateOrg.isPending}>
+                  {updateOrg.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Save
+                </Button>
               </div>
-            ))}
-          </div>
-          <div className="mt-5">
-            <Button variant="outline" className="rounded-full shadow-sm">
-              Edit Business Information
-            </Button>
-          </div>
-        </Section>
-
-        <Section title="Dashboard Preferences" description="Customize how information is displayed to you.">
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Default Landing Page</label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
-                <option>Runs</option>
-              </select>
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Default Table Size</label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
-                <option>25 Rows</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Date Format</label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
-                <option>DD/MM/YYYY</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Display Currency</label>
-              <select className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
-                <option>₦ Nigerian Naira (NGN)</option>
-              </select>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  ["Business Name", org?.business_name],
+                  ["Business Type", org?.business_type],
+                  ["RC Number", org?.rc_number],
+                  ["Tax ID", org?.tax_id],
+                  ["City", org?.city],
+                  ["State", org?.state],
+                  ["Country", org?.country],
+                  ["Phone", org?.phone],
+                ].map(([label, value]) => (
+                  <div key={label as string} className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-sm shadow-sm">
+                    <span className="text-xs font-medium text-muted-foreground">{label}</span>
+                    <p className="mt-0.5 font-semibold text-foreground">{(value as string) || "—"}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5">
+                <Button variant="outline" className="rounded-full shadow-sm" onClick={() => setOrgEditing(true)}>
+                  Edit Business Information
+                </Button>
+              </div>
+            </>
+          )}
         </Section>
 
         <Section title="Connected Accounts" description="Manage single sign-on and external integrations.">
           <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-brand/30">
-              <div>
-                <p className="font-semibold text-foreground">Google</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">oluwaseun@acmecorp.com</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <StatusBadge status="active" label="Connected" />
-                <button className="text-sm font-medium text-destructive hover:underline">
-                  Disconnect
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-brand/30">
-              <div>
-                <p className="font-semibold text-foreground">Slack</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">Not connected</p>
-              </div>
-              <Button variant="outline" className="rounded-full shadow-sm">
-                Connect Slack
-              </Button>
-            </div>
+            {connectionsQuery.isLoading ? (
+              <div className="py-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
+            ) : (
+              connections.map((conn) => (
+                <div key={conn.provider} className="flex items-center justify-between rounded-xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-brand/30">
+                  <div>
+                    <p className="font-semibold text-foreground capitalize">{conn.provider}</p>
+                    <p className="mt-0.5 text-sm text-muted-foreground">{conn.connected ? conn.email : "Not connected"}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <StatusBadge status={conn.connected ? "active" : "pending"} label={conn.connected ? "Connected" : "Not connected"} />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </Section>
 
-        <Section title="Security & Authentication" description="Manage passwords, 2FA, and authorized sessions.">
+        <Section title="Security & Authentication" description="Manage passwords and authorized sessions.">
           <div className="space-y-8">
-            {/* Change Password */}
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-foreground">Change Password</h3>
               <div className="grid gap-3 sm:max-w-md">
-                <Input type="password" placeholder="Current Password" className="h-10 rounded-xl" />
-                <Input type="password" placeholder="New Password" className="h-10 rounded-xl" />
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-2/3 rounded-full bg-green-500" />
-                </div>
-                <Input type="password" placeholder="Confirm New Password" className="h-10 rounded-xl" />
-                <div className="mt-1 tracking-tight text-xs text-muted-foreground">
-                  <span className="mr-1 font-bold text-green-600">✓</span> Minimum 8 characters
-                  <br />
-                  <span className="mr-1 font-bold text-green-600">✓</span> Uppercase & Lowercase
-                  <br />
-                  <span className="mr-1 font-bold text-green-600">✓</span> Number & Special character
-                </div>
+                <Input
+                  type="password"
+                  placeholder="Current Password"
+                  className="h-10 rounded-xl"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder="New Password"
+                  className="h-10 rounded-xl"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  className="h-10 rounded-xl"
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                />
+                {newPw && confirmPw && newPw !== confirmPw && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
                 <div>
-                  <Button className="mt-2 rounded-full px-6 shadow-sm">Update Password</Button>
+                  <Button
+                    className="mt-2 rounded-full px-6 shadow-sm"
+                    onClick={handlePasswordChange}
+                    disabled={changePasswordMut.isPending || !currentPw || !newPw || newPw !== confirmPw}
+                  >
+                    {changePasswordMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Update Password
+                  </Button>
                 </div>
-              </div>
-            </div>
-
-            <hr className="border-border/60" />
-
-            {/* Two-Factor */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-foreground">Two-Factor Authentication</h3>
-              <div className="flex flex-col justify-between gap-4 rounded-xl border border-border bg-muted/20 p-4 shadow-sm sm:flex-row sm:items-center">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Authenticator App configured</p>
-                  <p className="text-xs text-muted-foreground">
-                    Your account is highly secure. Last verified 2 days ago.
-                  </p>
-                </div>
-                <Button variant="outline" className="shrink-0 rounded-full shadow-sm">
-                  Manage 2FA
-                </Button>
-              </div>
-            </div>
-
-            <hr className="border-border/60" />
-
-            {/* Active Sessions */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-foreground">Active Sessions</h3>
-              <div className="space-y-3">
-                <div className="flex flex-col justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-semibold">Chrome on macOS</p>
-                    <p className="text-xs text-muted-foreground">
-                      Lagos, Nigeria · Current session · 105.112.44.201
-                    </p>
-                  </div>
-                  <StatusBadge status="active" label="Active Now" />
-                </div>
-                <div className="flex flex-col justify-between gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-semibold">Safari on iPhone</p>
-                    <p className="text-xs text-muted-foreground">
-                      Lagos, Nigeria · Last active 3 hours ago · 105.112.44.198
-                    </p>
-                  </div>
-                  <button className="shrink-0 text-sm font-bold text-destructive hover:underline">
-                    Revoke Access
-                  </button>
-                </div>
-              </div>
-              <div className="pt-2">
-                <Button
-                  variant="outline"
-                  className="border-destructive/30 text-destructive hover:bg-destructive/10 rounded-full"
-                >
-                  Sign out of all other sessions
-                </Button>
               </div>
             </div>
           </div>
@@ -272,10 +336,16 @@ export default function SettingsPage() {
               <div>
                 <p className="font-bold text-foreground">Export All Data</p>
                 <p className="mt-0.5 text-sm text-muted-foreground">
-                  Download your workspace data in CSV/JSON format.
+                  Download your workspace data in JSON format.
                 </p>
               </div>
-              <Button variant="outline" className="shrink-0 rounded-full">
+              <Button
+                variant="outline"
+                className="shrink-0 rounded-full"
+                onClick={() => exportData.mutate()}
+                disabled={exportData.isPending}
+              >
+                {exportData.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Export Data
               </Button>
             </div>
