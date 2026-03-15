@@ -83,7 +83,9 @@ export function createRun(payload: CreateRunPayload): Promise<ApiRunRecord> {
 }
 
 export function listRuns(): Promise<ApiRunRecord[]> {
-  return apiClient.get<ApiRunRecord[]>("/runs").then((r) => r.data);
+  return apiClient
+    .get<{ runs: ApiRunRecord[] }>("/runs")
+    .then((r) => r.data.runs);
 }
 
 export function getRun(runId: string): Promise<ApiRunRecord> {
