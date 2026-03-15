@@ -41,6 +41,7 @@ import type {
   UploadCandidatesResponse,
   User,
 } from "./api-types";
+import type { StepSummary, StepDetail } from "./event-types";
 
 // ── 1. Auth ──────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,20 @@ export function getRun(runId: string): Promise<ApiRunRecord> {
 
 export function getRunStatus(runId: string): Promise<RunStatusResponse> {
   return apiClient.get<RunStatusResponse>(`/runs/${runId}/status`).then((r) => r.data);
+}
+
+export function getRunSteps(runId: string): Promise<{ run_id: string; steps: StepSummary[] }> {
+  return apiClient.get<{ run_id: string; steps: StepSummary[] }>(`/runs/${runId}/steps`).then((r) => r.data);
+}
+
+export function getRunStepDetail(runId: string, stepId: string): Promise<StepDetail> {
+  return apiClient.get<StepDetail>(`/runs/${runId}/steps/${stepId}`).then((r) => r.data);
+}
+
+/** Returns the SSE stream URL for a run (used with fetch streaming, not Axios) */
+export function getRunEventsStreamUrl(runId: string, lastSeq: number = 0): string {
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+  return `${base}/runs/${runId}/events/stream?last_seq=${lastSeq}`;
 }
 
 // ── 4. Candidates ────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, ShieldCheck, ShieldAlert, SlidersHorizontal, Users } from "lucide-react";
+import { ChevronDown, Loader2, ShieldCheck, ShieldAlert, SlidersHorizontal, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
@@ -34,6 +34,7 @@ function approvalBadge(status: string) {
 export default function ApprovalsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [expandedRiskId, setExpandedRiskId] = useState<string | null>(null);
 
   const apiFilters: ApprovalFilters = {
     approval_status: statusFilter || undefined,
@@ -135,31 +136,58 @@ export default function ApprovalsPage() {
                   </td>
                 </tr>
               ) : (
-                approvals.map((a) => (
-                  <tr key={a.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-3">
-                      <p className="font-medium text-foreground">{a.beneficiary_name}</p>
-                      <p className="text-xs text-muted-foreground">{a.account_number} · {a.institution_code}</p>
-                    </td>
-                    <td className="px-6 py-3 font-semibold text-foreground">{formatCurrency(a.amount)}</td>
-                    <td className="px-6 py-3 text-muted-foreground">
-                      {a.risk_score != null ? a.risk_score.toFixed(2) : "—"}
-                    </td>
-                    <td className="px-6 py-3">
-                      <StatusBadge
-                        status={a.risk_decision === "allow" ? "completed" : a.risk_decision === "block" ? "failed" : "pending"}
-                        label={a.risk_decision ?? "—"}
-                      />
-                    </td>
-                    <td className="px-6 py-3">
-                      <StatusBadge status={approvalBadge(a.approval_status)} label={a.approval_status} />
-                    </td>
-                    <td className="px-6 py-3 text-xs text-muted-foreground max-w-[200px] truncate">
-                      {a.run_objective ?? a.run_id.slice(0, 8)}
-                    </td>
-                    <td className="px-6 py-3 text-muted-foreground">{formatDateTime(a.created_at)}</td>
-                  </tr>
-                ))
+                approvals.map((a) => {
+                  const hasReasons = a.risk_reasons && a.risk_reasons.length > 0;
+                  const isExpanded = expandedRiskId === a.id;
+                  return (
+                    <tr key={a.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-6 py-3">
+                        <p className="font-medium text-foreground">{a.beneficiary_name}</p>
+                        <p className="text-xs text-muted-foreground">{a.account_number} · {a.institution_code}</p>
+                      </td>
+                      <td className="px-6 py-3 font-semibold text-foreground">{formatCurrency(a.amount)}</td>
+                      <td className="px-6 py-3">
+                        <div>
+                          <span className="text-muted-foreground">
+                            {a.risk_score != null ? a.risk_score.toFixed(2) : "—"}
+                          </span>
+                          {hasReasons && (
+                            <button
+                              type="button"
+                              onClick={() => setExpandedRiskId(isExpanded ? null : a.id)}
+                              className="ml-2 inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              {a.risk_reasons!.length}
+                            </button>
+                          )}
+                        </div>
+                        {isExpanded && a.risk_reasons && (
+                          <ul className="mt-1.5 space-y-0.5 pl-2">
+                            {a.risk_reasons.map((reason, i) => (
+                              <li key={i} className="text-[11px] text-muted-foreground list-disc ml-2">
+                                {reason}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
+                      <td className="px-6 py-3">
+                        <StatusBadge
+                          status={a.risk_decision === "allow" ? "completed" : a.risk_decision === "block" ? "failed" : "pending"}
+                          label={a.risk_decision ?? "—"}
+                        />
+                      </td>
+                      <td className="px-6 py-3">
+                        <StatusBadge status={approvalBadge(a.approval_status)} label={a.approval_status} />
+                      </td>
+                      <td className="px-6 py-3 text-xs text-muted-foreground max-w-[200px] truncate">
+                        {a.run_objective ?? a.run_id.slice(0, 8)}
+                      </td>
+                      <td className="px-6 py-3 text-muted-foreground">{formatDateTime(a.created_at)}</td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

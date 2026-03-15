@@ -169,6 +169,8 @@ export interface Candidate {
   risk_score: number | null;
   risk_reasons: string[] | null;
   risk_decision: string | null;
+  lookup_account_name: string | null;
+  lookup_match_score: number | null;
   approval_status: CandidateApprovalStatus;
   execution_status: string;
   approved_by: string | null;

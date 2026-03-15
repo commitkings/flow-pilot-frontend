@@ -96,8 +96,18 @@ function mapRiskDecision(rd: string): PayoutCandidate["decision"] {
   return "review";
 }
 
+function mapLookupStatus(c: Candidate): PayoutCandidate["lookupStatus"] {
+  if (!c.lookup_account_name) return "failed";
+  if (c.lookup_match_score !== null && c.lookup_match_score < 0.8) return "mismatch";
+  return "verified";
+}
+
 /** Maps a snake_case API candidate to the camelCase shape used in UI components */
 export function adaptCandidate(c: Candidate): PayoutCandidate {
+  const matchPct = c.lookup_match_score !== null
+    ? Math.round(c.lookup_match_score * 100)
+    : 0;
+
   return {
     id: c.id,
     beneficiaryName: c.beneficiary_name,
@@ -107,11 +117,11 @@ export function adaptCandidate(c: Candidate): PayoutCandidate {
     purpose: c.purpose ?? "",
     riskScore: c.risk_score ?? 0,
     riskReasons: c.risk_reasons ?? [],
-    lookupStatus: "verified",
+    lookupStatus: mapLookupStatus(c),
     decision: mapRiskDecision(c.risk_decision ?? "review"),
     approvalStatus: approvalStatusMap[c.approval_status],
-    similarity: 1,
+    similarity: matchPct,
     nameOnFile: c.beneficiary_name,
-    returnedName: c.beneficiary_name,
+    returnedName: c.lookup_account_name ?? c.beneficiary_name,
   };
 }
