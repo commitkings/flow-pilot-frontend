@@ -1,24 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
+  ChevronDown,
   FileSearch,
   Loader2,
+  Radio,
   ShieldAlert,
   TrendingUp,
   Zap,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { AgentTimeline } from "@/components/runs/agent-timeline";
+import { AgentThinking } from "@/components/runs/agent-thinking";
 import type { AuditEntry, TransactionSummary } from "@/lib/api-types";
-import { useRun, useRunReport } from "@/hooks/use-run-queries";
+import { LIVE_RUN_STATUSES } from "@/lib/event-types";
+import { useRun, useRunReport, useRunSteps, useInvalidateRunQueries } from "@/hooks/use-run-queries";
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
+import { useRunEvents } from "@/hooks/use-run-events";
 
 type BadgeStatus =
   | "pending"
@@ -95,7 +102,14 @@ function transactionStatus(status: string): "pending" | "completed" | "failed" {
   return "completed";
 }
 
+const RISK_BORDER_COLORS: Record<string, string> = {
+  allow: "border-emerald-300 dark:border-emerald-800",
+  review: "border-amber-300 dark:border-amber-800",
+  block: "border-red-300 dark:border-red-800",
+};
+
 const TABS = [
+  { key: "activity", label: "Agent Activity" },
   { key: "transactions", label: "Transactions" },
   { key: "candidates", label: "Candidates" },
   { key: "audit", label: "Audit Report" },
@@ -104,7 +118,7 @@ const TABS = [
 export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("transactions");
+  const [activeTab, setActiveTab] = useState("activity");
 
   const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
   const { data: transactionsResponse, isLoading: loadingTransactions, isError: transactionsError } =
@@ -112,6 +126,20 @@ export default function RunDetailPage() {
   const { data: candidates = [], isLoading: loadingCandidates } = useCandidates(id);
   const { data: auditReport, isLoading: loadingReport, isError: reportError } =
     useRunReport(id, activeTab === "audit");
+
+  // Real-time pipeline data (live for active runs, replay for completed/failed)
+  const isLiveRun = LIVE_RUN_STATUSES.has(run?.status ?? "");
+  const hasStarted = !!run && run.status !== "pending";
+  const { data: steps = [], isLoading: loadingSteps } = useRunSteps(id, run?.status);
+  const { events, isLive } = useRunEvents(id, hasStarted);
+  const invalidate = useInvalidateRunQueries(id);
+
+  // Invalidate queries when SSE events indicate state changes
+  useEffect(() => {
+    if (events.length === 0) return;
+    const latest = events[events.length - 1];
+    invalidate(latest);
+  }, [events.length, events, invalidate]);
 
   if (loadingRun) {
     return (
@@ -161,6 +189,12 @@ export default function RunDetailPage() {
               Run <span className="font-mono text-muted-foreground">{truncateRunId(id)}</span>
             </h1>
             <StatusBadge status={status} label={statusLabel} />
+            {isLiveRun && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                <Radio className="h-3 w-3 animate-pulse" />
+                Live
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-xl">{run.objective}</p>
         </div>
@@ -234,18 +268,58 @@ export default function RunDetailPage() {
               key={key}
               type="button"
               onClick={() => setActiveTab(key)}
-              className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${
-                activeTab === key
+              className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${activeTab === key
                   ? "bg-background text-foreground border border-b-transparent border-border -mb-px"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               {label}
+              {key === "activity" && isLive && (
+                <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              )}
             </button>
           ))}
         </div>
 
         <div className="p-6">
+          {/* Agent Activity */}
+          {activeTab === "activity" && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                    Pipeline Steps
+                  </p>
+                  {!isLiveRun && events.length > 0 && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Replay
+                    </span>
+                  )}
+                </div>
+                {loadingSteps ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <AgentTimeline steps={steps} />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                    Agent Reasoning
+                  </p>
+                  {events.length > 0 && (
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      {events.length} events
+                    </span>
+                  )}
+                </div>
+                <AgentThinking events={events} className="max-h-[500px]" />
+              </div>
+            </div>
+          )}
+
           {/* Transactions */}
           {activeTab === "transactions" && (
             <div className="overflow-x-auto">
@@ -281,7 +355,7 @@ export default function RunDetailPage() {
             </div>
           )}
 
-          {/* Candidates */}
+          {/* Candidates (enhanced B8) */}
           {activeTab === "candidates" && (
             <div className="grid gap-4 lg:grid-cols-2">
               {loadingCandidates ? (
@@ -293,24 +367,12 @@ export default function RunDetailPage() {
                   No payout candidates have been attached to this run.
                 </p>
               ) : (
-                candidates.map((candidate) => (
-                  <div key={candidate.id} className="rounded-xl border border-border bg-background p-4">
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div>
-                        <p className="font-semibold text-foreground">{candidate.beneficiaryName}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {candidate.institution} · {candidate.accountNumber.slice(0, 3)}***{candidate.accountNumber.slice(-3)}
-                        </p>
-                      </div>
-                      <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
-                    </div>
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>Amount: <span className="font-semibold text-foreground">{formatCurrency(candidate.amount)}</span></span>
-                      <span>Risk: <span className="font-semibold text-foreground">{candidate.riskScore === null ? "—" : candidate.riskScore.toFixed(2)}</span></span>
-                      <span>Purpose: <span className="text-foreground">{candidate.purpose || "—"}</span></span>
-                    </div>
-                  </div>
-                ))
+                candidates.map((candidate) => {
+                  const borderColor = RISK_BORDER_COLORS[candidate.decision] ?? "border-border";
+                  return (
+                    <CandidateCard key={candidate.id} candidate={candidate} borderColor={borderColor} />
+                  );
+                })
               )}
             </div>
           )}
@@ -390,13 +452,13 @@ export default function RunDetailPage() {
                                 <p className="mt-0.5 text-xs text-muted-foreground">
                                   {typeof entry.detail === "object"
                                     ? Object.entries(entry.detail)
-                                        .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
-                                        .map(([k, v]) =>
-                                          typeof v === "object"
-                                            ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
-                                            : `${k.replaceAll("_", " ")}: ${v}`
-                                        )
-                                        .join(" · ")
+                                      .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
+                                      .map(([k, v]) =>
+                                        typeof v === "object"
+                                          ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
+                                          : `${k.replaceAll("_", " ")}: ${v}`
+                                      )
+                                      .join(" · ")
                                     : String(entry.detail)}
                                 </p>
                               )}
@@ -416,6 +478,95 @@ export default function RunDetailPage() {
     </div>
   );
 }
+
+/* ── Candidate Card (B8) ────────────────────────────────────── */
+
+function CandidateCard({
+  candidate,
+  borderColor,
+}: {
+  candidate: {
+    id: string;
+    beneficiaryName: string;
+    institution: string;
+    accountNumber: string;
+    amount: number;
+    purpose: string;
+    riskScore: number;
+    riskReasons: string[];
+    decision: string;
+    lookupStatus: string;
+    similarity: number;
+    nameOnFile: string;
+    returnedName: string;
+  };
+  borderColor: string;
+}) {
+  const [showReasons, setShowReasons] = useState(false);
+
+  return (
+    <div className={cn("rounded-xl border-2 bg-background p-4", borderColor)}>
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div>
+          <p className="font-semibold text-foreground">{candidate.beneficiaryName}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {candidate.institution} · {candidate.accountNumber.slice(0, 3)}***{candidate.accountNumber.slice(-3)}
+          </p>
+        </div>
+        <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
+      </div>
+
+      <div className="flex gap-4 text-xs text-muted-foreground flex-wrap">
+        <span>Amount: <span className="font-semibold text-foreground">{formatCurrency(candidate.amount)}</span></span>
+        <span>Risk: <span className="font-semibold text-foreground">{candidate.riskScore === null ? "—" : candidate.riskScore.toFixed(2)}</span></span>
+        <span>Purpose: <span className="text-foreground">{candidate.purpose || "—"}</span></span>
+      </div>
+
+      {/* Lookup info */}
+      {candidate.lookupStatus === "verified" && candidate.returnedName && (
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+            Verified
+          </span>
+          <span>{candidate.returnedName}</span>
+          {candidate.similarity > 0 && candidate.similarity < 100 && (
+            <span className="text-muted-foreground/60">({candidate.similarity}% match)</span>
+          )}
+        </div>
+      )}
+
+      {/* Risk reasons */}
+      {candidate.riskReasons.length > 0 && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowReasons(!showReasons)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronDown
+              className={cn(
+                "h-3 w-3 transition-transform",
+                showReasons && "rotate-180",
+              )}
+            />
+            {candidate.riskReasons.length} risk reason{candidate.riskReasons.length !== 1 ? "s" : ""}
+          </button>
+          {showReasons && (
+            <ul className="mt-1.5 space-y-1 pl-4">
+              {candidate.riskReasons.map((reason, i) => (
+                <li key={i} className="text-xs text-muted-foreground list-disc">
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Shared sub-components ──────────────────────────────────── */
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
