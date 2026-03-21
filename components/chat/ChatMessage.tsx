@@ -5,16 +5,12 @@ import { cn } from "@/lib/utils";
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
-  intent?: string | null;
-  confidence?: number | null;
   timestamp?: string;
 }
 
 export function ChatMessage({
   role,
   content,
-  intent,
-  confidence,
   timestamp,
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -35,21 +31,7 @@ export function ChatMessage({
         )}
       >
         <p className="text-sm whitespace-pre-wrap">{content}</p>
-        
-        {/* Intent badge for assistant messages */}
-        {!isUser && intent && (
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            <span className="bg-background/50 text-muted-foreground px-2 py-0.5 rounded-full">
-              {intent}
-            </span>
-            {confidence !== null && confidence !== undefined && (
-              <span className="text-muted-foreground">
-                {Math.round(confidence * 100)}% confident
-              </span>
-            )}
-          </div>
-        )}
-        
+
         {/* Timestamp */}
         {timestamp && (
           <p

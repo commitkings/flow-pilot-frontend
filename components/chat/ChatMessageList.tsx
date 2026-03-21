@@ -35,8 +35,6 @@ export function ChatMessageList({ messages, isLoading }: ChatMessageListProps) {
           key={msg.id}
           role={msg.role}
           content={msg.content}
-          intent={msg.intent}
-          confidence={msg.confidence}
           timestamp={msg.created_at}
         />
       ))}
