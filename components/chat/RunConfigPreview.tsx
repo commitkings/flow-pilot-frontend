@@ -19,6 +19,7 @@ interface SlotConfig {
   key: string;
   label: string;
   required: boolean;
+  aliases?: string[];
   format?: (value: unknown) => string;
 }
 
@@ -30,15 +31,17 @@ const SLOT_CONFIGS: SlotConfig[] = [
     format: (v) => String(v || ""),
   },
   {
-    key: "date_range_start",
+    key: "date_from",
     label: "Start Date",
     required: false,
+    aliases: ["date_range_start"],
     format: (v) => (v ? new Date(String(v)).toLocaleDateString() : ""),
   },
   {
-    key: "date_range_end",
+    key: "date_to",
     label: "End Date",
     required: false,
+    aliases: ["date_range_end"],
     format: (v) => (v ? new Date(String(v)).toLocaleDateString() : ""),
   },
   {
@@ -47,9 +50,9 @@ const SLOT_CONFIGS: SlotConfig[] = [
     required: false,
     format: (v) => {
       const val = Number(v);
-      if (val <= 0.3) return "Low";
-      if (val <= 0.6) return "Medium";
-      return "High";
+      if (val <= 0.3) return `${val} (Low)`;
+      if (val <= 0.6) return `${val} (Medium)`;
+      return `${val} (High)`;
     },
   },
   {
@@ -65,10 +68,13 @@ const SLOT_CONFIGS: SlotConfig[] = [
         : "",
   },
   {
-    key: "recipient_filter",
-    label: "Recipient Filter",
+    key: "candidates",
+    label: "Candidates",
     required: false,
-    format: (v) => (typeof v === "object" ? JSON.stringify(v) : String(v || "")),
+    format: (v) => {
+      if (Array.isArray(v)) return `${v.length} beneficiar${v.length === 1 ? "y" : "ies"}`;
+      return String(v || "");
+    },
   },
 ];
 
@@ -97,7 +103,7 @@ export function RunConfigPreview({ slots, readOnly = true }: RunConfigPreviewPro
         ) : (
           <div className="space-y-4">
             {SLOT_CONFIGS.map((config) => {
-              const value = slots[config.key];
+              const value = slots[config.key] ?? (config.aliases ? config.aliases.reduce<unknown>((acc, alias) => acc ?? slots[alias], undefined) : undefined);
               const hasValue = value !== undefined && value !== null && value !== "";
               const formattedValue = hasValue ? config.format?.(value) || String(value) : null;
 

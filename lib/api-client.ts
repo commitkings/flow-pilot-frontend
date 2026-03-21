@@ -373,3 +373,12 @@ export async function abandonConversation(
   );
   return data;
 }
+
+export async function deleteConversation(
+  conversationId: string,
+): Promise<{ deleted: boolean }> {
+  const { data } = await apiClient.delete<{ deleted: boolean }>(
+    `/chat/conversations/${conversationId}`,
+  );
+  return data;
+}

@@ -6,6 +6,7 @@ import {
   chatSend,
   confirmConversation,
   abandonConversation,
+  deleteConversation,
 } from "@/lib/api-client";
 import {
   ApiError,
@@ -97,6 +98,28 @@ export function useAbandonConversation() {
         err instanceof ApiError
           ? err.message
           : "Failed to abandon conversation.";
+      toast.error(message);
+    },
+  });
+}
+
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) => deleteConversation(conversationId),
+    onSuccess: (_, conversationId) => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.removeQueries({
+        queryKey: ["conversation", conversationId],
+      });
+      toast.success("Conversation deleted");
+    },
+    onError: (err) => {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Failed to delete conversation.";
       toast.error(message);
     },
   });

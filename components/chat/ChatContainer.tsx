@@ -125,7 +125,7 @@ export function ChatContainer({
   return (
     <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card">
       <div className="p-3 border-b bg-muted/30">
-        <h3 className="font-medium text-sm">Chat with FlowPilot</h3>
+        <h3 className="font-medium text-sm">FlowPilot AI</h3>
         <p className="text-xs text-muted-foreground">
           Describe your payout run in natural language
         </p>

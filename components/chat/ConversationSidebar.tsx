@@ -5,7 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { MessageSquare, Trash2, ChevronRight, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useConversations } from "@/hooks/use-chat-queries";
-import { useAbandonConversation } from "@/hooks/use-chat-mutations";
+import { useAbandonConversation, useDeleteConversation } from "@/hooks/use-chat-mutations";
 import type { ConversationSummary } from "@/lib/api-types";
 
 interface ConversationSidebarProps {
@@ -30,16 +30,23 @@ export function ConversationSidebar({
 }: ConversationSidebarProps) {
   const { data, isLoading, error } = useConversations(businessId);
   const abandonMutation = useAbandonConversation();
+  const deleteMutation = useDeleteConversation();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleDelete = async (e: React.MouseEvent, conversationId: string) => {
+  const handleDelete = async (e: React.MouseEvent, conversation: ConversationSummary) => {
     e.stopPropagation();
     if (deletingId) return;
 
-    setDeletingId(conversationId);
+    setDeletingId(conversation.id);
     try {
-      await abandonMutation.mutateAsync(conversationId);
-      if (conversationId === activeConversationId) {
+      if (conversation.status === "abandoned") {
+        // Permanently delete abandoned conversations
+        await deleteMutation.mutateAsync(conversation.id);
+      } else {
+        // Abandon active/gathering conversations
+        await abandonMutation.mutateAsync(conversation.id);
+      }
+      if (conversation.id === activeConversationId) {
         onNewConversation();
       }
     } finally {
@@ -107,7 +114,7 @@ export function ConversationSidebar({
                     isActive={conv.id === activeConversationId}
                     isDeleting={deletingId === conv.id}
                     onSelect={() => onSelectConversation(conv)}
-                    onDelete={(e) => handleDelete(e, conv.id)}
+                    onDelete={(e) => handleDelete(e, conv)}
                     previewText={getPreviewText(conv)}
                   />
                 ))}
@@ -127,7 +134,7 @@ export function ConversationSidebar({
                     isActive={conv.id === activeConversationId}
                     isDeleting={deletingId === conv.id}
                     onSelect={() => onSelectConversation(conv)}
-                    onDelete={(e) => handleDelete(e, conv.id)}
+                    onDelete={(e) => handleDelete(e, conv)}
                     previewText={getPreviewText(conv)}
                   />
                 ))}
