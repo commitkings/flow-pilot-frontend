@@ -34,6 +34,68 @@ function isDisplayableEvent(e: RunEvent): boolean {
   return isReasoningEvent(e) || isProgressEvent(e) || isStepBoundary(e);
 }
 
+const AGENT_THINKING_LABELS: Record<string, string> = {
+  planner: "Generating execution plan...",
+  reconciliation: "Analyzing transactions...",
+  risk: "Evaluating risk factors...",
+  execution: "Processing payouts...",
+  audit: "Compiling audit report...",
+};
+
+function humanizeThinking(raw: string, agentType: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return trimmed;
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return AGENT_THINKING_LABELS[agentType] ?? "Processing...";
+  }
+
+  if (agentType === "planner" && parsed.plan_steps) {
+    const steps = parsed.plan_steps as Array<{ description?: string; agent_type?: string }>;
+    const lines = steps.map(
+      (s, i) => `${i + 1}. ${s.description ?? s.agent_type ?? "Step"}`
+    );
+    const summary = parsed.summary ? `${parsed.summary}\n\n` : "";
+    return `${summary}${lines.join("\n")}`;
+  }
+
+  if (agentType === "risk") {
+    const parts: string[] = [];
+    if (parsed.risk_score !== undefined) {
+      const decision = parsed.risk_decision ?? "pending";
+      parts.push(`Risk score: ${parsed.risk_score} — ${decision}`);
+    }
+    if (Array.isArray(parsed.risk_reasons) && parsed.risk_reasons.length > 0) {
+      for (const reason of parsed.risk_reasons as string[]) {
+        parts.push(`• ${reason}`);
+      }
+    }
+    if (Array.isArray(parsed.candidates)) {
+      const c = parsed.candidates as Array<{ beneficiary_name?: string; risk_score?: number; risk_decision?: string }>;
+      for (const cand of c) {
+        const name = cand.beneficiary_name ?? "Candidate";
+        const score = cand.risk_score !== undefined ? ` — score: ${cand.risk_score}` : "";
+        const dec = cand.risk_decision ? ` (${cand.risk_decision})` : "";
+        parts.push(`${name}${score}${dec}`);
+      }
+    }
+    return parts.length > 0 ? parts.join("\n") : "Risk analysis completed.";
+  }
+
+  if (agentType === "audit" && typeof parsed.executive_summary === "string") {
+    return parsed.executive_summary;
+  }
+
+  if (typeof parsed.summary === "string") return parsed.summary;
+  if (typeof parsed.executive_summary === "string") return parsed.executive_summary;
+  if (typeof parsed.description === "string") return parsed.description;
+
+  return AGENT_THINKING_LABELS[agentType] ?? "Processing completed.";
+}
+
 function AgentBadge({ agentType }: { agentType: string }) {
   const colors = AGENT_COLORS[agentType] ?? {
     bg: "bg-gray-100 dark:bg-gray-900/30",
@@ -108,14 +170,22 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
           const label = AGENT_LABELS[agentType] ?? agentType;
 
           if (event.type === "step_started") {
+            const sp = p as StepStartedPayload;
             return (
-              <div key={event.seq} className="flex items-center gap-2 py-1">
-                <div className="h-px flex-1 bg-border" />
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
-                  <Play className="h-2.5 w-2.5" />
-                  {label} started
+              <div key={event.seq} className="py-1 space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                    <Play className="h-2.5 w-2.5" />
+                    {label} started
+                  </div>
+                  <div className="h-px flex-1 bg-border" />
                 </div>
-                <div className="h-px flex-1 bg-border" />
+                {sp.description && (
+                  <p className="text-center text-[10px] text-muted-foreground/60">
+                    {sp.description}
+                  </p>
+                )}
               </div>
             );
           }
@@ -167,13 +237,8 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
                 {p.token_usage && <TokenBadge usage={p.token_usage} />}
               </div>
               <p className="text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                {p.thinking}
+                {humanizeThinking(p.thinking, p.agent_type)}
               </p>
-              {p.prompt_summary && (
-                <p className="mt-1.5 text-[10px] text-muted-foreground/60 line-clamp-2">
-                  Prompt: {p.prompt_summary}
-                </p>
-              )}
             </div>
           );
         }
