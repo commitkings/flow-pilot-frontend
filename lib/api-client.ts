@@ -18,12 +18,17 @@
 
 import apiClient from "./axios";
 import type {
+  AbandonConversationResponse,
   ApiRunRecord,
   ApproveRejectPayload,
   ApproveResponse,
   ApprovalsQueueResponse,
   AuditListResponse,
   AuthResponse,
+  ChatSendResponse,
+  ConfirmRunResponse,
+  ConversationDetail,
+  ConversationsListResponse,
   RejectResponse,
   AuditReport,
   CandidatesResponse,
@@ -316,4 +321,64 @@ export async function fetchHealth(): Promise<{ payout_mode: string; status: stri
   );
   const res = await fetch(`${root}/health`);
   return res.json() as Promise<{ payout_mode: string; status: string }>;
+}
+
+// ── 16. Chat / Conversations ─────────────────────────────────────────────────
+
+export async function chatSend(
+  message: string,
+  businessId: string,
+  conversationId?: string,
+): Promise<ChatSendResponse> {
+  const { data } = await apiClient.post<ChatSendResponse>("/chat/send", {
+    message,
+    business_id: businessId,
+    ...(conversationId && { conversation_id: conversationId }),
+  });
+  return data;
+}
+
+export async function listConversations(
+  businessId: string,
+  limit = 20,
+  offset = 0,
+): Promise<ConversationsListResponse> {
+  const { data } = await apiClient.get<ConversationsListResponse>("/chat/conversations", {
+    params: { business_id: businessId, limit, offset },
+  });
+  return data;
+}
+
+export async function getConversation(conversationId: string): Promise<ConversationDetail> {
+  const { data } = await apiClient.get<ConversationDetail>(`/chat/conversations/${conversationId}`);
+  return data;
+}
+
+export async function confirmConversation(
+  conversationId: string,
+  slotOverrides?: Record<string, unknown>,
+): Promise<ConfirmRunResponse> {
+  const { data } = await apiClient.post<ConfirmRunResponse>(
+    `/chat/conversations/${conversationId}/confirm`,
+    slotOverrides ? { slot_overrides: slotOverrides } : {},
+  );
+  return data;
+}
+
+export async function abandonConversation(
+  conversationId: string,
+): Promise<AbandonConversationResponse> {
+  const { data } = await apiClient.post<AbandonConversationResponse>(
+    `/chat/conversations/${conversationId}/abandon`,
+  );
+  return data;
+}
+
+export async function deleteConversation(
+  conversationId: string,
+): Promise<{ deleted: boolean }> {
+  const { data } = await apiClient.delete<{ deleted: boolean }>(
+    `/chat/conversations/${conversationId}`,
+  );
+  return data;
 }
