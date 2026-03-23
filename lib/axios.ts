@@ -11,7 +11,7 @@ import { getToken, clearToken } from "./token-storage";
 import { ApiError } from "./api-types";
 
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1",
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 

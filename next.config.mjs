@@ -1,7 +1,8 @@
-import type { NextConfig } from "next";
 import path from "path";
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: "standalone",
   turbopack: {
     root: process.cwd(),
     resolveAlias: {

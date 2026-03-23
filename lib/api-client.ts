@@ -52,7 +52,7 @@ import type { StepSummary, StepDetail } from "./event-types";
 
 /** URL to redirect the browser to for Google OAuth (no HTTP call needed) */
 export function googleLoginUrl(): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
   return `${base}/auth/google/login`;
 }
 
@@ -112,7 +112,7 @@ export function getRunStepDetail(runId: string, stepId: string): Promise<StepDet
 
 /** Returns the SSE stream URL for a run (used with fetch streaming, not Axios) */
 export function getRunEventsStreamUrl(runId: string, lastSeq: number = 0): string {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
   return `${base}/runs/${runId}/events/stream?last_seq=${lastSeq}`;
 }
 
@@ -315,7 +315,7 @@ export function exportAccountData(): Promise<Blob> {
 // ── 15. Health (unauthenticated) ──────────────────────────────────────────────
 
 export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
-  const root = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1").replace(
+  const root = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1").replace(
     "/api/v1",
     "",
   );
