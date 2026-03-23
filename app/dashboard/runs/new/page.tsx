@@ -1,21 +1,15 @@
 "use client";
 
-import { useMemo, useRef, useState, useCallback } from "react";
-import { ArrowLeft, Download, MessageSquare, Plus, Rocket, Settings2, Trash2, Upload, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowLeft, Download, Plus, Rocket, Trash2, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, TextareaInput, DateRangeInput, SelectInput } from "@/components/ui/form-fields";
 import { naira } from "@/lib/mock-data";
 import { useInstitutions } from "@/hooks/use-institutions";
-import type { CreateRunPayload, Institution } from "@/lib/api-types";
+import type { Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 import { useCreateRun } from "@/hooks/use-run-mutations";
-import { ChatContainer, RunConfigPreview, ConversationSidebar } from "@/components/chat";
-import { useConfirmRun, useAbandonConversation } from "@/hooks/use-chat-mutations";
-import type { ConversationSummary } from "@/lib/api-types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-type Mode = "chat" | "form";
 
 type Recipient = {
   id: string;
@@ -61,19 +55,7 @@ function emptyRow(values: Partial<Recipient> = {}): Recipient {
 export default function NewRunPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const businessId = user?.memberships?.[0]?.business_id;
 
-  // Mode toggle: "chat" (default) or "form"
-  const [mode, setMode] = useState<Mode>("chat");
-
-  // Chat state
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [extractedSlots, setExtractedSlots] = useState<Record<string, unknown>>({});
-  const [shouldConfirm, setShouldConfirm] = useState(false);
-  const [runConfig, setRunConfig] = useState<CreateRunPayload | null>(null);
-  const [confirmError, setConfirmError] = useState<string | null>(null);
-
-  // Form state (existing)
   const { data: institutionsData, isLoading: loadingInstitutions, isError: institutionsIsError } = useInstitutions(true);
   const institutionOptions = useMemo(
     () => buildInstitutionOptions(institutionsData?.data ?? []),
@@ -93,84 +75,7 @@ export default function NewRunPage() {
   const csvRef = useRef<HTMLInputElement>(null);
 
   const createRun = useCreateRun((runId) => router.push(`/dashboard/runs/${runId}`));
-  const confirmRun = useConfirmRun();
-  const abandonConversation = useAbandonConversation();
 
-  // Chat callbacks
-  const handleSlotChange = useCallback((slots: Record<string, unknown>) => {
-    setExtractedSlots(slots);
-  }, []);
-
-  const handleShouldConfirmChange = useCallback((value: boolean) => {
-    setShouldConfirm(value);
-  }, []);
-
-  const handleRunConfigReady = useCallback((config: CreateRunPayload | null) => {
-    setRunConfig(config);
-  }, []);
-
-  const handleConversationChange = useCallback((id: string | null) => {
-    setConversationId(id);
-    if (!id) {
-      setExtractedSlots({});
-      setShouldConfirm(false);
-      setRunConfig(null);
-      setConfirmError(null);
-    }
-  }, []);
-
-  // Sidebar: select an existing conversation to resume
-  const handleSelectConversation = useCallback((conversation: ConversationSummary) => {
-    // Reset state and set the conversation ID to resume
-    setExtractedSlots(conversation.merged_slots || {});
-    setShouldConfirm(false);
-    setRunConfig(null);
-    setConfirmError(null);
-    setConversationId(conversation.id);
-  }, []);
-
-  // Sidebar: start a new conversation
-  const handleNewConversation = useCallback(() => {
-    setConversationId(null);
-    setExtractedSlots({});
-    setShouldConfirm(false);
-    setRunConfig(null);
-    setConfirmError(null);
-  }, []);
-
-  // Confirm and create run from chat
-  const handleConfirmRun = async () => {
-    if (!conversationId || !runConfig) return;
-    setConfirmError(null);
-    try {
-      const result = await confirmRun.mutateAsync({
-        conversationId,
-        slotOverrides: runConfig as unknown as Record<string, unknown>,
-      });
-      if (result.run_id) {
-        router.push(`/dashboard/runs/${result.run_id}`);
-      }
-    } catch {
-      setConfirmError("Failed to create run. Please try again.");
-    }
-  };
-
-  // Abandon conversation
-  const handleAbandon = async () => {
-    if (!conversationId) return;
-    try {
-      await abandonConversation.mutateAsync(conversationId);
-      setConversationId(null);
-      setExtractedSlots({});
-      setShouldConfirm(false);
-      setRunConfig(null);
-      setConfirmError(null);
-    } catch {
-      // Ignore errors on abandon
-    }
-  };
-
-  // Form helpers (existing)
   const parseCsv = (text: string): Recipient[] => {
     if (institutionOptions.length === 0) throw new Error("Institutions must finish loading before CSV import.");
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
@@ -245,6 +150,7 @@ export default function NewRunPage() {
     setSubmitted(true);
     setSubmitError(null);
     if (!canSubmit) return;
+    const businessId = user?.memberships?.[0]?.business_id;
     if (!businessId) { setSubmitError("No business found on your account."); return; }
     createRun.mutate({
       business_id: businessId,
@@ -264,162 +170,21 @@ export default function NewRunPage() {
     });
   };
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER: Chat Mode (two-column hybrid layout)
-  // ─────────────────────────────────────────────────────────────────────────────
-  if (mode === "chat") {
-    return (
-      <div className="flex flex-col h-[calc(100vh-120px)]">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">New Run</h1>
-              <p className="text-sm text-muted-foreground">Describe your payout in natural language</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setMode("form")}
-            className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-brand/40 hover:text-brand transition-colors"
-          >
-            <Settings2 className="h-4 w-4" />
-            Manual Form
-          </button>
-        </div>
-
-        {/* Three-column layout: Sidebar | Chat | Preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
-          {/* Sidebar: Conversation List (hidden on mobile, 2 cols on desktop) */}
-          <div className="hidden lg:flex lg:col-span-2 flex-col min-h-0">
-            <ConversationSidebar
-              businessId={businessId}
-              activeConversationId={conversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewConversation={handleNewConversation}
-            />
-          </div>
-
-          {/* Center: Chat (7 cols on desktop) */}
-          <div className="lg:col-span-6 flex flex-col min-h-0">
-            <ChatContainer
-              businessId={businessId}
-              conversationId={conversationId}
-              onSlotChange={handleSlotChange}
-              onShouldConfirmChange={handleShouldConfirmChange}
-              onRunConfigReady={handleRunConfigReady}
-              onConversationChange={handleConversationChange}
-            />
-          </div>
-
-          {/* Right: Preview + Actions (4 cols on desktop) */}
-          <div className="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto">
-            {/* Run Config Preview */}
-            <RunConfigPreview slots={extractedSlots} />
-
-            {/* Confirmation Card */}
-            {shouldConfirm && runConfig && (
-              <Card className="border-brand/30 bg-brand/5">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Rocket className="h-4 w-4 text-brand" />
-                    Ready to Create Run
-                  </CardTitle>
-                  <CardDescription>
-                    All required parameters have been captured. Review the configuration and confirm to create the run.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {confirmError && (
-                    <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
-                      {confirmError}
-                    </p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleConfirmRun}
-                      loading={confirmRun.isPending}
-                      className="flex-1 gap-2 bg-brand text-white hover:opacity-90"
-                    >
-                      <Rocket className="h-4 w-4" />
-                      Create Run
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleAbandon}
-                      loading={abandonConversation.isPending}
-                      className="gap-2"
-                    >
-                      <X className="h-4 w-4" />
-                      Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Help text when not ready */}
-            {!shouldConfirm && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3 text-muted-foreground">
-                    <MessageSquare className="h-5 w-5 shrink-0 mt-0.5" />
-                    <div className="text-sm">
-                      <p className="font-medium text-foreground">How to use</p>
-                      <p className="mt-1">
-                        Describe your payout in natural language. For example:
-                      </p>
-                      <ul className="mt-2 space-y-1 text-xs">
-                        <li>&quot;Pay salaries for February with a ₦5M budget cap&quot;</li>
-                        <li>&quot;Process vendor payments from Jan 15-31, low risk&quot;</li>
-                        <li>&quot;Reconcile payroll transactions with 0.3 risk threshold&quot;</li>
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // RENDER: Form Mode (existing manual form)
-  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">New Run</h1>
-            <p className="text-sm text-muted-foreground">Configure your objective and payout recipients.</p>
-          </div>
-        </div>
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => setMode("chat")}
-          className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-brand/40 hover:text-brand transition-colors"
+          onClick={() => router.back()}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <MessageSquare className="h-4 w-4" />
-          Chat Mode
+          <ArrowLeft className="h-4 w-4" />
         </button>
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">New Run</h1>
+          <p className="text-sm text-muted-foreground">Configure your objective and payout recipients.</p>
+        </div>
       </div>
 
       {/* Run Configuration */}
