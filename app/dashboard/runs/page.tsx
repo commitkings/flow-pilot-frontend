@@ -71,6 +71,8 @@ const columns: TableColumn<RunRecord>[] = [
   {
     id: "candidates",
     header: "Candidates",
+    headerClassName: "hidden md:table-cell",
+    className: "hidden md:table-cell",
     cell: (run) => (
       <span className="text-muted-foreground">{run.candidates}</span>
     ),
@@ -78,6 +80,8 @@ const columns: TableColumn<RunRecord>[] = [
   {
     id: "started",
     header: "Started",
+    headerClassName: "hidden sm:table-cell",
+    className: "hidden sm:table-cell",
     cell: (run) => (
       <span className="text-muted-foreground" title={run.startedAt}>
         {run.startedRelative}
@@ -136,13 +140,14 @@ export default function RunsPage() {
       />
 
       {/* Metric cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <MetricCard
           label="Total Runs"
           value={loadingRuns ? "…" : String(rows.length)}
           subtext="Active automation"
           icon={<Zap className="h-4 w-4" />}
           accent="brand"
+          className="col-span-2 sm:col-span-1"
         />
         {/* <MetricCard
           label="Total Disbursed"
@@ -192,7 +197,7 @@ export default function RunsPage() {
               variant="outline"
               size="sm"
               onClick={() => setFilterOpen(true)}
-              className="relative h-12 gap-2 rounded-full px-5 text-sm font-semibold"
+              className="relative h-10 flex-1 gap-2 rounded-full px-4 text-sm font-semibold md:h-12 md:flex-none md:px-5"
             >
               <SlidersHorizontal className="h-4 w-4" />
               Filter
@@ -206,7 +211,7 @@ export default function RunsPage() {
               variant="outline"
               size="sm"
               onClick={() => setExportOpen(true)}
-              className="h-12 gap-2 rounded-full px-5 text-sm font-semibold"
+              className="h-10 flex-1 gap-2 rounded-full px-4 text-sm font-semibold md:h-12 md:flex-none md:px-5"
             >
               <Download className="h-4 w-4" />
               Export

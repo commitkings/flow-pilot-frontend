@@ -123,23 +123,28 @@ export function ChatContainer({
   );
 
   return (
-    <div className="flex flex-col h-full border rounded-lg overflow-hidden bg-card">
-      <div className="p-3 border-b bg-muted/30">
-        <h3 className="font-medium text-sm">FlowPilot AI</h3>
-        <p className="text-xs text-muted-foreground">
-          Describe your payout run in natural language
-        </p>
+    <div className="flex flex-col h-full overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
+        <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand text-white text-[10px] font-black">
+          AI
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-card" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground leading-none">FlowPilot AI</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Describe your payout in natural language</p>
+        </div>
       </div>
-      
+
       <ChatMessageList
         messages={messages}
         isLoading={chatMutation.isPending}
+        onExampleClick={handleSendMessage}
       />
-      
+
       <ChatInput
         onSend={handleSendMessage}
         disabled={chatMutation.isPending || !businessId}
-        placeholder={!businessId ? "Loading..." : "Type your message..."}
+        placeholder={!businessId ? "Loading..." : "Describe your payout run…"}
       />
     </div>
   );

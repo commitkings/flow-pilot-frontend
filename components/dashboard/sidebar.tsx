@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,6 +10,7 @@ import {
   Bell,
   ChevronsLeft,
   Users,
+  ReceiptRussianRuble,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -95,8 +95,8 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-16 items-center px-6 border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white" />
+          <div className="flex items-center gap-0.5">
+              <ReceiptRussianRuble size={40} className="text-white fill-[#e86727]" />
             {!collapsed && (
               <span className="font-black tracking-tighter text-xl">
                 FLOW<span className="text-brand">PILOT</span>
@@ -131,7 +131,7 @@ export function Sidebar() {
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={toggleMobileMenu}
           />
-          <aside className="absolute left-0 top-0 flex h-full w-full flex-col border-r border-border bg-card shadow-2xl">
+          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-border bg-card shadow-2xl">
             <div className="flex h-16 items-center justify-between px-5 border-b border-border/50">
               <span className="font-black tracking-tighter text-xl">
                 FLOW<span className="text-brand">PILOT</span>

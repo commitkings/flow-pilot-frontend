@@ -269,36 +269,47 @@ export default function NewRunPage() {
   // ─────────────────────────────────────────────────────────────────────────────
   if (mode === "chat") {
     return (
-      <div className="flex flex-col h-[calc(100vh-120px)]">
+      <div className="flex flex-col lg:h-[calc(100vh-120px)]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => router.back()}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">New Run</h1>
-              <p className="text-sm text-muted-foreground">Describe your payout in natural language</p>
+              <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">New Run</h1>
+              <p className="hidden text-sm text-muted-foreground sm:block">Configure your treasury payout run</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setMode("form")}
-            className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-brand/40 hover:text-brand transition-colors"
-          >
-            <Settings2 className="h-4 w-4" />
-            Manual Form
-          </button>
+          {/* Mode pill toggle */}
+          <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-muted/50 p-1">
+            <button
+              type="button"
+              onClick={() => setMode("chat")}
+              className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm text-foreground transition-all"
+            >
+              <MessageSquare className="h-3 w-3" />
+              Chat
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("form")}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
+            >
+              <Settings2 className="h-3 w-3" />
+              Manual
+            </button>
+          </div>
         </div>
 
         {/* Three-column layout: Sidebar | Chat | Preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
-          {/* Sidebar: Conversation List (hidden on mobile, 2 cols on desktop) */}
-          <div className="hidden lg:flex lg:col-span-2 flex-col min-h-0">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[200px_1fr_300px] lg:flex-1 lg:min-h-0">
+          {/* Sidebar: Conversation List — desktop only */}
+          <div className="hidden lg:flex flex-col min-h-0">
             <ConversationSidebar
               businessId={businessId}
               activeConversationId={conversationId}
@@ -307,8 +318,8 @@ export default function NewRunPage() {
             />
           </div>
 
-          {/* Center: Chat (7 cols on desktop) */}
-          <div className="lg:col-span-6 flex flex-col min-h-0">
+          {/* Center: Chat */}
+          <div className="flex h-[58vh] min-h-[340px] flex-col sm:h-[65vh] lg:h-auto lg:min-h-0">
             <ChatContainer
               businessId={businessId}
               conversationId={conversationId}
@@ -319,26 +330,25 @@ export default function NewRunPage() {
             />
           </div>
 
-          {/* Right: Preview + Actions (4 cols on desktop) */}
-          <div className="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto">
-            {/* Run Config Preview */}
+          {/* Right: Preview + Actions */}
+          <div className="flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto">
             <RunConfigPreview slots={extractedSlots} />
 
             {/* Confirmation Card */}
             {shouldConfirm && runConfig && (
-              <Card className="border-brand/30 bg-brand/5">
+              <Card className="border-brand bg-brand/10 shadow-lg shadow-brand/5">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Rocket className="h-4 w-4 text-brand" />
                     Ready to Create Run
                   </CardTitle>
                   <CardDescription>
-                    All required parameters have been captured. Review the configuration and confirm to create the run.
+                    All required parameters have been captured. Review and confirm.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {confirmError && (
-                    <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                    <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                       {confirmError}
                     </p>
                   )}
@@ -365,21 +375,18 @@ export default function NewRunPage() {
               </Card>
             )}
 
-            {/* Help text when not ready */}
+            {/* Help text — desktop only to keep mobile clean */}
             {!shouldConfirm && (
-              <Card>
-                <CardContent className="pt-6">
+              <Card className="hidden lg:block">
+                <CardContent className="pt-5">
                   <div className="flex items-start gap-3 text-muted-foreground">
-                    <MessageSquare className="h-5 w-5 shrink-0 mt-0.5" />
+                    <MessageSquare className="mt-0.5 h-4 w-4 shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-foreground">How to use</p>
-                      <p className="mt-1">
-                        Describe your payout in natural language. For example:
-                      </p>
-                      <ul className="mt-2 space-y-1 text-xs">
-                        <li>&quot;Pay salaries for February with a ₦5M budget cap&quot;</li>
-                        <li>&quot;Process vendor payments from Jan 15-31, low risk&quot;</li>
-                        <li>&quot;Reconcile payroll transactions with 0.3 risk threshold&quot;</li>
+                      <p className="font-semibold text-foreground">How to use</p>
+                      <ul className="mt-2 space-y-1.5 text-xs leading-relaxed">
+                        <li className="text-muted-foreground">&quot;Pay salaries for February with a ₦5M budget cap&quot;</li>
+                        <li className="text-muted-foreground">&quot;Process vendor payments from Jan 15–31, low risk&quot;</li>
+                        <li className="text-muted-foreground">&quot;Reconcile payroll with 0.3 risk threshold&quot;</li>
                       </ul>
                     </div>
                   </div>
@@ -398,28 +405,39 @@ export default function NewRunPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       {/* Page header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">New Run</h1>
-            <p className="text-sm text-muted-foreground">Configure your objective and payout recipients.</p>
+            <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">New Run</h1>
+            <p className="hidden text-sm text-muted-foreground sm:block">Configure your objective and payout recipients.</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setMode("chat")}
-          className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-brand/40 hover:text-brand transition-colors"
-        >
-          <MessageSquare className="h-4 w-4" />
-          Chat Mode
-        </button>
+        {/* Mode pill toggle */}
+        <div className="flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-muted/50 p-1">
+          <button
+            type="button"
+            onClick={() => setMode("chat")}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all hover:text-foreground"
+          >
+            <MessageSquare className="h-3 w-3" />
+            Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("form")}
+            className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold shadow-sm text-foreground transition-all"
+          >
+            <Settings2 className="h-3 w-3" />
+            Manual
+          </button>
+        </div>
       </div>
 
       {/* Run Configuration */}
@@ -506,11 +524,12 @@ export default function NewRunPage() {
           </p>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {recipients.map((row, index) => {
             const invalid = submitted && (!row.beneficiaryName.trim() || !row.institutionCode.trim() || !row.accountNumber.trim() || !row.amount.trim() || !row.purpose.trim());
             return (
-              <div key={row.id} className="space-y-3">
+              <div key={row.id} className="relative rounded-2xl border border-border bg-card p-5 space-y-4">
+                {/* Row header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand/10 text-[10px] font-black text-brand">
@@ -577,8 +596,6 @@ export default function NewRunPage() {
                     />
                   </Field>
                 </div>
-
-                {index < recipients.length - 1 && <hr className="border-border" />}
               </div>
             );
           })}

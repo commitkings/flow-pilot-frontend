@@ -70,8 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           collapsed ? "md:ml-20" : "md:ml-64"
         )}>
           {payoutMode === "simulated" && (
-            <div className="flex items-center justify-center gap-2 bg-amber-50 border-b border-amber-200 px-4 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:border-amber-900 dark:text-amber-300">
-              <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            <div className="flex items-center justify-center gap-2 bg-black/90 px-4 py-2 text-xs font-medium text-white/70">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#e86727] animate-pulse" />
               Demo Mode — Payouts are simulated. No real funds will move.
             </div>
           )}
