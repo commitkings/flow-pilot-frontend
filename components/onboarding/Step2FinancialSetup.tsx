@@ -33,7 +33,7 @@ export function Step2FinancialSetup({
   liquidityAlertThreshold, setLiquidityAlertThreshold,
 }: Step2Props) {
   return (
-    <div className="grid gap-5 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
       <Field label="Interswitch Merchant Account ID" className="md:col-span-2">
         <TextInput value={merchantAccountId} onChange={setMerchantAccountId} placeholder="Enter merchant account ID" />
       </Field>

@@ -79,19 +79,19 @@ export function StepIndicator({ steps, current, onStepClick }: StepIndicatorProp
         })}
       </ol>
 
-      {/* <div className="mt-6 flex items-center justify-between rounded-2xl bg-muted/50 p-4 md:hidden">
+      <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3 md:hidden">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">
-            Current Phase
+            Step {current}
           </p>
-          <p className="text-sm font-medium text-foreground">
+          <p className="text-sm font-semibold text-foreground">
             {steps[current - 1]}
           </p>
         </div>
         <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
           {current} / {steps.length}
         </div>
-      </div> */}
+      </div>
     </nav>
   );
 }

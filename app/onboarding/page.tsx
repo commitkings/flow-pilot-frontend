@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/ui/StepIndicator";
+import { ChevronLeft } from "lucide-react";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { Step1BusinessProfile, type RiskAppetite } from "@/components/onboarding/Step1BusinessProfile";
 import { Step2FinancialSetup } from "@/components/onboarding/Step2FinancialSetup";
@@ -104,7 +105,7 @@ export default function OnboardingPage() {
   }, [isLoading, user, router]);
 
   return (
-    <main className="h-screen md:grid md:grid-cols-[420px_1fr]">
+    <main className="min-h-screen md:grid md:grid-cols-[380px_1fr]">
       <AuthAside
         title="You're 3 steps away from automated payout control."
         subtitle="Most teams finish setup in under 10 minutes."
@@ -119,13 +120,23 @@ export default function OnboardingPage() {
         }}
       />
 
-      <section className="flex flex-col overflow-y-auto px-4 py-8 md:px-10">
-        <div className="mx-auto w-full max-w-2xl flex-1">
+      <section className="flex flex-col overflow-y-auto px-5 py-8 sm:py-12 md:px-10">
+        <div className="mx-auto w-full max-w-2xl flex-1 pb-8">
+          {/* Mobile back button */}
+          <button
+            type="button"
+            onClick={handleBack}
+            className="mb-4 flex items-center gap-1 text-[12px] font-medium text-muted-foreground hover:text-foreground md:hidden"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            Back
+          </button>
+
           <StepIndicator steps={STEPS} current={step} onStepClick={(s) => s < step && setStep(s)} />
 
           <div className="mt-2">
-            <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+            <h2 className="text-lg font-semibold text-foreground sm:text-2xl">{title}</h2>
+            <p className="mt-1 text-[12px] text-muted-foreground sm:text-sm">{subtitle}</p>
           </div>
 
           <div className="mt-8">
@@ -160,8 +171,8 @@ export default function OnboardingPage() {
           </div>
 
 
-          <div className="mt-10 flex flex-col items-center justify-between gap-4 md:flex-row">
-            <Button type="button" variant="outline" onClick={handleBack} className="w-full rounded-full md:w-auto">
+          <div className="mt-10 flex flex-col-reverse items-center justify-between gap-3 sm:gap-4 md:flex-row">
+            <Button type="button" variant="outline" onClick={handleBack} className="hidden w-full rounded-full md:flex md:w-auto">
               Back
             </Button>
 

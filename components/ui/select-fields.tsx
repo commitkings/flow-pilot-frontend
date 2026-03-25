@@ -23,7 +23,7 @@ export function PillSelect({ options, selected, onToggle, className }: PillSelec
             type="button"
             onClick={() => onToggle(option)}
             className={cn(
-              "rounded-full border px-4 py-2 text-sm font-medium transition-all",
+              "rounded-full border px-2 py-1.5 text-[12px] font-medium transition-all sm:px-4 sm:py-2 sm:text-sm",
               isSelected
                 ? "border-brand bg-brand text-white"
                 : "text-foreground hover:border-brand/50 hover:text-brand"

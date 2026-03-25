@@ -28,37 +28,38 @@ export function Step3InviteTeam({
         return (
           <div
             key={row.id}
-            className="grid gap-4 rounded-2xl border border-border bg-muted/30 p-4 md:grid-cols-[1fr_180px_auto]"
+            className="relative rounded-2xl border border-border bg-muted/30 p-4"
           >
-            <Field label="Email Address">
-              <TextInput
-                type="email"
-                value={row.email}
-                onChange={(v) => updateInviteRow(row.id, { email: v })}
-                placeholder="teammate@company.com"
-              />
-            </Field>
+            {/* Trash — always top-right */}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => removeInviteRow(row.id)}
+              disabled={invites.length === 1 && index === 0}
+              className="absolute right-3 top-3 h-8 w-8 rounded-full border-border text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-30"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
 
-            <Field label="Role">
-              <SelectInput
-                value={row.role}
-                onChange={(v) => updateInviteRow(row.id, { role: v as TeamRole })}
-                placeholder="Select role"
-                options={ROLE_OPTIONS}
-              />
-            </Field>
+            <div className="grid gap-4 pr-10 sm:grid-cols-[1fr_160px] sm:pr-0">
+              <Field label="Email Address">
+                <TextInput
+                  type="email"
+                  value={row.email}
+                  onChange={(v) => updateInviteRow(row.id, { email: v })}
+                  placeholder="teammate@company.com"
+                />
+              </Field>
 
-            <div className="flex items-end pb-0.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => removeInviteRow(row.id)}
-                disabled={invites.length === 1 && index === 0}
-                className="h-12 w-12 rounded-full border-border text-muted-foreground hover:border-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <Field label="Role">
+                <SelectInput
+                  value={row.role}
+                  onChange={(v) => updateInviteRow(row.id, { role: v as TeamRole })}
+                  placeholder="Select role"
+                  options={ROLE_OPTIONS}
+                />
+              </Field>
             </div>
           </div>
         );
