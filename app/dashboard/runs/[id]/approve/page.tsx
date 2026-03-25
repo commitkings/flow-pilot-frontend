@@ -61,7 +61,7 @@ export default function ApprovalGatePage() {
   const selectAllSafe = () => {
     setSelectedIds(
       allCandidates
-        .filter((candidate) => candidate.decision === "allow" && candidate.lookupStatus === "verified")
+        .filter((candidate) => candidate.decision === "allow")
         .map((candidate) => candidate.id)
     );
   };
@@ -99,7 +99,7 @@ export default function ApprovalGatePage() {
       <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         <div className="flex items-start gap-2">
           <AlertTriangle className="mt-0.5 h-4 w-4" />
-          ForecastAgent has flagged that this payout batch may stress your liquidity position. Review the Forecast tab before approving.
+          ForecastAgent flagged this payout batch as cautionary for liquidity. Review this run carefully before approving, especially the payout total and any risk flags.
         </div>
       </div>
 
@@ -172,9 +172,20 @@ export default function ApprovalGatePage() {
                       </td>
                       <td className="py-2">
                         <span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{candidate.riskReasons[0]}</span>
-                        <button type="button" className="ml-2 text-xs text-blue-700">See All</button>
+                        <button
+                          type="button"
+                          className="ml-2 text-xs text-blue-700"
+                          onClick={() => setActiveCandidateId(candidate.id)}
+                        >
+                          See All
+                        </button>
                       </td>
-                      <td className="py-2"><StatusBadge status={candidate.lookupStatus} /></td>
+                      <td className="py-2">
+                        <StatusBadge
+                          status={candidate.lookupStatus === "verified" ? "verified" : candidate.lookupStatus}
+                          label={candidate.lookupStatus === "pending" ? "Pending" : undefined}
+                        />
+                      </td>
                       <td className="py-2"><StatusBadge status={candidate.decision} /></td>
                       <td className="py-2"><button type="button" className="text-xs text-blue-700">Override</button></td>
                     </tr>

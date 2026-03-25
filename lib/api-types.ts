@@ -169,6 +169,7 @@ export interface Candidate {
   risk_score: number | null;
   risk_reasons: string[] | null;
   risk_decision: string | null;
+  lookup_status: "pending" | "success" | "failed" | "mismatch";
   lookup_account_name: string | null;
   lookup_match_score: number | null;
   approval_status: CandidateApprovalStatus;
@@ -424,14 +425,16 @@ export interface ChatSendResponse {
   extracted_slots: Record<string, unknown>;
   merged_slots: Record<string, unknown>;
   should_confirm: boolean;
-  conversation_status: "gathering" | "confirming" | "completed" | "abandoned";
+  conversation_status: "gathering" | "confirming" | "executing" | "completed" | "abandoned";
   run_config: CreateRunPayload | null;
+  run_created: boolean;
+  run_id: string | null;
 }
 
 export interface ChatMessage {
   id: string;
   conversation_id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   intent: string | null;
   confidence: number | null;
@@ -441,16 +444,18 @@ export interface ChatMessage {
 
 export interface ConversationSummary {
   id: string;
-  business_id: string;
-  user_id: string;
-  status: "gathering" | "confirming" | "completed" | "abandoned";
-  merged_slots: Record<string, unknown>;
-  last_intent: string | null;
+  title: string | null;
+  status: "gathering" | "confirming" | "awaiting_approval" | "executing" | "completed" | "abandoned";
+  current_intent: string | null;
+  message_count: number;
   created_at: string;
   updated_at: string;
 }
 
 export interface ConversationDetail extends ConversationSummary {
+  extracted_slots: Record<string, unknown>;
+  resolved_run_config: CreateRunPayload | null;
+  run_id: string | null;
   messages: ChatMessage[];
 }
 
@@ -466,15 +471,15 @@ export interface ConfirmRunRequest {
 }
 
 export interface ConfirmRunResponse {
+  conversation_id: string;
   run_id: string;
   status: string;
-  message: string;
+  objective: string;
 }
 
 export interface AbandonConversationResponse {
   conversation_id: string;
   status: string;
-  message: string;
 }
 
 // ── Errors ───────────────────────────────────────────────────

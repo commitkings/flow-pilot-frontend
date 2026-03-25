@@ -19,7 +19,7 @@ export type PayoutCandidate = {
   purpose: string;
   riskScore: number;
   riskReasons: string[];
-  lookupStatus: "verified" | "mismatch" | "failed";
+  lookupStatus: "pending" | "verified" | "mismatch" | "failed";
   decision: CandidateDecision;
   approvalStatus: "selected" | "unselected" | "blocked" | "manual_review" | "successful" | "sending";
   similarity: number;
@@ -34,6 +34,7 @@ export type RunRecord = {
   candidates: number;
   startedRelative: string;
   startedAt: string;
+  startedAtLabel: string;
 };
 
 export const institutions = [
@@ -55,6 +56,7 @@ export const runs: RunRecord[] = [
     candidates: 6,
     startedRelative: "2 hours ago",
     startedAt: "Feb 24, 2026, 10:14 AM WAT",
+    startedAtLabel: "Feb 24, 2026, 10:14 AM WAT",
   },
   {
     id: "b7d4e891-9db1-4cd8-a8fc-a7d8b5029bfe",
@@ -63,6 +65,7 @@ export const runs: RunRecord[] = [
     candidates: 12,
     startedRelative: "Yesterday",
     startedAt: "Feb 23, 2026, 3:04 PM WAT",
+    startedAtLabel: "Feb 23, 2026, 3:04 PM WAT",
   },
   {
     id: "c2a1f349-6cf5-4770-a0fe-4cc8c6e9a0f1",
@@ -71,6 +74,7 @@ export const runs: RunRecord[] = [
     candidates: 4,
     startedRelative: "15 minutes ago",
     startedAt: "Feb 24, 2026, 11:59 AM WAT",
+    startedAtLabel: "Feb 24, 2026, 11:59 AM WAT",
   },
   {
     id: "d9e3b217-bd8a-4f75-884c-68e70a954608",
@@ -79,6 +83,7 @@ export const runs: RunRecord[] = [
     candidates: 8,
     startedRelative: "3 days ago",
     startedAt: "Feb 21, 2026, 9:00 AM WAT",
+    startedAtLabel: "Feb 21, 2026, 9:00 AM WAT",
   },
   {
     id: "e5f2c084-030d-4378-bfa5-85af4cf35f43",
@@ -87,6 +92,7 @@ export const runs: RunRecord[] = [
     candidates: 3,
     startedRelative: "Last week",
     startedAt: "Feb 16, 2026, 1:21 PM WAT",
+    startedAtLabel: "Feb 16, 2026, 1:21 PM WAT",
   },
 ];
 

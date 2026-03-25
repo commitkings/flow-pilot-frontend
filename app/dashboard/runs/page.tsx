@@ -83,7 +83,7 @@ const columns: TableColumn<RunRecord>[] = [
     headerClassName: "hidden sm:table-cell",
     className: "hidden sm:table-cell",
     cell: (run) => (
-      <span className="text-muted-foreground" title={run.startedAt}>
+      <span className="text-muted-foreground" title={run.startedAtLabel}>
         {run.startedRelative}
       </span>
     ),

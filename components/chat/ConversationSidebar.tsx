@@ -18,8 +18,19 @@ interface ConversationSidebarProps {
 const STATUS_COLORS: Record<string, string> = {
   gathering: "bg-blue-100 text-blue-700",
   confirming: "bg-amber-100 text-amber-700",
+  executing: "bg-violet-100 text-violet-700",
+  awaiting_approval: "bg-orange-100 text-orange-700",
   completed: "bg-green-100 text-green-700",
   abandoned: "bg-gray-100 text-gray-500",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  gathering: "Gathering",
+  confirming: "Confirming",
+  executing: "Running",
+  awaiting_approval: "Needs approval",
+  completed: "Completed",
+  abandoned: "Cancelled",
 };
 
 export function ConversationSidebar({
@@ -63,11 +74,12 @@ export function ConversationSidebar({
   ) ?? [];
 
   const getPreviewText = (conv: ConversationSummary): string => {
-    if (conv.last_intent) {
-      return conv.last_intent.replace(/_/g, " ");
+    if (conv.title) {
+      return conv.title;
     }
-    const slots = conv.merged_slots ?? {};
-    if (slots.objective) return String(slots.objective).slice(0, 40);
+    if (conv.current_intent) {
+      return conv.current_intent.replace(/_/g, " ");
+    }
     return "New conversation";
   };
 
@@ -219,7 +231,7 @@ function ConversationItem({
             "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium capitalize",
             statusColor
           )}>
-            {conversation.status}
+            {STATUS_LABELS[conversation.status] ?? conversation.status}
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 truncate">

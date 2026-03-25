@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ChevronDown,
   FileSearch,
+  Info,
   Loader2,
   Radio,
   ShieldAlert,
@@ -46,7 +47,9 @@ function formatCurrency(value: number): string {
 }
 
 function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("en-NG", {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleString("en-NG", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -58,6 +61,7 @@ function formatDateTime(value: string): string {
 
 function formatRelative(value: string): string {
   const createdAt = new Date(value).getTime();
+  if (!Number.isFinite(createdAt)) return "—";
   const diffMinutes = Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
   if (diffMinutes < 1) return "just now";
   if (diffMinutes < 60) return `${diffMinutes}m ago`;
@@ -90,6 +94,21 @@ function formatOptionalCurrency(value: unknown): string {
   return amount === null ? "—" : formatCurrency(amount);
 }
 
+function summarizeRunStage(status: string): string {
+  switch (status) {
+    case "awaiting_approval":
+      return "Analysis is complete. Review the recipient and approve before payment is sent.";
+    case "executing":
+      return "Approved payouts are currently being processed.";
+    case "completed":
+      return "This payout run finished successfully.";
+    case "failed":
+      return "This run hit an error before completion.";
+    default:
+      return "FlowPilot is preparing this payout run.";
+  }
+}
+
 function toBadgeStatus(status: string): BadgeStatus {
   if (["reconciling", "scoring", "forecasting"].includes(status)) return "running";
   if (status === "cancelled") return "failed";
@@ -109,10 +128,10 @@ const RISK_BORDER_COLORS: Record<string, string> = {
 };
 
 const TABS = [
-  { key: "activity", label: "Agent Activity" },
+  { key: "activity", label: "Progress" },
   { key: "transactions", label: "Transactions" },
   { key: "candidates", label: "Candidates" },
-  { key: "audit", label: "Audit Report" },
+  { key: "audit", label: "Review Notes" },
 ];
 
 export default function RunDetailPage() {
@@ -171,6 +190,13 @@ export default function RunDetailPage() {
   const riskSummary = asRecord(auditReportData?.risk_summary);
   const executionSummary = asRecord(auditReportData?.execution_summary);
   const approvalSummary = asRecord(auditReportData?.approval_summary);
+  const totalCandidateAmount = candidates.reduce(
+    (sum, candidate) => sum + (candidate.amount ?? 0),
+    0,
+  );
+  const flaggedCandidates = candidates.filter((candidate) => candidate.decision !== "allow").length;
+  const createdAtLabel = formatDateTime(run.startedAt);
+  const startedRelative = formatRelative(run.startedAt);
 
   return (
     <div className="space-y-6">
@@ -198,7 +224,9 @@ export default function RunDetailPage() {
           </div>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-xl">{run.objective}</p>
         </div>
-        <p className="text-sm text-muted-foreground self-end">Started {formatRelative(run.startedAt)}</p>
+        <p className="text-sm text-muted-foreground self-end">
+          {startedRelative === "—" ? "Start time unavailable" : `Started ${startedRelative}`}
+        </p>
       </div>
 
       {/* Approval banner */}
@@ -217,33 +245,45 @@ export default function RunDetailPage() {
         </div>
       )}
 
+      <div className="rounded-2xl border border-border bg-card px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <Info className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Run Summary</p>
+            <p className="text-sm text-muted-foreground">{summarizeRunStage(run.status)}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Metric cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Candidates"
+          label="Recipients"
           value={String(run.candidates)}
-          subtext="Payout recipients"
+          subtext="Included in this run"
           icon={<Zap className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
-          label="Transactions"
-          value={String(summary.total_transactions)}
-          subtext="Reconciled"
+          label="Payout Volume"
+          value={formatCurrency(totalCandidateAmount)}
+          subtext="Planned disbursement"
           icon={<TrendingUp className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
-          label="Anomalies"
-          value={String(summary.anomaly_count)}
-          subtext="Flagged"
+          label="Needs Review"
+          value={String(flaggedCandidates)}
+          subtext="Recipients flagged by checks"
           icon={<FileSearch className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
-          label="Failed"
-          value={String(summary.failed_count)}
-          subtext="Transactions"
+          label="Payments Sent"
+          value={String(summary.total_transactions)}
+          subtext="Completed transactions"
           icon={<ShieldAlert className="h-4 w-4" />}
           accent="red"
         />
@@ -255,8 +295,8 @@ export default function RunDetailPage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <Detail label="Run ID" value={<span className="font-mono text-xs">{id}</span>} />
           <Detail label="Status" value={<StatusBadge status={status} label={statusLabel} />} />
-          <Detail label="Total Volume" value={formatCurrency(summary.total_volume)} />
-          <Detail label="Created" value={formatDateTime(run.startedAt)} />
+          <Detail label="Total Volume" value={formatCurrency(totalCandidateAmount || summary.total_volume)} />
+          <Detail label="Created" value={createdAtLabel} />
         </div>
       </div>
 
@@ -307,7 +347,7 @@ export default function RunDetailPage() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Agent Reasoning
+                    Technical Event Log
                   </p>
                   {events.length > 0 && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -315,6 +355,9 @@ export default function RunDetailPage() {
                     </span>
                   )}
                 </div>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Internal system activity for debugging and support. Most operators only need the summary, candidates, and approval action.
+                </p>
                 <AgentThinking events={events} className="max-h-[500px]" />
               </div>
             </div>

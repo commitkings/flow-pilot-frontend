@@ -50,17 +50,33 @@ function mapRunStatus(s: string): RunStatus {
 /** Maps a snake_case API run record to the shape expected by UI components */
 export function adaptRun(r: ApiRunRecord): RunRecord {
   const started = new Date(r.created_at);
-  const diffMs = Date.now() - started.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
+  const validStart = Number.isFinite(started.getTime());
+  let startedRelative = "—";
+  if (validStart) {
+    const diffMs = Math.max(0, Date.now() - started.getTime());
+    const diffMins = Math.floor(diffMs / 60_000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
 
-  let startedRelative: string;
-  if (diffMins < 60) startedRelative = `${diffMins} minutes ago`;
-  else if (diffHours < 24) startedRelative = `${diffHours} hours ago`;
-  else if (diffDays === 1) startedRelative = "Yesterday";
-  else if (diffDays < 7) startedRelative = `${diffDays} days ago`;
-  else startedRelative = "Last week";
+    if (diffMins < 1) startedRelative = "just now";
+    else if (diffMins < 60) startedRelative = `${diffMins} minutes ago`;
+    else if (diffHours < 24) startedRelative = `${diffHours} hours ago`;
+    else if (diffDays === 1) startedRelative = "Yesterday";
+    else if (diffDays < 7) startedRelative = `${diffDays} days ago`;
+    else startedRelative = "Last week";
+  }
+
+  const startedAtLabel = validStart
+    ? started.toLocaleString("en-NG", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZoneName: "short",
+      })
+    : "—";
 
   return {
     id: r.run_id,
@@ -68,15 +84,8 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     status: mapRunStatus(r.status),
     candidates: r.candidate_count ?? 0,
     startedRelative,
-    startedAt: started.toLocaleString("en-NG", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-      timeZoneName: "short",
-    }),
+    startedAt: r.created_at,
+    startedAtLabel,
   };
 }
 
@@ -97,8 +106,9 @@ function mapRiskDecision(rd: string): PayoutCandidate["decision"] {
 }
 
 function mapLookupStatus(c: Candidate): PayoutCandidate["lookupStatus"] {
-  if (!c.lookup_account_name) return "failed";
-  if (c.lookup_match_score !== null && c.lookup_match_score < 0.8) return "mismatch";
+  if (c.lookup_status === "pending") return "pending";
+  if (c.lookup_status === "mismatch") return "mismatch";
+  if (c.lookup_status === "failed") return "failed";
   return "verified";
 }
 
