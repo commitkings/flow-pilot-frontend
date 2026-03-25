@@ -6,7 +6,7 @@ import {
 
 export function LandingHero() {
   return (
-    <section className="bg-white px-6 pb-20 pt-20 md:px-10 md:pb-28 md:pt-24">
+    <section className="bg-[#FAF8F4] px-6 pb-20 pt-20 md:px-10 md:pb-28 md:pt-24">
       <div className="mx-auto max-w-7xl">
         {/* <div className="flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#e86727]/60 bg-white/50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-[#6B6B6B]">

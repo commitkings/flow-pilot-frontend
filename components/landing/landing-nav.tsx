@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ReceiptRussianRuble } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -29,17 +30,19 @@ export function LandingNav() {
   return (
     <header
       className={cn(
-        "w-full sticky top-0 z-50 transition-transform duration-300 py-2",
-        visible ? "translate-y-0 bg-white/80" : "-translate-y-full"
+        "w-full sticky top-0 z-60 transition-transform duration-300 py-2",
+        visible ? "translate-y-0 bg-[#FAF8F4]/96 backdrop-blur-sm" : "-translate-y-full"
       )}
     >
       <div className="mx-auto flex max-w-600 items-center justify-between px-4 md:px-15">
         <div className="flex items-center gap-10">
           <Link
             href="/"
-            className="text-xl font-bold tracking-tight text-[#0F0F0F]"
+            className="flex items-center gap-1 text-xl font-bold tracking-tight text-[#0F0F0F]"
           >
-            LOGO
+            <ReceiptRussianRuble size={40} className="text-white fill-[#e86727]" />
+            FLOWPILOT
+            {/* <span className="text-[#e86727]">.</span> */}
           </Link>
 
           {/* <nav className="hidden items-center gap-8 md:flex">
@@ -66,7 +69,7 @@ export function LandingNav() {
           </Link>
           <Link
             href="/signup"
-            className="inline-flex h-10 items-center hover:underline-[#e86727] justify-center rounded-full text-black bg-gray-50 px-6 text-sm font-semibold"
+            className="inline-flex h-10 items-center justify-center hover:border-[#e86727] rounded-full text-black bg-gray-100 px-4 text-sm font-semibold"
           >
             Get Started
           </Link>
