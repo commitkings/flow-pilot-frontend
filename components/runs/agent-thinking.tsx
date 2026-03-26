@@ -30,8 +30,11 @@ function isStepBoundary(e: RunEvent): boolean {
   return e.type === "step_started" || e.type === "step_completed" || e.type === "step_failed";
 }
 
+// Filter out internal reasoning events - users only see step progress and boundaries
 function isDisplayableEvent(e: RunEvent): boolean {
-  return isReasoningEvent(e) || isProgressEvent(e) || isStepBoundary(e);
+  // Reasoning events are internal agent chatter - hide from users
+  if (isReasoningEvent(e)) return false;
+  return isProgressEvent(e) || isStepBoundary(e);
 }
 
 const AGENT_THINKING_LABELS: Record<string, string> = {
