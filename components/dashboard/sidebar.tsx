@@ -13,8 +13,31 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
+import { useAuth } from "@/context/auth-context";
+
+function getInitials(name: string | null | undefined): string {
+  if (!name?.trim()) return "??";
+  if (name.includes("@")) {
+    const local = name.split("@")[0] ?? "";
+    const letters = local.replace(/[^a-zA-Z]/g, "");
+    if (letters.length >= 2) return letters.slice(0, 2).toUpperCase();
+    return (local.slice(0, 2) || "??").toUpperCase();
+  }
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function formatWorkspaceRole(role: string | undefined): string {
+  if (!role) return "Member";
+  return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+}
 
 type NavItem = {
   label: string;
@@ -76,6 +99,9 @@ function NavLink({
 
 export function Sidebar() {
   const { collapsed, mobileMenuOpen, toggleMobileMenu } = useDashboardShell();
+  const { user } = useAuth();
+  const displayName = user?.display_name?.trim() || user?.email || "Account";
+  const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
 
   const renderNav = (isCollapsed?: boolean, onClose?: () => void) => (
     <>
@@ -109,12 +135,19 @@ export function Sidebar() {
         <div className="p-4 border-t border-border/50 bg-muted/30">
           <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
             <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-              <AvatarFallback className="bg-brand text-white font-bold text-xs">OA</AvatarFallback>
+              {user?.avatar_url ? (
+                <AvatarImage src={user.avatar_url} alt="" className="object-cover" />
+              ) : null}
+              <AvatarFallback className="bg-brand text-white font-bold text-xs">
+                {getInitials(displayName)}
+              </AvatarFallback>
             </Avatar>
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black text-foreground">O. Adeyemi</p>
-                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pro Plan</p>
+                <p className="truncate text-sm font-black text-foreground">{displayName}</p>
+                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {roleLabel}
+                </p>
               </div>
             )}
           </div>
