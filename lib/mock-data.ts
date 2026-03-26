@@ -34,6 +34,7 @@ export type RunRecord = {
   candidates: number;
   startedRelative: string;
   startedAt: string;
+  error?: string | null;
 };
 
 export const institutions = [

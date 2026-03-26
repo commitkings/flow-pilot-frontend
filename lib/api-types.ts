@@ -261,6 +261,7 @@ export interface TransactionRow {
   settlement_date: string | null;
   anomaly: string;
   anomaly_count: number;
+  record_type?: "reconciled" | "payout";
 }
 
 export interface TransactionSummary {

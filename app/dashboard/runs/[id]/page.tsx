@@ -6,11 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
+  CheckCircle,
   ChevronDown,
   FileSearch,
+  FileText,
   Loader2,
   Radio,
   ShieldAlert,
+  ShieldCheck,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -22,6 +25,7 @@ import { AgentTimeline } from "@/components/runs/agent-timeline";
 import { AgentThinking } from "@/components/runs/agent-thinking";
 import type { AuditEntry, TransactionSummary } from "@/lib/api-types";
 import { LIVE_RUN_STATUSES } from "@/lib/event-types";
+import type { RunEvent, StepSummary } from "@/lib/event-types";
 import { useRun, useRunReport, useRunSteps, useInvalidateRunQueries } from "@/hooks/use-run-queries";
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
@@ -90,6 +94,104 @@ function formatOptionalCurrency(value: unknown): string {
   return amount === null ? "—" : formatCurrency(amount);
 }
 
+function cleanFailureMessage(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value
+    .replace(/\(Background on this error at:[^)]+\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function summarizeAuditTrailEntry(entry: AuditEntry): string {
+  if (!entry.detail) return "Recorded by FlowPilot.";
+  if (typeof entry.detail !== "object") return String(entry.detail);
+
+  const detail = entry.detail as Record<string, unknown>;
+  const agentType = entry.agent_type ?? "";
+  const action = entry.action ?? "";
+
+  if (agentType === "planner" && action === "plan_generated") {
+    const steps = detail.plan_steps as Array<{ agent_type?: string }> | undefined;
+    if (steps?.length) {
+      const stepNames = steps.map((s) => s.agent_type ?? "step").join(", ");
+      return `Created execution plan with ${steps.length} steps: ${stepNames}`;
+    }
+    return "Generated execution plan for this run.";
+  }
+
+  if (agentType === "reconciliation") {
+    const summary = detail.ai_summary as Record<string, unknown> | undefined;
+    if (summary) {
+      const parts: string[] = [];
+      const insights = summary.insights as unknown[] | undefined;
+      const gaps = summary.gaps as unknown[] | undefined;
+      if (insights?.length) parts.push(`${insights.length} insight${insights.length > 1 ? "s" : ""} found`);
+      if (gaps?.length) parts.push(`${gaps.length} gap${gaps.length > 1 ? "s" : ""} identified`);
+      if (parts.length > 0) return `Reconciliation complete • ${parts.join(" • ")}`;
+    }
+    const txnCount = detail.transaction_count ?? detail.total_transactions;
+    if (typeof txnCount === "number") {
+      return `Reconciled ${txnCount.toLocaleString()} transactions`;
+    }
+    return "Transaction reconciliation completed.";
+  }
+
+  if (agentType === "risk") {
+    const candidates = detail.candidates as Array<{ risk_decision?: string }> | undefined;
+    if (candidates?.length) {
+      const allow = candidates.filter((c) => c.risk_decision === "allow").length;
+      const review = candidates.filter((c) => c.risk_decision === "review").length;
+      const block = candidates.filter((c) => c.risk_decision === "block").length;
+      const parts: string[] = [];
+      if (allow > 0) parts.push(`${allow} approved`);
+      if (review > 0) parts.push(`${review} for review`);
+      if (block > 0) parts.push(`${block} blocked`);
+      return `Risk assessment complete • ${parts.join(" • ") || "All candidates scored"}`;
+    }
+    return "Risk scoring completed for all candidates.";
+  }
+
+  if (agentType === "execution") {
+    const submitted = detail.candidates_submitted ?? detail.total_executed;
+    const success = detail.successful ?? detail.success_count;
+    if (typeof submitted === "number") {
+      const parts = [`Executed ${submitted} transaction${submitted !== 1 ? "s" : ""}`];
+      if (typeof success === "number" && submitted > 0) {
+        const rate = Math.round((success / submitted) * 100);
+        parts.push(`${rate}% success rate`);
+      }
+      return parts.join(" • ");
+    }
+    return "Payout execution completed.";
+  }
+
+  if (agentType === "audit" && action === "final_report") {
+    return "Generated compliance and audit report for this run.";
+  }
+
+  const skipKeys = ["plan_steps", "data_integrity", "raw_response", "data_integrity_hash", "generated_at"];
+  const pairs = Object.entries(detail).filter(([key]) => !skipKeys.includes(key));
+
+  if (pairs.length === 0) return "Recorded by FlowPilot.";
+
+  return pairs
+    .slice(0, 3)
+    .map(([key, value]) => {
+      const label = key.replaceAll("_", " ");
+      if (typeof value === "number") return `${label}: ${value.toLocaleString()}`;
+      if (typeof value === "boolean") return `${label}: ${value ? "Yes" : "No"}`;
+      if (typeof value === "string" && value.length < 50) return `${label}: ${value}`;
+      if (Array.isArray(value)) return `${label}: ${value.length} item${value.length !== 1 ? "s" : ""}`;
+      if (typeof value === "object" && value !== null) {
+        const keys = Object.keys(value);
+        return `${label}: ${keys.length} field${keys.length !== 1 ? "s" : ""}`;
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .join(" · ") || "Recorded by FlowPilot.";
+}
+
 function toBadgeStatus(status: string): BadgeStatus {
   if (["reconciling", "scoring", "forecasting"].includes(status)) return "running";
   if (status === "cancelled") return "failed";
@@ -109,10 +211,10 @@ const RISK_BORDER_COLORS: Record<string, string> = {
 };
 
 const TABS = [
-  { key: "activity", label: "Agent Activity" },
+  { key: "activity", label: "Progress" },
   { key: "transactions", label: "Transactions" },
   { key: "candidates", label: "Candidates" },
-  { key: "audit", label: "Audit Report" },
+  { key: "audit", label: "Review Notes" },
 ];
 
 export default function RunDetailPage() {
@@ -171,6 +273,7 @@ export default function RunDetailPage() {
   const riskSummary = asRecord(auditReportData?.risk_summary);
   const executionSummary = asRecord(auditReportData?.execution_summary);
   const approvalSummary = asRecord(auditReportData?.approval_summary);
+  const failureMessage = cleanFailureMessage(run.error);
 
   return (
     <div className="space-y-6">
@@ -282,42 +385,15 @@ export default function RunDetailPage() {
         </div>
 
         <div className="p-6">
-          {/* Agent Activity */}
+          {/* Progress */}
           {activeTab === "activity" && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Pipeline Steps
-                  </p>
-                  {!isLiveRun && events.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Replay
-                    </span>
-                  )}
-                </div>
-                {loadingSteps ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <AgentTimeline steps={steps} />
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Agent Reasoning
-                  </p>
-                  {events.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {events.length} events
-                    </span>
-                  )}
-                </div>
-                <AgentThinking events={events} className="max-h-[500px]" />
-              </div>
-            </div>
+            <ProgressTab
+              steps={steps}
+              events={events}
+              loadingSteps={loadingSteps}
+              isLiveRun={isLiveRun}
+              isLive={isLive}
+            />
           )}
 
           {/* Transactions */}
@@ -326,22 +402,32 @@ export default function RunDetailPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    {["Reference", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
+                    {["Reference", "Type", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
                       <th key={h} className="pb-3 pr-6 text-xs font-black uppercase tracking-wider text-muted-foreground">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loadingTransactions ? (
-                    <tr><td colSpan={6} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
                   ) : transactionsError ? (
-                    <tr><td colSpan={6} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
+                    <tr><td colSpan={7} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
                   ) : transactions.length === 0 ? (
-                    <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
+                    <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
                   ) : (
                     transactions.map((tx) => (
                       <tr key={tx.id} className="border-b border-border last:border-0">
                         <td className="py-3 pr-6 font-mono text-xs text-foreground">{tx.reference}</td>
+                        <td className="py-3 pr-6">
+                          <span className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                            tx.record_type === "payout"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                          )}>
+                            {tx.record_type === "payout" ? "Payout" : "Reconciled"}
+                          </span>
+                        </td>
                         <td className="py-3 pr-6"><StatusBadge status={transactionStatus(tx.status)} label={tx.status} /></td>
                         <td className="py-3 pr-6 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
                         <td className="py-3 pr-6 text-muted-foreground">{tx.channel || "—"}</td>
@@ -377,7 +463,7 @@ export default function RunDetailPage() {
             </div>
           )}
 
-          {/* Audit */}
+          {/* Audit / Review Notes */}
           {activeTab === "audit" && (
             <div>
               {loadingReport ? (
@@ -393,9 +479,48 @@ export default function RunDetailPage() {
               ) : (
                 <div className="space-y-6">
                   {executiveSummary && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
-                      <p className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2">Executive Summary</p>
-                      <p className="whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-300">{executiveSummary}</p>
+                    <div className="rounded-xl border-2 border-brand/20 bg-gradient-to-br from-brand/5 to-transparent p-6">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10">
+                          <FileText className="h-5 w-5 text-brand" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black uppercase tracking-wider text-brand mb-2">Executive Summary</p>
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{executiveSummary}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {auditReportData && (
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "flex items-center gap-2 rounded-full px-4 py-2",
+                        run.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                      )}>
+                        {run.status === "completed" ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4" />
+                        )}
+                        <span className="text-sm font-semibold">
+                          {run.status === "completed" ? "Audit Complete" : "Requires Attention"}
+                        </span>
+                      </div>
+                      {typeof riskSummary?.total === "number" && riskSummary.total > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {riskSummary.total} candidate{riskSummary.total !== 1 ? "s" : ""} processed
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {run.status === "failed" && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                      <p className="text-xs font-black uppercase tracking-wider text-amber-700 mb-2">Why This Run Failed</p>
+                      <p className="text-sm leading-relaxed text-amber-900">
+                        {failureMessage ?? "FlowPilot marked this run as failed, but no detailed error message was captured."}
+                      </p>
                     </div>
                   )}
 
@@ -403,7 +528,10 @@ export default function RunDetailPage() {
                     <div className="grid gap-4 sm:grid-cols-3">
                       {riskSummary && (
                         <div className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Risk Summary</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Risk Summary</p>
+                          </div>
                           <div className="space-y-2 text-sm">
                             <Row label="Total scored" value={String(riskSummary.total ?? "—")} />
                             <Row label="Avg risk" value={asNumber(riskSummary.average_risk_score)?.toFixed(2) ?? "—"} />
@@ -413,7 +541,10 @@ export default function RunDetailPage() {
                       )}
                       {executionSummary && (
                         <div className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Execution</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Zap className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Execution</p>
+                          </div>
                           <div className="space-y-2 text-sm">
                             <Row label="Lookups" value={String(executionSummary.lookups_performed ?? "—")} />
                             <Row label="Submitted" value={String(executionSummary.candidates_submitted ?? "—")} />
@@ -422,7 +553,10 @@ export default function RunDetailPage() {
                       )}
                       {approvalSummary && (
                         <div className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Approvals</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Approvals</p>
+                          </div>
                           <div className="space-y-2 text-sm">
                             <Row label="Approved" value={String(approvalSummary.approved ?? "—")} valueClass="text-emerald-600" />
                             <Row label="Rejected" value={String(approvalSummary.rejected ?? "—")} valueClass="text-destructive" />
@@ -434,9 +568,9 @@ export default function RunDetailPage() {
 
                   {(auditReport.audit_trail ?? auditReport.entries ?? []).length > 0 && (
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Agent Activity Trail</p>
+                      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Key Run Notes</p>
                       <div className="space-y-2">
-                        {(auditReport.audit_trail ?? auditReport.entries ?? []).map((entry: AuditEntry) => (
+                        {(auditReport.audit_trail ?? auditReport.entries ?? []).slice(0, 6).map((entry: AuditEntry) => (
                           <div key={entry.id} className="flex items-start gap-3 rounded-xl border border-border bg-background px-4 py-3">
                             <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
                             <div className="min-w-0 flex-1">
@@ -448,20 +582,9 @@ export default function RunDetailPage() {
                                   </span>
                                 )}
                               </div>
-                              {entry.detail && (
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {typeof entry.detail === "object"
-                                    ? Object.entries(entry.detail)
-                                      .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
-                                      .map(([k, v]) =>
-                                        typeof v === "object"
-                                          ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
-                                          : `${k.replaceAll("_", " ")}: ${v}`
-                                      )
-                                      .join(" · ")
-                                    : String(entry.detail)}
-                                </p>
-                              )}
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {summarizeAuditTrailEntry(entry)}
+                              </p>
                               <p className="mt-1 text-[10px] text-muted-foreground/60">{formatDateTime(entry.created_at)}</p>
                             </div>
                           </div>
@@ -475,6 +598,84 @@ export default function RunDetailPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Progress Tab ──────────────────────────────────────────── */
+
+function ProgressTab({
+  steps,
+  events,
+  loadingSteps,
+  isLiveRun,
+  isLive,
+}: {
+  steps: StepSummary[];
+  events: RunEvent[];
+  loadingSteps: boolean;
+  isLiveRun: boolean;
+  isLive: boolean;
+}) {
+  const [showDebug, setShowDebug] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      {/* Customer-friendly pipeline timeline */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+            Pipeline Steps
+          </p>
+          {isLiveRun && isLive && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <Radio className="h-2.5 w-2.5 animate-pulse" />
+              Live
+            </span>
+          )}
+          {!isLiveRun && events.length > 0 && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Replay
+            </span>
+          )}
+        </div>
+        {loadingSteps ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <AgentTimeline steps={steps} />
+        )}
+      </div>
+
+      {/* Expandable debug/technical details */}
+      {events.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => setShowDebug(!showDebug)}
+            className="flex w-full items-center gap-2 text-left group"
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                showDebug && "rotate-180",
+              )}
+            />
+            <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+              Technical Details
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {events.length} events
+            </span>
+          </button>
+          {showDebug && (
+            <div className="mt-3">
+              <AgentThinking events={events} className="max-h-[400px]" />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
