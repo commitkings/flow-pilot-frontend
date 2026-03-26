@@ -86,6 +86,7 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     startedRelative,
     startedAt: r.created_at,
     startedAtLabel,
+    error: r.error ?? null,
   };
 }
 

@@ -35,6 +35,7 @@ export type RunRecord = {
   startedRelative: string;
   startedAt: string;
   startedAtLabel: string;
+  error?: string | null;
 };
 
 export const institutions = [
