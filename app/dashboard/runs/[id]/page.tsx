@@ -26,6 +26,7 @@ import { AgentTimeline } from "@/components/runs/agent-timeline";
 import { AgentThinking } from "@/components/runs/agent-thinking";
 import type { AuditEntry, TransactionSummary } from "@/lib/api-types";
 import { LIVE_RUN_STATUSES } from "@/lib/event-types";
+import type { RunEvent, StepSummary } from "@/lib/event-types";
 import { useRun, useRunReport, useRunSteps, useInvalidateRunQueries } from "@/hooks/use-run-queries";
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
@@ -339,7 +340,7 @@ export default function RunDetailPage() {
     0,
   );
   const flaggedCandidates = candidates.filter((candidate) => candidate.decision !== "allow").length;
-  const createdAtLabel = formatDateTime(run.startedAt);
+  const createdAtLabel = run.startedAtLabel ?? formatDateTime(run.startedAt);
   const startedRelative = formatRelative(run.startedAt);
   const failureMessage = cleanFailureMessage(run.error);
   const failureTitle = failureHeadline(failureMessage);
@@ -492,45 +493,15 @@ export default function RunDetailPage() {
         </div>
 
         <div className="p-6">
-          {/* Agent Activity */}
+          {/* Progress */}
           {activeTab === "activity" && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Pipeline Steps
-                  </p>
-                  {!isLiveRun && events.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Replay
-                    </span>
-                  )}
-                </div>
-                {loadingSteps ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <AgentTimeline steps={steps} />
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Technical Event Log
-                  </p>
-                  {events.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {events.length} events
-                    </span>
-                  )}
-                </div>
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Internal system activity for debugging and support. Most operators only need the summary, candidates, and approval action.
-                </p>
-                <AgentThinking events={events} className="max-h-[500px]" />
-              </div>
-            </div>
+            <ProgressTab
+              steps={steps}
+              events={events}
+              loadingSteps={loadingSteps}
+              isLiveRun={isLiveRun}
+              isLive={isLive}
+            />
           )}
 
           {/* Transactions */}
@@ -539,22 +510,32 @@ export default function RunDetailPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    {["Reference", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
+                    {["Reference", "Type", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
                       <th key={h} className="pb-3 pr-6 text-xs font-black uppercase tracking-wider text-muted-foreground">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loadingTransactions ? (
-                    <tr><td colSpan={6} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
                   ) : transactionsError ? (
-                    <tr><td colSpan={6} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
+                    <tr><td colSpan={7} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
                   ) : transactions.length === 0 ? (
-                    <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
+                    <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
                   ) : (
                     transactions.map((tx) => (
                       <tr key={tx.id} className="border-b border-border last:border-0">
                         <td className="py-3 pr-6 font-mono text-xs text-foreground">{tx.reference}</td>
+                        <td className="py-3 pr-6">
+                          <span className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                            tx.record_type === "payout"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                          )}>
+                            {tx.record_type === "payout" ? "Payout" : "Reconciled"}
+                          </span>
+                        </td>
                         <td className="py-3 pr-6"><StatusBadge status={transactionStatus(tx.status)} label={tx.status} /></td>
                         <td className="py-3 pr-6 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
                         <td className="py-3 pr-6 text-muted-foreground">{tx.channel || "—"}</td>
@@ -590,7 +571,7 @@ export default function RunDetailPage() {
             </div>
           )}
 
-          {/* Audit */}
+          {/* Audit / Review Notes */}
           {activeTab === "audit" && (
             <div>
               {loadingReport ? (
@@ -727,6 +708,84 @@ export default function RunDetailPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Progress Tab ──────────────────────────────────────────── */
+
+function ProgressTab({
+  steps,
+  events,
+  loadingSteps,
+  isLiveRun,
+  isLive,
+}: {
+  steps: StepSummary[];
+  events: RunEvent[];
+  loadingSteps: boolean;
+  isLiveRun: boolean;
+  isLive: boolean;
+}) {
+  const [showDebug, setShowDebug] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      {/* Customer-friendly pipeline timeline */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+            Pipeline Steps
+          </p>
+          {isLiveRun && isLive && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <Radio className="h-2.5 w-2.5 animate-pulse" />
+              Live
+            </span>
+          )}
+          {!isLiveRun && events.length > 0 && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Replay
+            </span>
+          )}
+        </div>
+        {loadingSteps ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <AgentTimeline steps={steps} />
+        )}
+      </div>
+
+      {/* Expandable debug/technical details */}
+      {events.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => setShowDebug(!showDebug)}
+            className="flex w-full items-center gap-2 text-left group"
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                showDebug && "rotate-180",
+              )}
+            />
+            <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+              Technical Details
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {events.length} events
+            </span>
+          </button>
+          {showDebug && (
+            <div className="mt-3">
+              <AgentThinking events={events} className="max-h-[400px]" />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -83,10 +83,10 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     objective: r.objective,
     status: mapRunStatus(r.status),
     candidates: r.candidate_count ?? 0,
+    error: r.error ?? null,
     startedRelative,
     startedAt: r.created_at,
     startedAtLabel,
-    error: r.error ?? null,
   };
 }
 
