@@ -6,6 +6,7 @@ import {
   TextInput,
 } from "@/components/ui/form-fields";
 import { GoogleIcon } from "@/public/svg/GoogleIcon";
+import { Logo } from "@/components/brand/Logo";
 
 interface AccountStepProps {
   firstName: string;
@@ -47,6 +48,9 @@ export function AccountStep({
 }: AccountStepProps) {
   return (
     <>
+      <div className="mb-6 md:hidden">
+        <Link href="/"><Logo variant="full" size="md" color="darkblue" /></Link>
+      </div>
       <h2 className="text-2xl font-semibold text-slate-900">
         Create your account.
       </h2>

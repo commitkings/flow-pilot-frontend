@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, PasswordInput, TextInput } from "@/components/ui/form-fields";
 import { GoogleIcon } from "@/public/svg/GoogleIcon";
+import { Logo } from "@/components/brand/Logo";
 
 interface LoginFormProps {
   email: string;
@@ -33,6 +34,9 @@ export function LoginForm({
 
   return (
     <>
+      <div className="mb-6 md:hidden">
+        <Link href="/"><Logo variant="full" size="md" color="darkblue" /></Link>
+      </div>
       <h2 className="text-2xl font-semibold text-foreground">Log in to your workspace.</h2>
       <p className="mt-2 text-sm text-muted-foreground">Enter your credentials to access your dashboard.</p>
 
