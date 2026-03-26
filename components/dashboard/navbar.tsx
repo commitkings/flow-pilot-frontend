@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu, Plus, Users, ReceiptRussianRuble } from "lucide-react";
+import { Menu, Plus, Users } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,10 @@ export function Navbar() {
   const isTeamPage = pathname === "/dashboard/team";
 
   return (
-    <header className="sticky top-0 z-30 bg-white flex h-16 w-full items-center justify-between border-b border-border bg-background/80 px-4 md:px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
       {/* Mobile: logo left */}
-      <div className="flex items-center gap-2 md:hidden">
-        <ReceiptRussianRuble size={26} className="fill-[#e86727] text-white" />
-        <span className="text-base font-black tracking-tighter">
-          FLOW<span className="text-brand">PILOT</span>
-        </span>
+      <div className="flex items-center md:hidden">
+        <Logo variant="full" size="md" />
       </div>
 
       {/* Desktop: search left */}
@@ -41,7 +39,7 @@ export function Navbar() {
             onClick={openNewRun}
             className="h-10 rounded-full bg-brand px-4 md:px-6 font-bold text-white transition-all shadow-sm hover:opacity-90"
           >
-            <Plus className="h-4 w-4 stroke-[3] md:mr-1.5" />
+            <Plus className="h-4 w-4 stroke-3 md:mr-1.5" />
             <span className="hidden md:inline">New Run</span>
           </Button>
         )}

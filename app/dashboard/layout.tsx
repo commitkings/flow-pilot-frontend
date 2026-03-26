@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Navbar } from "@/components/dashboard/navbar";
 import { DashboardShellProvider } from "@/components/dashboard-shell-context";
+import { LoadingLogo } from "@/components/brand/LoadingLogo";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
@@ -39,11 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-muted-foreground animate-pulse">Loading…</p>
-      </div>
-    );
+    return <LoadingLogo />;
   }
 
   if (!isAuthenticated || (user && !user.has_completed_onboarding)) {

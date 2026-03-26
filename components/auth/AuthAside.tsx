@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Check, ReceiptRussianRuble } from "lucide-react";
+import { Check } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 
 type AuthAsideProps = {
   title: string;
@@ -14,9 +15,8 @@ type AuthAsideProps = {
 export function AuthAside({ title, subtitle, features, testimonial }: AuthAsideProps) {
   return (
     <aside className="hidden bg-slate-950 px-10 py-12 text-white md:flex md:flex-col h-screen">
-      <Link href="/" className="flex items-center gap-1 text-xl font-bold tracking-tight">
-        <ReceiptRussianRuble size={28} className="text-white fill-[#e86727]" />
-        FLOWPILOT
+      <Link href="/">
+        <Logo variant="full" size="md" />
       </Link>
 
       <div className="mt-16 flex-1">

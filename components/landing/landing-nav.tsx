@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ReceiptRussianRuble } from "lucide-react";
 import Link from "next/link";
+import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
 
 // const links = [
@@ -36,13 +36,9 @@ export function LandingNav() {
     >
       <div className="mx-auto flex max-w-600 items-center justify-between px-4 md:px-15">
         <div className="flex items-center gap-10">
-          <Link
-            href="/"
-            className="flex items-center gap-1 text-xl font-bold tracking-tight text-[#0F0F0F]"
-          >
-            <ReceiptRussianRuble size={40} className="text-white fill-[#e86727]" />
-            FLOWPILOT
-            {/* <span className="text-[#e86727]">.</span> */}
+          <Link href="/">
+            <Logo variant="icon" size="md" color="darkblue" className="md:hidden" />
+            <Logo variant="full" size="md" color="darkblue" className="hidden md:block" />
           </Link>
 
           {/* <nav className="hidden items-center gap-8 md:flex">

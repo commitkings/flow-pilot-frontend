@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ReceiptRussianRuble } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 import BlobShape from "./blob/BlobShape";
 import { blobs } from "./blob/constants";
 
@@ -17,9 +17,8 @@ export function BlobAside({ focused, passwordFocused, showPassword, invalid, suc
   return (
     <aside className="hidden md:flex md:flex-col h-full bg-[#111] relative overflow-hidden">
       <div className="px-10 pt-10 z-10 relative">
-        <Link href="/" className="flex items-center gap-1 text-xl font-bold tracking-tight text-white">
-          <ReceiptRussianRuble size={28} className="text-white fill-[#e86727]" />
-          FLOWPILOT
+        <Link href="/">
+          <Logo variant="full" size="md" />
         </Link>
       </div>
 

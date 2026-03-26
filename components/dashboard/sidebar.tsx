@@ -10,8 +10,8 @@ import {
   Bell,
   ChevronsLeft,
   Users,
-  ReceiptRussianRuble,
 } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
@@ -94,15 +94,12 @@ export function Sidebar() {
           collapsed ? "w-20" : "w-64"
         )}
       >
-        <div className="flex h-16 items-center px-6 border-b border-border/50">
-          <div className="flex items-center gap-0.5">
-              <ReceiptRussianRuble size={40} className="text-white fill-[#e86727]" />
-            {!collapsed && (
-              <span className="font-black tracking-tighter text-xl">
-                FLOW<span className="text-brand">PILOT</span>
-              </span>
-            )}
-          </div>
+        <div className="flex h-16 items-center px-4 border-b border-border/50">
+          {collapsed ? (
+            <Logo variant="icon" size="sm" color="darkblue" />
+          ) : (
+            <Logo variant="full" size="md" color="darkblue" />
+          )}
         </div>
 
         <nav className="flex-1 space-y-1 p-4 mt-4 overflow-y-auto">
@@ -133,9 +130,7 @@ export function Sidebar() {
           />
           <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-border bg-card shadow-2xl">
             <div className="flex h-16 items-center justify-between px-5 border-b border-border/50">
-              <span className="font-black tracking-tighter text-xl">
-                FLOW<span className="text-brand">PILOT</span>
-              </span>
+              <Logo variant="full" size="md" color="darkblue" />
               <button
                 onClick={toggleMobileMenu}
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"

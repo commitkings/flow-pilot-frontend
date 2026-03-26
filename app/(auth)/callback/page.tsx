@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Suspense } from "react";
+import { LoadingLogo } from "@/components/brand/LoadingLogo";
 
 function CallbackHandler() {
   const searchParams = useSearchParams();
@@ -30,24 +31,12 @@ function CallbackHandler() {
       });
   }, [searchParams, loginWithToken, router]);
 
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <p className="text-muted-foreground animate-pulse">
-        Signing you in…
-      </p>
-    </div>
-  );
+  return <LoadingLogo />;
 }
 
 export default function CallbackPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <p className="text-muted-foreground animate-pulse">Loading…</p>
-        </div>
-      }
-    >
+    <Suspense fallback={<LoadingLogo />}>
       <CallbackHandler />
     </Suspense>
   );
