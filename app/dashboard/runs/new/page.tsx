@@ -122,12 +122,16 @@ export default function NewRunPage() {
   // Sidebar: select an existing conversation to resume
   const handleSelectConversation = useCallback((conversation: ConversationSummary) => {
     // Reset state and set the conversation ID to resume
-    setExtractedSlots(conversation.merged_slots || {});
-    setShouldConfirm(false);
+    setExtractedSlots({});
+    setShouldConfirm(conversation.status === "confirming");
     setRunConfig(null);
     setConfirmError(null);
     setConversationId(conversation.id);
   }, []);
+
+  const handleRunCreated = useCallback((runId: string) => {
+    router.push(`/dashboard/runs/${runId}`);
+  }, [router]);
 
   // Sidebar: start a new conversation
   const handleNewConversation = useCallback(() => {
@@ -327,6 +331,7 @@ export default function NewRunPage() {
               onShouldConfirmChange={handleShouldConfirmChange}
               onRunConfigReady={handleRunConfigReady}
               onConversationChange={handleConversationChange}
+              onRunCreated={handleRunCreated}
             />
           </div>
 

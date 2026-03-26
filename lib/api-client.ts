@@ -361,7 +361,7 @@ export async function confirmConversation(
 ): Promise<ConfirmRunResponse> {
   const { data } = await apiClient.post<ConfirmRunResponse>(
     `/chat/conversations/${conversationId}/confirm`,
-    slotOverrides ? { slot_overrides: slotOverrides } : {},
+    slotOverrides ? { overrides: slotOverrides } : {},
   );
   return data;
 }

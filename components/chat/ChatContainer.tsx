@@ -15,6 +15,7 @@ interface ChatContainerProps {
   onShouldConfirmChange?: (shouldConfirm: boolean) => void;
   onConversationChange?: (conversationId: string | null) => void;
   onRunConfigReady?: (runConfig: ChatSendResponse["run_config"]) => void;
+  onRunCreated?: (runId: string) => void;
 }
 
 export function ChatContainer({
@@ -24,6 +25,7 @@ export function ChatContainer({
   onShouldConfirmChange,
   onConversationChange,
   onRunConfigReady,
+  onRunCreated,
 }: ChatContainerProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Internal conversation ID, synced with external prop
@@ -31,17 +33,15 @@ export function ChatContainer({
     externalConversationId ?? undefined
   );
 
-  // Sync internal state when external prop changes (e.g., user selects from sidebar)
+  // Sync only when parent prop changes to avoid internal/external ping-pong updates.
   useEffect(() => {
     const newId = externalConversationId ?? undefined;
-    if (newId !== internalConversationId) {
-      setInternalConversationId(newId);
-      // Clear messages when starting fresh
-      if (!newId) {
-        setMessages([]);
-      }
+    setInternalConversationId(newId);
+    // Clear messages when starting fresh
+    if (!newId) {
+      setMessages([]);
     }
-  }, [externalConversationId, internalConversationId]);
+  }, [externalConversationId]);
 
   // Load existing conversation messages when resuming
   const { data: conversationData } = useConversation(
@@ -52,12 +52,11 @@ export function ChatContainer({
   useEffect(() => {
     if (conversationData?.messages && conversationData.messages.length > 0) {
       setMessages(conversationData.messages);
-      // Also update parent with merged slots from loaded conversation
-      if (conversationData.merged_slots) {
-        onSlotChange?.(conversationData.merged_slots);
-      }
+      onSlotChange?.(conversationData.extracted_slots ?? {});
+      onShouldConfirmChange?.(conversationData.status === "confirming");
+      onRunConfigReady?.(conversationData.resolved_run_config ?? null);
     }
-  }, [conversationData, onSlotChange]);
+  }, [conversationData, onRunConfigReady, onShouldConfirmChange, onSlotChange]);
 
   // Notify parent when conversation changes
   useEffect(() => {
@@ -91,6 +90,11 @@ export function ChatContainer({
       // Notify when run config is ready
       if (response.run_config) {
         onRunConfigReady?.(response.run_config);
+      }
+
+      if (response.run_created && response.run_id) {
+        onShouldConfirmChange?.(false);
+        onRunCreated?.(response.run_id);
       }
     },
   });

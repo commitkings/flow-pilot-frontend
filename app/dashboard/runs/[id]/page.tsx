@@ -6,11 +6,15 @@ import { useParams, useRouter } from "next/navigation";
 import {
   AlertTriangle,
   ArrowLeft,
+  CheckCircle,
   ChevronDown,
   FileSearch,
+  FileText,
+  Info,
   Loader2,
   Radio,
   ShieldAlert,
+  ShieldCheck,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -46,7 +50,9 @@ function formatCurrency(value: number): string {
 }
 
 function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString("en-NG", {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleString("en-NG", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -58,6 +64,7 @@ function formatDateTime(value: string): string {
 
 function formatRelative(value: string): string {
   const createdAt = new Date(value).getTime();
+  if (!Number.isFinite(createdAt)) return "—";
   const diffMinutes = Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
   if (diffMinutes < 1) return "just now";
   if (diffMinutes < 60) return `${diffMinutes}m ago`;
@@ -90,6 +97,162 @@ function formatOptionalCurrency(value: unknown): string {
   return amount === null ? "—" : formatCurrency(amount);
 }
 
+function summarizeRunStage(status: string): string {
+  switch (status) {
+    case "awaiting_approval":
+      return "Analysis is complete. Review the recipient and approve before payment is sent.";
+    case "executing":
+      return "Approved payouts are currently being processed.";
+    case "completed":
+      return "This payout run finished successfully.";
+    case "failed":
+      return "This run hit an error before completion.";
+    default:
+      return "FlowPilot is preparing this payout run.";
+  }
+}
+
+function cleanFailureMessage(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value
+    .replace(/\(Background on this error at:[^)]+\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function failureHeadline(error: string | null | undefined): string {
+  const message = (error ?? "").toLowerCase();
+  if (message.includes("oauth/token") || message.includes("401")) {
+    return "Interswitch authentication failed";
+  }
+  if (message.includes("account_number") || message.includes("customer_lookup_result")) {
+    return "Lookup result could not be saved";
+  }
+  if (message.includes("session is already flushing") || message.includes("another operation is in progress")) {
+    return "Background event logging interrupted execution";
+  }
+  return "Run execution failed";
+}
+
+function failureActions(error: string | null | undefined): string[] {
+  const message = (error ?? "").toLowerCase();
+  if (message.includes("oauth/token") || message.includes("401")) {
+    return [
+      "Check the Interswitch credentials and token configuration for this environment.",
+      "Because this workspace is in lookup-only mode, approval can be retried after the auth issue is fixed.",
+    ];
+  }
+  if (message.includes("account_number") || message.includes("customer_lookup_result")) {
+    return [
+      "Retry the approval after restarting the API so the latest lookup persistence fix is loaded.",
+      "If it fails again, inspect the candidate lookup payload for missing account details.",
+    ];
+  }
+  if (message.includes("session is already flushing") || message.includes("another operation is in progress")) {
+    return [
+      "Retry the approval after restarting the API so the event logging fix is active.",
+      "If the issue repeats, disable non-critical telemetry for execution retries.",
+    ];
+  }
+  return [
+    "Review the failure detail below and retry after the underlying issue is fixed.",
+    "If the run keeps failing, create a fresh run after correcting the root cause.",
+  ];
+}
+
+function summarizeAuditTrailEntry(entry: AuditEntry): string {
+  if (!entry.detail) return "Recorded by FlowPilot.";
+  if (typeof entry.detail !== "object") return String(entry.detail);
+
+  const detail = entry.detail as Record<string, unknown>;
+  const agentType = entry.agent_type ?? "";
+  const action = entry.action ?? "";
+
+  // Semantic humanizers for specific agent_type + action combinations
+  if (agentType === "planner" && action === "plan_generated") {
+    const steps = detail.plan_steps as Array<{ agent_type?: string }> | undefined;
+    if (steps?.length) {
+      const stepNames = steps.map((s) => s.agent_type ?? "step").join(", ");
+      return `Created execution plan with ${steps.length} steps: ${stepNames}`;
+    }
+    return "Generated execution plan for this run.";
+  }
+
+  if (agentType === "reconciliation") {
+    const summary = detail.ai_summary as Record<string, unknown> | undefined;
+    if (summary) {
+      const parts: string[] = [];
+      const insights = summary.insights as unknown[] | undefined;
+      const gaps = summary.gaps as unknown[] | undefined;
+      if (insights?.length) parts.push(`${insights.length} insight${insights.length > 1 ? "s" : ""} found`);
+      if (gaps?.length) parts.push(`${gaps.length} gap${gaps.length > 1 ? "s" : ""} identified`);
+      if (parts.length > 0) return `Reconciliation complete • ${parts.join(" • ")}`;
+    }
+    const txnCount = detail.transaction_count ?? detail.total_transactions;
+    if (typeof txnCount === "number") {
+      return `Reconciled ${txnCount.toLocaleString()} transactions`;
+    }
+    return "Transaction reconciliation completed.";
+  }
+
+  if (agentType === "risk") {
+    const candidates = detail.candidates as Array<{ risk_decision?: string }> | undefined;
+    if (candidates?.length) {
+      const allow = candidates.filter((c) => c.risk_decision === "allow").length;
+      const review = candidates.filter((c) => c.risk_decision === "review").length;
+      const block = candidates.filter((c) => c.risk_decision === "block").length;
+      const parts: string[] = [];
+      if (allow > 0) parts.push(`${allow} approved`);
+      if (review > 0) parts.push(`${review} for review`);
+      if (block > 0) parts.push(`${block} blocked`);
+      return `Risk assessment complete • ${parts.join(" • ") || "All candidates scored"}`;
+    }
+    return "Risk scoring completed for all candidates.";
+  }
+
+  if (agentType === "execution") {
+    const submitted = detail.candidates_submitted ?? detail.total_executed;
+    const success = detail.successful ?? detail.success_count;
+    if (typeof submitted === "number") {
+      const parts = [`Executed ${submitted} transaction${submitted !== 1 ? "s" : ""}`];
+      if (typeof success === "number" && submitted > 0) {
+        const rate = Math.round((success / submitted) * 100);
+        parts.push(`${rate}% success rate`);
+      }
+      return parts.join(" • ");
+    }
+    return "Payout execution completed.";
+  }
+
+  if (agentType === "audit" && action === "final_report") {
+    return "Generated compliance and audit report for this run.";
+  }
+
+  // Fallback: extract key metrics without raw JSON
+  const skipKeys = ["plan_steps", "data_integrity", "raw_response", "data_integrity_hash", "generated_at"];
+  const pairs = Object.entries(detail).filter(([key]) => !skipKeys.includes(key));
+
+  if (pairs.length === 0) return "Recorded by FlowPilot.";
+
+  // For remaining cases, extract meaningful values
+  return pairs
+    .slice(0, 3)
+    .map(([key, value]) => {
+      const label = key.replaceAll("_", " ");
+      if (typeof value === "number") return `${label}: ${value.toLocaleString()}`;
+      if (typeof value === "boolean") return `${label}: ${value ? "Yes" : "No"}`;
+      if (typeof value === "string" && value.length < 50) return `${label}: ${value}`;
+      if (Array.isArray(value)) return `${label}: ${value.length} item${value.length !== 1 ? "s" : ""}`;
+      if (typeof value === "object" && value !== null) {
+        const keys = Object.keys(value);
+        return `${label}: ${keys.length} field${keys.length !== 1 ? "s" : ""}`;
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .join(" · ") || "Recorded by FlowPilot.";
+}
+
 function toBadgeStatus(status: string): BadgeStatus {
   if (["reconciling", "scoring", "forecasting"].includes(status)) return "running";
   if (status === "cancelled") return "failed";
@@ -109,10 +272,10 @@ const RISK_BORDER_COLORS: Record<string, string> = {
 };
 
 const TABS = [
-  { key: "activity", label: "Agent Activity" },
+  { key: "activity", label: "Progress" },
   { key: "transactions", label: "Transactions" },
   { key: "candidates", label: "Candidates" },
-  { key: "audit", label: "Audit Report" },
+  { key: "audit", label: "Review Notes" },
 ];
 
 export default function RunDetailPage() {
@@ -171,6 +334,16 @@ export default function RunDetailPage() {
   const riskSummary = asRecord(auditReportData?.risk_summary);
   const executionSummary = asRecord(auditReportData?.execution_summary);
   const approvalSummary = asRecord(auditReportData?.approval_summary);
+  const totalCandidateAmount = candidates.reduce(
+    (sum, candidate) => sum + (candidate.amount ?? 0),
+    0,
+  );
+  const flaggedCandidates = candidates.filter((candidate) => candidate.decision !== "allow").length;
+  const createdAtLabel = formatDateTime(run.startedAt);
+  const startedRelative = formatRelative(run.startedAt);
+  const failureMessage = cleanFailureMessage(run.error);
+  const failureTitle = failureHeadline(failureMessage);
+  const failureNextActions = failureActions(failureMessage);
 
   return (
     <div className="space-y-6">
@@ -198,7 +371,9 @@ export default function RunDetailPage() {
           </div>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-xl">{run.objective}</p>
         </div>
-        <p className="text-sm text-muted-foreground self-end">Started {formatRelative(run.startedAt)}</p>
+        <p className="text-sm text-muted-foreground self-end">
+          {startedRelative === "—" ? "Start time unavailable" : `Started ${startedRelative}`}
+        </p>
       </div>
 
       {/* Approval banner */}
@@ -217,33 +392,68 @@ export default function RunDetailPage() {
         </div>
       )}
 
+      <div className="rounded-2xl border border-border bg-card px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <Info className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Run Summary</p>
+            <p className="text-sm text-muted-foreground">{summarizeRunStage(run.status)}</p>
+          </div>
+        </div>
+      </div>
+
+      {run.status === "failed" && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-red-100 text-red-600">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-red-900">{failureTitle}</p>
+              <p className="mt-1 text-sm text-red-800">
+                {failureMessage ?? "The run stopped during execution. Review the suggested next steps below."}
+              </p>
+              <div className="mt-3 space-y-1.5">
+                {failureNextActions.map((action) => (
+                  <p key={action} className="text-xs text-red-700">
+                    {action}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Metric cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Candidates"
+          label="Recipients"
           value={String(run.candidates)}
-          subtext="Payout recipients"
+          subtext="Included in this run"
           icon={<Zap className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
-          label="Transactions"
-          value={String(summary.total_transactions)}
-          subtext="Reconciled"
+          label="Payout Volume"
+          value={formatCurrency(totalCandidateAmount)}
+          subtext="Planned disbursement"
           icon={<TrendingUp className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
-          label="Anomalies"
-          value={String(summary.anomaly_count)}
-          subtext="Flagged"
+          label="Needs Review"
+          value={String(flaggedCandidates)}
+          subtext="Recipients flagged by checks"
           icon={<FileSearch className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
-          label="Failed"
-          value={String(summary.failed_count)}
-          subtext="Transactions"
+          label="Payments Sent"
+          value={String(summary.total_transactions)}
+          subtext="Completed transactions"
           icon={<ShieldAlert className="h-4 w-4" />}
           accent="red"
         />
@@ -255,8 +465,8 @@ export default function RunDetailPage() {
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <Detail label="Run ID" value={<span className="font-mono text-xs">{id}</span>} />
           <Detail label="Status" value={<StatusBadge status={status} label={statusLabel} />} />
-          <Detail label="Total Volume" value={formatCurrency(summary.total_volume)} />
-          <Detail label="Created" value={formatDateTime(run.startedAt)} />
+          <Detail label="Total Volume" value={formatCurrency(totalCandidateAmount || summary.total_volume)} />
+          <Detail label="Created" value={createdAtLabel} />
         </div>
       </div>
 
@@ -307,7 +517,7 @@ export default function RunDetailPage() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Agent Reasoning
+                    Technical Event Log
                   </p>
                   {events.length > 0 && (
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
@@ -315,6 +525,9 @@ export default function RunDetailPage() {
                     </span>
                   )}
                 </div>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Internal system activity for debugging and support. Most operators only need the summary, candidates, and approval action.
+                </p>
                 <AgentThinking events={events} className="max-h-[500px]" />
               </div>
             </div>
@@ -392,10 +605,51 @@ export default function RunDetailPage() {
                 </p>
               ) : (
                 <div className="space-y-6">
+                  {/* Hero Executive Summary Card */}
                   {executiveSummary && (
-                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
-                      <p className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-2">Executive Summary</p>
-                      <p className="whitespace-pre-line text-sm leading-relaxed text-emerald-900 dark:text-emerald-300">{executiveSummary}</p>
+                    <div className="rounded-xl border-2 border-brand/20 bg-gradient-to-br from-brand/5 to-transparent p-6">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand/10">
+                          <FileText className="h-5 w-5 text-brand" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black uppercase tracking-wider text-brand mb-2">Executive Summary</p>
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">{executiveSummary}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Compliance Status Badge - only show if we have data */}
+                  {auditReportData && (
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "flex items-center gap-2 rounded-full px-4 py-2",
+                        run.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                      )}>
+                        {run.status === "completed" ? (
+                          <CheckCircle className="h-4 w-4" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4" />
+                        )}
+                        <span className="text-sm font-semibold">
+                          {run.status === "completed" ? "Audit Complete" : "Requires Attention"}
+                        </span>
+                      </div>
+                      {typeof riskSummary?.total === "number" && riskSummary.total > 0 && (
+                        <span className="text-sm text-muted-foreground">
+                          {riskSummary.total} candidate{riskSummary.total !== 1 ? "s" : ""} processed
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {run.status === "failed" && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                      <p className="text-xs font-black uppercase tracking-wider text-amber-700 mb-2">Why This Run Failed</p>
+                      <p className="text-sm leading-relaxed text-amber-900">
+                        {failureMessage ?? "FlowPilot marked this run as failed, but no detailed error message was captured."}
+                      </p>
                     </div>
                   )}
 
@@ -403,7 +657,10 @@ export default function RunDetailPage() {
                     <div className="grid gap-4 sm:grid-cols-3">
                       {riskSummary && (
                         <div className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Risk Summary</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Risk Summary</p>
+                          </div>
                           <div className="space-y-2 text-sm">
                             <Row label="Total scored" value={String(riskSummary.total ?? "—")} />
                             <Row label="Avg risk" value={asNumber(riskSummary.average_risk_score)?.toFixed(2) ?? "—"} />
@@ -413,7 +670,10 @@ export default function RunDetailPage() {
                       )}
                       {executionSummary && (
                         <div className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Execution</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Zap className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Execution</p>
+                          </div>
                           <div className="space-y-2 text-sm">
                             <Row label="Lookups" value={String(executionSummary.lookups_performed ?? "—")} />
                             <Row label="Submitted" value={String(executionSummary.candidates_submitted ?? "—")} />
@@ -422,7 +682,10 @@ export default function RunDetailPage() {
                       )}
                       {approvalSummary && (
                         <div className="rounded-xl border border-border bg-background p-4">
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Approvals</p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Approvals</p>
+                          </div>
                           <div className="space-y-2 text-sm">
                             <Row label="Approved" value={String(approvalSummary.approved ?? "—")} valueClass="text-emerald-600" />
                             <Row label="Rejected" value={String(approvalSummary.rejected ?? "—")} valueClass="text-destructive" />
@@ -434,9 +697,9 @@ export default function RunDetailPage() {
 
                   {(auditReport.audit_trail ?? auditReport.entries ?? []).length > 0 && (
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Agent Activity Trail</p>
+                      <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Key Run Notes</p>
                       <div className="space-y-2">
-                        {(auditReport.audit_trail ?? auditReport.entries ?? []).map((entry: AuditEntry) => (
+                        {(auditReport.audit_trail ?? auditReport.entries ?? []).slice(0, 6).map((entry: AuditEntry) => (
                           <div key={entry.id} className="flex items-start gap-3 rounded-xl border border-border bg-background px-4 py-3">
                             <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
                             <div className="min-w-0 flex-1">
@@ -448,20 +711,9 @@ export default function RunDetailPage() {
                                   </span>
                                 )}
                               </div>
-                              {entry.detail && (
-                                <p className="mt-0.5 text-xs text-muted-foreground">
-                                  {typeof entry.detail === "object"
-                                    ? Object.entries(entry.detail)
-                                      .filter(([k]) => !["plan_steps", "data_integrity", "raw_response"].includes(k))
-                                      .map(([k, v]) =>
-                                        typeof v === "object"
-                                          ? `${k.replaceAll("_", " ")}: ${JSON.stringify(v)}`
-                                          : `${k.replaceAll("_", " ")}: ${v}`
-                                      )
-                                      .join(" · ")
-                                    : String(entry.detail)}
-                                </p>
-                              )}
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {summarizeAuditTrailEntry(entry)}
+                              </p>
                               <p className="mt-1 text-[10px] text-muted-foreground/60">{formatDateTime(entry.created_at)}</p>
                             </div>
                           </div>
