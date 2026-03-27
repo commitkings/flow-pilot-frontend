@@ -176,6 +176,7 @@ export interface TransactionFilters {
   search?: string;
   from_date?: string;
   to_date?: string;
+  include_payouts?: boolean;
   limit?: number;
   offset?: number;
 }

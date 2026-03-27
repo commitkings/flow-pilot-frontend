@@ -22,6 +22,7 @@ export type PayoutCandidate = {
   lookupStatus: "pending" | "verified" | "mismatch" | "failed";
   decision: CandidateDecision;
   approvalStatus: "selected" | "unselected" | "blocked" | "manual_review" | "successful" | "sending";
+  executionStatus?: string;
   similarity: number;
   nameOnFile: string;
   returnedName: string;
