@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -10,10 +11,12 @@ import {
   Bell,
   ChevronsLeft,
   Users,
+  LogOut,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from "@/hooks/use-notification-queries";
@@ -56,8 +59,6 @@ const navItems: NavItem[] = [
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
-
-
 function NavLink({
   item,
   collapsed,
@@ -96,11 +97,38 @@ function NavLink({
   );
 }
 
-
+function LogoutModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
+        <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+          <LogOut className="h-5 w-5 text-red-600" />
+        </div>
+        <h2 className="mt-3 text-base font-black text-foreground">Log out?</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          You will be signed out of your account and redirected to the login page.
+        </p>
+        <div className="mt-5 flex gap-3">
+          <Button variant="outline" className="flex-1 rounded-full" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 rounded-full bg-red-600 text-white hover:bg-red-700"
+            onClick={onConfirm}
+          >
+            Log out
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const { collapsed, mobileMenuOpen, toggleMobileMenu } = useDashboardShell();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const displayName = user?.display_name?.trim() || user?.email || "Account";
   const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
 
@@ -120,8 +148,29 @@ export function Sidebar() {
     </>
   );
 
+  const logoutButton = (isCollapsed?: boolean) => (
+    <button
+      type="button"
+      onClick={() => setShowLogoutModal(true)}
+      className={cn(
+        "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all text-muted-foreground hover:bg-red-50 hover:text-red-600",
+        isCollapsed && "justify-center"
+      )}
+    >
+      <LogOut className="h-5 w-5 shrink-0 transition-colors group-hover:text-red-600" />
+      {!isCollapsed && <span className="flex-1 text-left">Log out</span>}
+    </button>
+  );
+
   return (
     <>
+      {showLogoutModal && (
+        <LogoutModal
+          onConfirm={() => { setShowLogoutModal(false); logout(); }}
+          onCancel={() => setShowLogoutModal(false)}
+        />
+      )}
+
       {/* ── Desktop sidebar ───────────────────────────────────────────── */}
       <aside
         className={cn(
@@ -141,7 +190,8 @@ export function Sidebar() {
           {renderNav(collapsed)}
         </nav>
 
-        <div className="p-4 border-t border-border/50 bg-muted/30">
+        <div className="p-4 border-t border-border/50 bg-muted/30 space-y-3">
+          {logoutButton(collapsed)}
           <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
             <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
               {user?.avatar_url ? (
@@ -183,6 +233,9 @@ export function Sidebar() {
             <nav className="flex-1 space-y-1 p-4 mt-2 overflow-y-auto">
               {renderNav(false, toggleMobileMenu)}
             </nav>
+            <div className="p-4 border-t border-border/50">
+              {logoutButton(false)}
+            </div>
           </aside>
         </div>
       )}
