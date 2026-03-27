@@ -58,6 +58,7 @@ jobs:
           docker build \
             --cache-from $IMAGE:latest \
             --build-arg BUILDKIT_INLINE_CACHE=1 \
+            --build-arg NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }} \
             -t $IMAGE:${{ steps.version.outputs.version }} \
             -t $IMAGE:latest \
             .
