@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileSearch, Loader2, ShieldAlert, SlidersHorizontal, TrendingUp, Zap } from "lucide-react";
+import { Download, FileSearch, Loader2, ShieldAlert, SlidersHorizontal, TrendingUp, Zap, Building, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
@@ -42,6 +42,7 @@ export default function TransactionsPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<TransactionFilters>(EMPTY_TX_FILTERS);
+  const [viewMode, setViewMode] = useState<"bank" | "all">("all");
 
   const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
 
@@ -52,6 +53,7 @@ export default function TransactionsPage() {
     from_date: appliedFilters.fromDate || undefined,
     to_date: appliedFilters.toDate || undefined,
     search: search || undefined,
+    include_payouts: viewMode === "all",
   };
 
   const { data, isLoading, isError } = useTransactions(apiFilters);
@@ -109,6 +111,31 @@ export default function TransactionsPage() {
             className="w-full md:w-80"
           />
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/30 p-1">
+              <button
+                onClick={() => setViewMode("bank")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                  viewMode === "bank"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Building className="h-3.5 w-3.5" />
+                Bank Transactions
+              </button>
+              <button
+                onClick={() => setViewMode("all")}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                  viewMode === "all"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                All Activity
+              </button>
+            </div>
             <Button
               variant="outline"
               size="sm"

@@ -24,12 +24,14 @@ import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { AgentTimeline } from "@/components/runs/agent-timeline";
 import { AgentThinking } from "@/components/runs/agent-thinking";
-import type { AuditEntry, TransactionSummary } from "@/lib/api-types";
+import type { AuditEntry, TransactionRow, TransactionSummary } from "@/lib/api-types";
 import { LIVE_RUN_STATUSES } from "@/lib/event-types";
+import type { RunEvent, StepSummary } from "@/lib/event-types";
 import { useRun, useRunReport, useRunSteps, useInvalidateRunQueries } from "@/hooks/use-run-queries";
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 import { useRunEvents } from "@/hooks/use-run-events";
+import type { PayoutCandidate } from "@/lib/mock-data";
 
 type BadgeStatus =
   | "pending"
@@ -103,6 +105,8 @@ function summarizeRunStage(status: string): string {
       return "Analysis is complete. Review the recipient and approve before payment is sent.";
     case "executing":
       return "Approved payouts are currently being processed.";
+    case "completed_with_errors":
+      return "This run finished, but some recipients were held back or need follow-up.";
     case "completed":
       return "This payout run finished successfully.";
     case "failed":
@@ -110,6 +114,192 @@ function summarizeRunStage(status: string): string {
     default:
       return "FlowPilot is preparing this payout run.";
   }
+}
+
+function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function getSuccessfulPayouts(transactions: TransactionRow[]): TransactionRow[] {
+  return transactions.filter(
+    (tx) => tx.record_type === "payout" && String(tx.status).toUpperCase() === "SUCCESS"
+  );
+}
+
+function deriveRunPresentation(
+  runStatus: string,
+  candidates: PayoutCandidate[],
+  transactions: TransactionRow[],
+  fallbackCandidateCount: number
+): {
+  badgeStatus: BadgeStatus;
+  label: string;
+  summary: string;
+  highlights: string[];
+} {
+  const candidateCount = candidates.length > 0 ? candidates.length : fallbackCandidateCount;
+  const blockedCandidates = candidates.filter(
+    (candidate) => candidate.decision === "block" || candidate.approvalStatus === "blocked"
+  ).length;
+  const reviewOnlyCandidates = candidates.filter(
+    (candidate) =>
+      candidate.decision === "review" &&
+      candidate.approvalStatus !== "selected" &&
+      candidate.executionStatus !== "success"
+  ).length;
+  const successfulPayouts = getSuccessfulPayouts(transactions);
+  const reconciledTransactions = transactions.filter((tx) => tx.record_type !== "payout");
+  const successfulPayoutCount = successfulPayouts.length;
+  const hasExceptions =
+    blockedCandidates > 0 ||
+    reviewOnlyCandidates > 0 ||
+    transactions.some(
+      (tx) => tx.record_type === "payout" && String(tx.status).toUpperCase() !== "SUCCESS"
+    ) ||
+    (candidateCount > 0 && successfulPayoutCount > 0 && successfulPayoutCount < candidateCount);
+
+  const badgeStatus =
+    runStatus === "completed" && hasExceptions
+      ? "completed_with_errors"
+      : (runStatus as BadgeStatus);
+
+  const label =
+    badgeStatus === "completed_with_errors"
+      ? "Completed With Exceptions"
+      : badgeStatus === "awaiting_approval"
+        ? "Awaiting Approval"
+        : humanize(runStatus);
+
+  const highlights: string[] = [];
+  if (candidateCount > 0) {
+    highlights.push(
+      successfulPayoutCount > 0
+        ? `${pluralize(successfulPayoutCount, "recipient")} processed out of ${candidateCount}`
+        : `${pluralize(candidateCount, "recipient")} evaluated`
+    );
+  }
+  if (blockedCandidates > 0) {
+    highlights.push(`${pluralize(blockedCandidates, "recipient")} held back by controls`);
+  }
+  if (reviewOnlyCandidates > 0) {
+    highlights.push(`${pluralize(reviewOnlyCandidates, "recipient")} still need a decision`);
+  }
+  if (runStatus !== "failed" && reconciledTransactions.length === 0) {
+    highlights.push("No reconciled bank activity was attached to this run window");
+  }
+
+  if (badgeStatus === "completed_with_errors") {
+    return {
+      badgeStatus,
+      label,
+      summary:
+        candidateCount > 0
+          ? `This run finished, but not every uploaded recipient made it through to payout. FlowPilot processed the safe cases and held back the rest for control, verification, or approval reasons.`
+          : summarizeRunStage(badgeStatus),
+      highlights,
+    };
+  }
+
+  return {
+    badgeStatus,
+    label,
+    summary: summarizeRunStage(runStatus),
+    highlights,
+  };
+}
+
+function getCandidateLifecycle(candidate: PayoutCandidate): {
+  badgeStatus: "running" | "successful" | "requires_followup" | "block" | "verified";
+  label: string;
+  detail: string;
+} {
+  const executionStatus = candidate.executionStatus ?? "not_started";
+
+  if (executionStatus === "success") {
+    return {
+      badgeStatus: "successful",
+      label: "Processed",
+      detail: "This recipient was approved and completed payout processing.",
+    };
+  }
+
+  if (executionStatus === "pending") {
+    return {
+      badgeStatus: "running",
+      label: "Processing",
+      detail: "This recipient has been approved and is still being processed.",
+    };
+  }
+
+  if (executionStatus === "failed" || candidate.lookupStatus === "failed") {
+    return {
+      badgeStatus: "requires_followup",
+      label: "Needs Follow-Up",
+      detail: "FlowPilot could not complete processing for this recipient.",
+    };
+  }
+
+  if (candidate.approvalStatus === "blocked" || candidate.decision === "block") {
+    return {
+      badgeStatus: "block",
+      label: "Held Back",
+      detail: "FlowPilot stopped this recipient before execution.",
+    };
+  }
+
+  if (candidate.approvalStatus === "selected") {
+    return {
+      badgeStatus: "verified",
+      label: "Approved",
+      detail: "This recipient was approved after checks and remained eligible for payout.",
+    };
+  }
+
+  if (candidate.decision === "review") {
+    return {
+      badgeStatus: "requires_followup",
+      label: "Needs Decision",
+      detail: "This recipient was flagged during review and not yet approved for payout.",
+    };
+  }
+
+  return {
+    badgeStatus: "verified",
+    label: "Cleared",
+    detail: "This recipient passed checks and remains eligible.",
+  };
+}
+
+function getLookupPresentation(candidate: PayoutCandidate): {
+  badgeStatus: "verified" | "mismatch" | "requires_followup";
+  label: string;
+  description: string;
+} | null {
+  if (candidate.lookupStatus === "verified" && candidate.returnedName) {
+    return {
+      badgeStatus: "verified",
+      label: "Verified",
+      description: candidate.returnedName,
+    };
+  }
+
+  if (candidate.lookupStatus === "mismatch") {
+    return {
+      badgeStatus: "mismatch",
+      label: "Name Mismatch",
+      description: candidate.returnedName || "The resolved account name did not match the upload.",
+    };
+  }
+
+  if (candidate.lookupStatus === "failed") {
+    return {
+      badgeStatus: "requires_followup",
+      label: "Lookup Failed",
+      description: "FlowPilot could not verify this account against the lookup service.",
+    };
+  }
+
+  return null;
 }
 
 function cleanFailureMessage(value: string | null | undefined): string | null {
@@ -320,8 +510,6 @@ export default function RunDetailPage() {
     );
   }
 
-  const status = toBadgeStatus(run.status);
-  const statusLabel = run.status === "completed_with_errors" ? "Completed With Errors" : humanize(run.status);
   const transactions = transactionsResponse?.transactions ?? [];
   const summary: TransactionSummary = transactionsResponse?.summary ?? {
     total_transactions: 0,
@@ -334,12 +522,35 @@ export default function RunDetailPage() {
   const riskSummary = asRecord(auditReportData?.risk_summary);
   const executionSummary = asRecord(auditReportData?.execution_summary);
   const approvalSummary = asRecord(auditReportData?.approval_summary);
+  const candidateCount = candidates.length > 0 ? candidates.length : run.candidates;
   const totalCandidateAmount = candidates.reduce(
     (sum, candidate) => sum + (candidate.amount ?? 0),
     0,
   );
   const flaggedCandidates = candidates.filter((candidate) => candidate.decision !== "allow").length;
-  const createdAtLabel = formatDateTime(run.startedAt);
+  const blockedCandidates = candidates.filter(
+    (candidate) => candidate.decision === "block" || candidate.approvalStatus === "blocked"
+  ).length;
+  const reviewOnlyCandidates = candidates.filter(
+    (candidate) =>
+      candidate.decision === "review" &&
+      candidate.approvalStatus !== "selected" &&
+      candidate.executionStatus !== "success"
+  ).length;
+  const heldBackCandidates = blockedCandidates + reviewOnlyCandidates;
+  const approvedCandidates = candidates.filter(
+    (candidate) => candidate.approvalStatus === "selected"
+  ).length;
+  const successfulPayouts = getSuccessfulPayouts(transactions);
+  const successfulPayoutCount = successfulPayouts.length;
+  const executedPayoutVolume = successfulPayouts.reduce(
+    (sum, transaction) => sum + (transaction.amount ?? 0),
+    0
+  );
+  const presentation = deriveRunPresentation(run.status, candidates, transactions, run.candidates);
+  const status = presentation.badgeStatus;
+  const statusLabel = presentation.label;
+  const createdAtLabel = run.startedAtLabel ?? formatDateTime(run.startedAt);
   const startedRelative = formatRelative(run.startedAt);
   const failureMessage = cleanFailureMessage(run.error);
   const failureTitle = failureHeadline(failureMessage);
@@ -399,10 +610,28 @@ export default function RunDetailPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-foreground">Run Summary</p>
-            <p className="text-sm text-muted-foreground">{summarizeRunStage(run.status)}</p>
+            <p className="text-sm text-muted-foreground">{presentation.summary}</p>
           </div>
         </div>
       </div>
+
+      {presentation.highlights.length > 0 && (
+        <div className="rounded-2xl border border-border bg-card px-5 py-4">
+          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+            Outcome At A Glance
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {presentation.highlights.map((highlight) => (
+              <span
+                key={highlight}
+                className="inline-flex rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground"
+              >
+                {highlight}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {run.status === "failed" && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
@@ -431,31 +660,47 @@ export default function RunDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Recipients"
-          value={String(run.candidates)}
-          subtext="Included in this run"
+          value={String(candidateCount)}
+          subtext={
+            approvedCandidates > 0
+              ? `${approvedCandidates} approved for payout`
+              : "Included in this run"
+          }
           icon={<Zap className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
-          label="Payout Volume"
-          value={formatCurrency(totalCandidateAmount)}
-          subtext="Planned disbursement"
+          label="Executed Volume"
+          value={formatCurrency(executedPayoutVolume)}
+          subtext={
+            totalCandidateAmount > 0
+              ? `of ${formatCurrency(totalCandidateAmount)} planned`
+              : "No payout amount captured yet"
+          }
           icon={<TrendingUp className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
-          label="Needs Review"
-          value={String(flaggedCandidates)}
-          subtext="Recipients flagged by checks"
+          label="Held Back"
+          value={String(heldBackCandidates)}
+          subtext={
+            blockedCandidates > 0 || reviewOnlyCandidates > 0
+              ? `${blockedCandidates} blocked, ${reviewOnlyCandidates} awaiting decision`
+              : "No recipients were held back"
+          }
           icon={<FileSearch className="h-4 w-4" />}
           accent="amber"
         />
         <MetricCard
-          label="Payments Sent"
-          value={String(summary.total_transactions)}
-          subtext="Completed transactions"
+          label="Payouts Processed"
+          value={String(successfulPayoutCount)}
+          subtext={
+            successfulPayoutCount > 0
+              ? `${summary.total_transactions} activity record${summary.total_transactions === 1 ? "" : "s"} in this run`
+              : "No completed payout records yet"
+          }
           icon={<ShieldAlert className="h-4 w-4" />}
-          accent="red"
+          accent="green"
         />
       </div>
 
@@ -492,45 +737,15 @@ export default function RunDetailPage() {
         </div>
 
         <div className="p-6">
-          {/* Agent Activity */}
+          {/* Progress */}
           {activeTab === "activity" && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Pipeline Steps
-                  </p>
-                  {!isLiveRun && events.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                      Replay
-                    </span>
-                  )}
-                </div>
-                {loadingSteps ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <AgentTimeline steps={steps} />
-                )}
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    Technical Event Log
-                  </p>
-                  {events.length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                      {events.length} events
-                    </span>
-                  )}
-                </div>
-                <p className="mb-3 text-xs text-muted-foreground">
-                  Internal system activity for debugging and support. Most operators only need the summary, candidates, and approval action.
-                </p>
-                <AgentThinking events={events} className="max-h-[500px]" />
-              </div>
-            </div>
+            <ProgressTab
+              steps={steps}
+              events={events}
+              loadingSteps={loadingSteps}
+              isLiveRun={isLiveRun}
+              isLive={isLive}
+            />
           )}
 
           {/* Transactions */}
@@ -539,22 +754,32 @@ export default function RunDetailPage() {
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    {["Reference", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
+                    {["Reference", "Type", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
                       <th key={h} className="pb-3 pr-6 text-xs font-black uppercase tracking-wider text-muted-foreground">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {loadingTransactions ? (
-                    <tr><td colSpan={6} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
                   ) : transactionsError ? (
-                    <tr><td colSpan={6} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
+                    <tr><td colSpan={7} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
                   ) : transactions.length === 0 ? (
-                    <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
+                    <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
                   ) : (
                     transactions.map((tx) => (
                       <tr key={tx.id} className="border-b border-border last:border-0">
                         <td className="py-3 pr-6 font-mono text-xs text-foreground">{tx.reference}</td>
+                        <td className="py-3 pr-6">
+                          <span className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                            tx.record_type === "payout"
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                          )}>
+                            {tx.record_type === "payout" ? "Payout" : "Reconciled"}
+                          </span>
+                        </td>
                         <td className="py-3 pr-6"><StatusBadge status={transactionStatus(tx.status)} label={tx.status} /></td>
                         <td className="py-3 pr-6 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
                         <td className="py-3 pr-6 text-muted-foreground">{tx.channel || "—"}</td>
@@ -590,7 +815,7 @@ export default function RunDetailPage() {
             </div>
           )}
 
-          {/* Audit */}
+          {/* Audit / Review Notes */}
           {activeTab === "audit" && (
             <div>
               {loadingReport ? (
@@ -625,15 +850,15 @@ export default function RunDetailPage() {
                     <div className="flex items-center gap-4">
                       <div className={cn(
                         "flex items-center gap-2 rounded-full px-4 py-2",
-                        run.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                        status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                       )}>
-                        {run.status === "completed" ? (
+                        {status === "completed" ? (
                           <CheckCircle className="h-4 w-4" />
                         ) : (
                           <AlertTriangle className="h-4 w-4" />
                         )}
                         <span className="text-sm font-semibold">
-                          {run.status === "completed" ? "Audit Complete" : "Requires Attention"}
+                          {status === "completed" ? "Audit Complete" : "Requires Attention"}
                         </span>
                       </div>
                       {typeof riskSummary?.total === "number" && riskSummary.total > 0 && (
@@ -731,56 +956,125 @@ export default function RunDetailPage() {
   );
 }
 
+/* ── Progress Tab ──────────────────────────────────────────── */
+
+function ProgressTab({
+  steps,
+  events,
+  loadingSteps,
+  isLiveRun,
+  isLive,
+}: {
+  steps: StepSummary[];
+  events: RunEvent[];
+  loadingSteps: boolean;
+  isLiveRun: boolean;
+  isLive: boolean;
+}) {
+  const [showDebug, setShowDebug] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      {/* Customer-friendly pipeline timeline */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+            Pipeline Steps
+          </p>
+          {isLiveRun && isLive && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <Radio className="h-2.5 w-2.5 animate-pulse" />
+              Live
+            </span>
+          )}
+          {!isLiveRun && events.length > 0 && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+              Replay
+            </span>
+          )}
+        </div>
+        {loadingSteps ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <AgentTimeline steps={steps} />
+        )}
+      </div>
+
+      {/* Expandable debug/technical details */}
+      {events.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={() => setShowDebug(!showDebug)}
+            className="flex w-full items-center gap-2 text-left group"
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform",
+                showDebug && "rotate-180",
+              )}
+            />
+            <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+              Technical Details
+            </span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {events.length} events
+            </span>
+          </button>
+          {showDebug && (
+            <div className="mt-3">
+              <AgentThinking events={events} className="max-h-[400px]" />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Candidate Card (B8) ────────────────────────────────────── */
 
 function CandidateCard({
   candidate,
   borderColor,
 }: {
-  candidate: {
-    id: string;
-    beneficiaryName: string;
-    institution: string;
-    accountNumber: string;
-    amount: number;
-    purpose: string;
-    riskScore: number;
-    riskReasons: string[];
-    decision: string;
-    lookupStatus: string;
-    similarity: number;
-    nameOnFile: string;
-    returnedName: string;
-  };
+  candidate: PayoutCandidate;
   borderColor: string;
 }) {
   const [showReasons, setShowReasons] = useState(false);
+  const lifecycle = getCandidateLifecycle(candidate);
+  const lookup = getLookupPresentation(candidate);
 
   return (
     <div className={cn("rounded-xl border-2 bg-background p-4", borderColor)}>
-      <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="font-semibold text-foreground">{candidate.beneficiaryName}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {candidate.institution} · {candidate.accountNumber.slice(0, 3)}***{candidate.accountNumber.slice(-3)}
           </p>
         </div>
-        <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
+        <div className="flex flex-wrap justify-end gap-2">
+          <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
+          <StatusBadge status={lifecycle.badgeStatus} label={lifecycle.label} />
+        </div>
       </div>
 
-      <div className="flex gap-4 text-xs text-muted-foreground flex-wrap">
+      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>Amount: <span className="font-semibold text-foreground">{formatCurrency(candidate.amount)}</span></span>
         <span>Risk: <span className="font-semibold text-foreground">{candidate.riskScore === null ? "—" : candidate.riskScore.toFixed(2)}</span></span>
         <span>Purpose: <span className="text-foreground">{candidate.purpose || "—"}</span></span>
       </div>
 
+      <p className="mt-2 text-xs text-muted-foreground">{lifecycle.detail}</p>
+
       {/* Lookup info */}
-      {candidate.lookupStatus === "verified" && candidate.returnedName && (
+      {lookup && (
         <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-            Verified
-          </span>
-          <span>{candidate.returnedName}</span>
+          <StatusBadge status={lookup.badgeStatus} label={lookup.label} />
+          <span>{lookup.description}</span>
           {candidate.similarity > 0 && candidate.similarity < 100 && (
             <span className="text-muted-foreground/60">({candidate.similarity}% match)</span>
           )}

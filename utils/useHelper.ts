@@ -83,10 +83,10 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     objective: r.objective,
     status: mapRunStatus(r.status),
     candidates: r.candidate_count ?? 0,
+    error: r.error ?? null,
     startedRelative,
     startedAt: r.created_at,
     startedAtLabel,
-    error: r.error ?? null,
   };
 }
 
@@ -131,6 +131,7 @@ export function adaptCandidate(c: Candidate): PayoutCandidate {
     lookupStatus: mapLookupStatus(c),
     decision: mapRiskDecision(c.risk_decision ?? "review"),
     approvalStatus: approvalStatusMap[c.approval_status],
+    executionStatus: c.execution_status ?? "not_started",
     similarity: matchPct,
     nameOnFile: c.beneficiary_name,
     returnedName: c.lookup_account_name ?? c.beneficiary_name,

@@ -63,7 +63,11 @@ const columns: TableColumn<RunRecord>[] = [
       <StatusBadge
         status={run.status}
         label={
-          run.status === "awaiting_approval" ? "Awaiting Approval" : undefined
+          run.status === "awaiting_approval"
+            ? "Awaiting Approval"
+            : run.status === "completed_with_errors"
+              ? "Completed With Exceptions"
+              : undefined
         }
       />
     ),
