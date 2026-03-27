@@ -14,7 +14,7 @@ type AuthAsideProps = {
 
 export function AuthAside({ title, subtitle, features, testimonial }: AuthAsideProps) {
   return (
-    <aside className="hidden bg-slate-950 px-10 py-12 text-white md:flex md:flex-col h-screen">
+    <aside className="hidden bg-slate-950 px-10 py-12 text-white md:flex md:flex-col overflow-y-auto">
       <Link href="/">
         <Logo variant="full" size="md" />
       </Link>
@@ -26,7 +26,7 @@ export function AuthAside({ title, subtitle, features, testimonial }: AuthAsideP
           <ul className="mt-8 space-y-4 text-sm text-slate-200">
             {features.map((item) => (
               <li key={item} className="flex items-start gap-2">
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
                 <span>{item}</span>
               </li>
             ))}
@@ -35,7 +35,7 @@ export function AuthAside({ title, subtitle, features, testimonial }: AuthAsideP
       </div>
 
       {testimonial && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
+        <div className="mt-12 rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
           <p className="leading-relaxed">&quot;{testimonial.quote}&quot;</p>
           <p className="mt-3 text-xs uppercase tracking-wide text-slate-400">{testimonial.author}</p>
         </div>

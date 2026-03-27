@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { useAuth } from "@/context/auth-context";
+import { useNotifications } from "@/hooks/use-notification-queries";
 
 function getInitials(name: string | null | undefined): string {
   if (!name?.trim()) return "??";
@@ -51,7 +52,7 @@ const navItems: NavItem[] = [
   { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
   { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
   { label: "Team Members", href: "/dashboard/team", icon: Users },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell, badge: "3" },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
@@ -103,11 +104,19 @@ export function Sidebar() {
   const displayName = user?.display_name?.trim() || user?.email || "Account";
   const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
 
+  const { data: notifData } = useNotifications({ limit: 1 });
+  const unreadCount = notifData?.unread_count ?? 0;
+
   const renderNav = (isCollapsed?: boolean, onClose?: () => void) => (
     <>
-      {navItems.map((item) => (
-        <NavLink key={item.href} item={item} collapsed={isCollapsed} onClick={() => { onClose?.(); }} />
-      ))}
+      {navItems.map((item) => {
+        const badge = item.href === "/dashboard/notifications" && unreadCount > 0
+          ? String(unreadCount)
+          : item.badge;
+        return (
+          <NavLink key={item.href} item={{ ...item, badge }} collapsed={isCollapsed} onClick={() => { onClose?.(); }} />
+        );
+      })}
     </>
   );
 

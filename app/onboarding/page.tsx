@@ -6,25 +6,74 @@ import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 import { ChevronLeft } from "lucide-react";
 import { AuthAside } from "@/components/auth/AuthAside";
-import { Step1BusinessProfile, type RiskAppetite } from "@/components/onboarding/Step1BusinessProfile";
+import { Step1BusinessProfile } from "@/components/onboarding/Step1BusinessProfile";
+import { Step2UseCaseRisk, type RiskAppetite } from "@/components/onboarding/Step2UseCaseRisk";
 import { Step2FinancialSetup } from "@/components/onboarding/Step2FinancialSetup";
 import { Step3InviteTeam, type InviteRow } from "@/components/onboarding/Step3InviteTeam";
 import type { OnboardingPayload } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 import { useCompleteOnboarding } from "@/hooks/use-onboarding-mutations";
 
-const STEPS = ["Business Profile", "Financial Setup", "Invite Team"];
+const STEPS = ["Business", "Use Case", "Financials", "Team"];
 
-const STEP_META = [
-  { title: "Tell us about your business.", subtitle: "This helps FlowPilot configure your reconciliation and risk settings." },
-  { title: "Connect your financial accounts.", subtitle: "Link your primary Interswitch merchant account and set payout guardrails." },
-  { title: "Invite your team.", subtitle: "Add team members now or skip and do this later from Settings." },
+type StepMeta = {
+  title: string;
+  subtitle: string;
+  asideTitle: string;
+  asideFeatures: string[];
+  asideTestimonial?: { quote: string; author: string };
+};
+
+const STEP_META: StepMeta[] = [
+  {
+    title: "Tell us about your business.",
+    subtitle: "This helps FlowPilot configure your reconciliation and risk settings.",
+    asideTitle: "You're 4 steps away from automated payout control.",
+    asideFeatures: [
+      "AI reconciles thousands of transactions in seconds — not hours",
+      "Risk scores catch suspicious payouts before they leave your account",
+      "Set daily limits and approval rules once, then let FlowPilot enforce them",
+    ],
+    asideTestimonial: {
+      quote: "We caught a duplicate payout worth ₦4.2M on day one. Setup took less than 15 minutes.",
+      author: "Head of Finance, Kobo360",
+    },
+  },
+  {
+    title: "How do you use payouts?",
+    subtitle: "Select all that apply — FlowPilot optimises risk checks for each use case.",
+    asideTitle: "Every business runs differently.",
+    asideFeatures: [
+      "Payroll runs need strict approval chains to prevent duplicate disbursements",
+      "Vendor payments get reconciliation checks against PO and invoice records",
+      "Your risk appetite controls how aggressively FlowPilot flags transactions",
+    ],
+  },
+  {
+    title: "Connect your financial accounts.",
+    subtitle: "Link your primary Interswitch merchant account and set payout guardrails.",
+    asideTitle: "Your guardrails, your rules.",
+    asideFeatures: [
+      "Daily caps stop runaway batch errors before they drain your account",
+      "Single-payout limits catch outlier transactions for manual review",
+      "Liquidity alerts fire before your buffer drops below a safe threshold",
+    ],
+  },
+  {
+    title: "Invite your team.",
+    subtitle: "Add team members now or skip and do this later from Settings.",
+    asideTitle: "Controls are stronger with a team.",
+    asideFeatures: [
+      "Approvers authorise high-value payouts — no single point of failure",
+      "Analysts can monitor runs and reports without modifying anything",
+      "Add or remove teammates any time from the Settings page",
+    ],
+  },
 ];
 
 function createClientId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
-
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -47,10 +96,12 @@ export default function OnboardingPage() {
   const [transactionVolume, setTransactionVolume] = useState("");
   const [monthlyPayouts, setMonthlyPayouts] = useState("");
   const [primaryBank, setPrimaryBank] = useState("");
+
+  // Step 2
   const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
   const [riskAppetite, setRiskAppetite] = useState<RiskAppetite | "">("");
 
-  // Step 2
+  // Step 3
   const [merchantAccountId, setMerchantAccountId] = useState("");
   const [merchantState, setMerchantState] = useState("");
   const [dailyPayoutLimit, setDailyPayoutLimit] = useState("");
@@ -58,16 +109,21 @@ export default function OnboardingPage() {
   const [riskAlertThreshold, setRiskAlertThreshold] = useState("0.35");
   const [liquidityAlertThreshold, setLiquidityAlertThreshold] = useState("15");
 
-  // Step 3
+  // Step 4
   const [invites, setInvites] = useState<InviteRow[]>([
     { id: createClientId(), email: "", role: "Approver" },
   ]);
 
-  const step1Valid = !!(businessName.trim() && transactionVolume && monthlyPayouts && primaryBank && selectedUseCases.length > 0 && riskAppetite);
-  const step2Valid = !!(merchantAccountId.trim() && merchantState && dailyPayoutLimit.trim() && singlePayoutLimit.trim() && riskAlertThreshold.trim() && liquidityAlertThreshold.trim());
+  const step1Valid = !!(businessName.trim() && transactionVolume && monthlyPayouts && primaryBank);
+  const step2Valid = !!(selectedUseCases.length > 0 && riskAppetite);
+  const step3Valid = !!(merchantAccountId.trim() && merchantState && dailyPayoutLimit.trim() && singlePayoutLimit.trim() && riskAlertThreshold.trim() && liquidityAlertThreshold.trim());
   const inviteRowsValid = useMemo(() => invites.every((row) => !row.email || row.email), [invites]);
 
-  const canContinue = step === 1 ? step1Valid : step === 2 ? step2Valid : inviteRowsValid;
+  const canContinue =
+    step === 1 ? step1Valid :
+    step === 2 ? step2Valid :
+    step === 3 ? step3Valid :
+    inviteRowsValid;
 
   const toggleUseCase = (value: string) =>
     setSelectedUseCases((prev) => prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]);
@@ -99,7 +155,7 @@ export default function OnboardingPage() {
     onboardingMutation.mutate(payload);
   };
 
-  const { title, subtitle } = STEP_META[step - 1];
+  const { title, subtitle, asideTitle, asideFeatures, asideTestimonial } = STEP_META[step - 1];
 
   useEffect(() => {
     if (isLoading) return;
@@ -109,19 +165,11 @@ export default function OnboardingPage() {
   }, [isLoading, user, router]);
 
   return (
-    <main className="min-h-screen md:grid md:grid-cols-[380px_1fr]">
+    <main className="min-h-screen md:grid md:grid-cols-[380px_1fr] md:h-screen md:overflow-hidden">
       <AuthAside
-        title="You're 3 steps away from automated payout control."
-        subtitle="Most teams finish setup in under 10 minutes."
-        features={[
-          "AI reconciles thousands of transactions in seconds — not hours",
-          "Risk scores catch suspicious payouts before they leave your account",
-          "Set daily limits and approval rules once, then let FlowPilot enforce them",
-        ]}
-        testimonial={{
-          quote: "We caught a duplicate payout worth ₦4.2M on day one. Setup took less than 15 minutes.",
-          author: "Head of Finance, Kobo360",
-        }}
+        title={asideTitle}
+        features={asideFeatures}
+        testimonial={asideTestimonial}
       />
 
       <section className="flex flex-col overflow-y-auto px-5 py-8 sm:py-12 md:px-10">
@@ -150,11 +198,15 @@ export default function OnboardingPage() {
                 transactionVolume={transactionVolume} setTransactionVolume={setTransactionVolume}
                 monthlyPayouts={monthlyPayouts} setMonthlyPayouts={setMonthlyPayouts}
                 primaryBank={primaryBank} setPrimaryBank={setPrimaryBank}
+              />
+            )}
+            {step === 2 && (
+              <Step2UseCaseRisk
                 selectedUseCases={selectedUseCases} toggleUseCase={toggleUseCase}
                 riskAppetite={riskAppetite} setRiskAppetite={setRiskAppetite}
               />
             )}
-            {step === 2 && (
+            {step === 3 && (
               <Step2FinancialSetup
                 merchantAccountId={merchantAccountId} setMerchantAccountId={setMerchantAccountId}
                 merchantState={merchantState} setMerchantState={setMerchantState}
@@ -164,7 +216,7 @@ export default function OnboardingPage() {
                 liquidityAlertThreshold={liquidityAlertThreshold} setLiquidityAlertThreshold={setLiquidityAlertThreshold}
               />
             )}
-            {step === 3 && (
+            {step === 4 && (
               <Step3InviteTeam
                 invites={invites}
                 updateInviteRow={updateInviteRow}
@@ -174,13 +226,12 @@ export default function OnboardingPage() {
             )}
           </div>
 
-
           <div className="mt-10 flex flex-col-reverse items-center justify-between gap-3 sm:gap-4 md:flex-row">
             <Button type="button" variant="outline" onClick={handleBack} className="hidden w-full rounded-full md:flex md:w-auto">
               Back
             </Button>
 
-            {step === 3 && (
+            {step === 4 && (
               <button
                 type="button"
                 onClick={finishSetup}
@@ -193,11 +244,11 @@ export default function OnboardingPage() {
 
             <Button
               type="button"
-              onClick={step === 3 ? finishSetup : () => canContinue && setStep((p) => p + 1)}
+              onClick={step === 4 ? finishSetup : () => canContinue && setStep((p) => p + 1)}
               disabled={!canContinue || onboardingMutation.isPending}
               className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5 md:w-auto md:px-8"
             >
-              {step === 3 ? (onboardingMutation.isPending ? "Submitting..." : "Finish Setup") : "Continue"}
+              {step === 4 ? (onboardingMutation.isPending ? "Submitting..." : "Finish Setup") : "Continue"}
             </Button>
           </div>
         </div>

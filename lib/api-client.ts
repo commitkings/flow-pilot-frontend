@@ -52,8 +52,7 @@ import type { StepSummary, StepDetail } from "./event-types";
 
 /** URL to redirect the browser to for Google OAuth (no HTTP call needed) */
 export function googleLoginUrl(): string {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
-  return `${base}/auth/google/login`;
+  return `/api/proxy/auth/google/login`;
 }
 
 export function register(name: string, email: string, password: string): Promise<AuthResponse> {
