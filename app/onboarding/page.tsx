@@ -21,6 +21,10 @@ const STEP_META = [
   { title: "Invite your team.", subtitle: "Add team members now or skip and do this later from Settings." },
 ];
 
+function createClientId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -56,7 +60,7 @@ export default function OnboardingPage() {
 
   // Step 3
   const [invites, setInvites] = useState<InviteRow[]>([
-    { id: crypto.randomUUID(), email: "", role: "Approver" },
+    { id: createClientId(), email: "", role: "Approver" },
   ]);
 
   const step1Valid = !!(businessName.trim() && transactionVolume && monthlyPayouts && primaryBank && selectedUseCases.length > 0 && riskAppetite);
@@ -72,7 +76,7 @@ export default function OnboardingPage() {
     setInvites((prev) => prev.map((row) => row.id === id ? { ...row, ...updates } : row));
 
   const addInviteRow = () =>
-    setInvites((prev) => [...prev, { id: crypto.randomUUID(), email: "", role: "Analyst" }]);
+    setInvites((prev) => [...prev, { id: createClientId(), email: "", role: "Analyst" }]);
 
   const removeInviteRow = (id: string) =>
     setInvites((prev) => prev.length > 1 ? prev.filter((row) => row.id !== id) : prev);

@@ -47,9 +47,13 @@ function resolveCode(raw: string, options: InstitutionOption[]) {
   return options.find((o) => o.aliases.includes(key))?.value ?? null;
 }
 
+function createClientId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `id_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function emptyRow(values: Partial<Recipient> = {}): Recipient {
   return {
-    id: crypto.randomUUID(),
+    id: createClientId(),
     beneficiaryName: values.beneficiaryName ?? "",
     institutionCode: values.institutionCode ?? "",
     accountNumber: values.accountNumber ?? "",
