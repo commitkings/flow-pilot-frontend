@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useCallback } from "react";
 import { ArrowLeft, Download, MessageSquare, Plus, Rocket, Settings2, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Field, TextInput, TextareaInput, DateRangeInput, SelectInput } from "@/components/ui/form-fields";
+import { Field, TextInput, TextareaInput, DateRangeInput, SelectInput, NumericInput, AmountInput } from "@/components/ui/form-fields";
 import { naira } from "@/lib/mock-data";
 import { useInstitutions } from "@/hooks/use-institutions";
 import type { CreateRunPayload, Institution } from "@/lib/api-types";
@@ -232,7 +232,7 @@ export default function NewRunPage() {
     URL.revokeObjectURL(url);
   };
 
-  const total = useMemo(() => recipients.reduce((acc, r) => acc + (Number(r.amount) || 0), 0), [recipients]);
+  const total = useMemo(() => recipients.reduce((acc, r) => acc + (Number(r.amount.replace(/,/g, "")) || 0), 0), [recipients]);
 
   const hasInvalidField = recipients.some(
     (r) => !r.beneficiaryName.trim() || !r.institutionCode.trim() || !r.accountNumber.trim() || !r.amount.trim() || !r.purpose.trim()
@@ -261,12 +261,12 @@ export default function NewRunPage() {
       date_from: fromDate,
       date_to: toDate,
       risk_tolerance: riskTolerance,
-      budget_cap: budgetCap ? Number(budgetCap) : undefined,
+      budget_cap: budgetCap ? Number(budgetCap.replace(/,/g, "")) : undefined,
       candidates: recipients.map((r) => ({
         institution_code: r.institutionCode,
         beneficiary_name: r.beneficiaryName,
         account_number: r.accountNumber,
-        amount: Number(r.amount),
+        amount: Number(r.amount.replace(/,/g, "")),
         purpose: r.purpose || undefined,
       })),
     });
@@ -488,11 +488,10 @@ export default function NewRunPage() {
         </Field>
 
         <Field label="Budget Cap (Optional)">
-          <TextInput
+          <AmountInput
             value={budgetCap}
             onChange={setBudgetCap}
-            placeholder="₦ Maximum total"
-            inputMode="decimal"
+            placeholder="e.g. 5,000,000"
           />
         </Field>
       </section>
@@ -577,21 +576,19 @@ export default function NewRunPage() {
                   </Field>
 
                   <Field label="Account No.">
-                    <TextInput
+                    <NumericInput
                       value={row.accountNumber}
                       onChange={(v) => updateRow(row.id, { accountNumber: v })}
                       placeholder="0000000000"
-                      inputMode="numeric"
                       className={invalid && !row.accountNumber.trim() ? "border-destructive" : ""}
                     />
                   </Field>
 
                   <Field label="Amount (₦)">
-                    <TextInput
+                    <AmountInput
                       value={row.amount}
                       onChange={(v) => updateRow(row.id, { amount: v })}
-                      placeholder="0.00"
-                      inputMode="decimal"
+                      placeholder="e.g. 50,000"
                       className={invalid && !row.amount.trim() ? "border-destructive" : ""}
                     />
                   </Field>

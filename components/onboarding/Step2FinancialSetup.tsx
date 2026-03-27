@@ -1,4 +1,4 @@
-import { Field, SelectInput, TextInput } from "@/components/ui/form-fields";
+import { Field, SelectInput, TextInput, AmountInput, NumericInput } from "@/components/ui/form-fields";
 
 const states = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
@@ -43,19 +43,19 @@ export function Step2FinancialSetup({
       </Field>
 
       <Field label="Default Daily Payout Limit (₦)">
-        <TextInput value={dailyPayoutLimit} onChange={setDailyPayoutLimit} placeholder="e.g. 5,000,000" />
+        <AmountInput value={dailyPayoutLimit} onChange={setDailyPayoutLimit} placeholder="e.g. 5,000,000" />
       </Field>
 
       <Field label="Single Payout Cap (₦)">
-        <TextInput value={singlePayoutLimit} onChange={setSinglePayoutLimit} placeholder="e.g. 250,000" />
+        <AmountInput value={singlePayoutLimit} onChange={setSinglePayoutLimit} placeholder="e.g. 250,000" />
       </Field>
 
       <Field label="Risk Alert Threshold">
-        <TextInput value={riskAlertThreshold} onChange={setRiskAlertThreshold} placeholder="e.g. 0.35" />
+        <NumericInput value={riskAlertThreshold} onChange={setRiskAlertThreshold} placeholder="e.g. 0.35" decimal />
       </Field>
 
       <Field label="Liquidity Alert Buffer (%)">
-        <TextInput value={liquidityAlertThreshold} onChange={setLiquidityAlertThreshold} placeholder="e.g. 15" />
+        <NumericInput value={liquidityAlertThreshold} onChange={setLiquidityAlertThreshold} placeholder="e.g. 15" />
       </Field>
     </div>
   );

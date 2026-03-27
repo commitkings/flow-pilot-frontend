@@ -171,6 +171,67 @@ export function Checkbox({
 }
 
 /**
+ * Numeric Input: Digits only (add decimal={true} to also allow a decimal point)
+ */
+export function NumericInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+  decimal = false,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
+  onChange: (value: string) => void;
+  decimal?: boolean;
+}) {
+  const filter = decimal
+    ? (v: string) => v.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1")
+    : (v: string) => v.replace(/\D/g, "");
+  return (
+    <Input
+      type="text"
+      inputMode={decimal ? "decimal" : "numeric"}
+      value={value}
+      onChange={(e) => onChange(filter(e.target.value))}
+      placeholder={placeholder}
+      className={cn(
+        "h-12 rounded-full border-border bg-background px-5 text-sm transition-all focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/**
+ * Amount Input: Digits + commas + decimal for currency values (e.g. 5,000,000)
+ */
+export function AmountInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+  ...props
+}: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
+  onChange: (value: string) => void;
+}) {
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/[^0-9,.]/g, ""))}
+      placeholder={placeholder}
+      className={cn(
+        "h-12 rounded-full border-border bg-background px-5 text-sm transition-all focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/**
  * Textarea Input: Multi-line styled to match TextInput
  */
 export function TextareaInput({
