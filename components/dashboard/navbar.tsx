@@ -20,7 +20,7 @@ export function Navbar() {
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
       {/* Mobile: logo left */}
       <div className="flex items-center md:hidden">
-        <Logo variant="full" size="md" />
+        <Logo variant="icon" size="md" color="darkblue" />
       </div>
 
       {/* Desktop: search left */}

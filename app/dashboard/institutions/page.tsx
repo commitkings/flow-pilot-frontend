@@ -101,7 +101,7 @@ export default function InstitutionsPage() {
           </div>
         ) : error ? (
           <div className="flex justify-center py-12">
-            <p className="text-sm text-destructive">Failed to load institutions. Please refresh the page.</p>
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         ) : (
           <DataTable

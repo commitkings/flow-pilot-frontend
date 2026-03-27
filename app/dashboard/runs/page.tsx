@@ -254,7 +254,7 @@ export default function RunsPage() {
             keyExtractor={(run) => run.id}
             onRowClick={(run) => router.push(`/dashboard/runs/${run.id}`)}
             emptyState={
-              <div className="space-y-3">
+              <div className="space-y-3 flex items-center flex-col">
                 <p className="text-base font-black text-foreground">
                   No runs found
                 </p>
