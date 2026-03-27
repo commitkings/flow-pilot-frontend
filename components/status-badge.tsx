@@ -26,19 +26,19 @@ const styles: Record<StatusType, string> = {
   running: "bg-blue-600 text-white",
   awaiting_approval: "bg-amber-500/15 text-amber-800 border border-amber-300",
   executing: "bg-indigo-600 text-white",
-  completed: "bg-emerald-500/15 text-emerald-800 border border-emerald-300",
+  completed: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
   completed_with_errors: "bg-orange-500/15 text-orange-800 border border-orange-300",
   failed: "bg-red-500/15 text-red-800 border border-red-300",
   allow: "border border-emerald-300 bg-emerald-50 text-emerald-700",
   review: "border border-amber-300 bg-amber-50 text-amber-700",
   block: "bg-red-600 text-white",
-  verified: "bg-emerald-500/15 text-emerald-800 border border-emerald-300",
+  verified: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
   mismatch: "bg-amber-500/15 text-amber-800 border border-amber-300",
-  successful: "bg-emerald-500/15 text-emerald-800 border border-emerald-300",
+  successful: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
   requires_followup: "bg-amber-500/15 text-amber-800 border border-amber-300",
   invited: "bg-amber-500/15 text-amber-800 border border-amber-300",
   suspended: "border border-red-300 bg-red-50 text-red-700",
-  active: "bg-emerald-500/15 text-emerald-800 border border-emerald-300",
+  active: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
 };
 
 const pulseStatuses: StatusType[] = ["running", "awaiting_approval", "executing"];

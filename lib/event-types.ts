@@ -145,9 +145,9 @@ export const AGENT_LABELS: Record<string, string> = {
 
 /** Agent badge colors (Tailwind classes) */
 export const AGENT_COLORS: Record<string, { bg: string; text: string }> = {
-  planner: { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300" },
-  reconciliation: { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300" },
-  risk: { bg: "bg-amber-100 dark:bg-amber-900/30", text: "text-amber-700 dark:text-amber-300" },
-  execution: { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300" },
-  audit: { bg: "bg-slate-100 dark:bg-slate-900/30", text: "text-slate-700 dark:text-slate-300" },
+  planner: { bg: "border border-sky-300 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/30", text: "text-sky-800 dark:text-sky-200" },
+  reconciliation: { bg: "border border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/30", text: "text-violet-800 dark:text-violet-200" },
+  risk: { bg: "border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30", text: "text-amber-800 dark:text-amber-200" },
+  execution: { bg: "border border-teal-300 bg-teal-50 dark:border-teal-700 dark:bg-teal-950/30", text: "text-teal-800 dark:text-teal-200" },
+  audit: { bg: "border border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/30", text: "text-slate-800 dark:text-slate-200" },
 };

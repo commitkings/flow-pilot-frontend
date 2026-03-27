@@ -463,7 +463,7 @@ const RISK_BORDER_COLORS: Record<string, string> = {
 
 const TABS = [
   { key: "activity", label: "Progress" },
-  { key: "transactions", label: "Transactions" },
+  { key: "transactions", label: "Activity Records" },
   { key: "candidates", label: "Candidates" },
   { key: "audit", label: "Review Notes" },
 ];
@@ -750,46 +750,55 @@ export default function RunDetailPage() {
 
           {/* Transactions */}
           {activeTab === "transactions" && (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left">
-                    {["Reference", "Type", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
-                      <th key={h} className="pb-3 pr-6 text-xs font-black uppercase tracking-wider text-muted-foreground">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingTransactions ? (
-                    <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
-                  ) : transactionsError ? (
-                    <tr><td colSpan={7} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
-                  ) : transactions.length === 0 ? (
-                    <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No transactions found for this run.</td></tr>
-                  ) : (
-                    transactions.map((tx) => (
-                      <tr key={tx.id} className="border-b border-border last:border-0">
-                        <td className="py-3 pr-6 font-mono text-xs text-foreground">{tx.reference}</td>
-                        <td className="py-3 pr-6">
-                          <span className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                            tx.record_type === "payout"
-                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                          )}>
-                            {tx.record_type === "payout" ? "Payout" : "Reconciled"}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-6"><StatusBadge status={transactionStatus(tx.status)} label={tx.status} /></td>
-                        <td className="py-3 pr-6 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
-                        <td className="py-3 pr-6 text-muted-foreground">{tx.channel || "—"}</td>
-                        <td className="py-3 pr-6 text-muted-foreground">{tx.counterparty_name || "—"}</td>
-                        <td className="py-3 text-muted-foreground">{tx.date ? formatDateTime(tx.date) : "—"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-border bg-background/60 px-4 py-3">
+                <p className="text-sm font-semibold text-foreground">Run Activity Breakdown</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This table combines reconciled bank transactions with payout activity for this run.
+                  Reconciled rows come from the reconciliation step. Payout rows come from approved recipients processed during execution.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      {["Reference", "Source", "Status", "Amount", "Channel", "Counterparty", "Date"].map((h) => (
+                        <th key={h} className="pb-3 pr-6 text-xs font-black uppercase tracking-wider text-muted-foreground">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingTransactions ? (
+                      <tr><td colSpan={7} className="py-12 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></td></tr>
+                    ) : transactionsError ? (
+                      <tr><td colSpan={7} className="py-10 text-center text-sm text-destructive">Failed to load transactions.</td></tr>
+                    ) : transactions.length === 0 ? (
+                      <tr><td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">No reconciled bank transactions or payout activity found for this run.</td></tr>
+                    ) : (
+                      transactions.map((tx) => (
+                        <tr key={tx.id} className="border-b border-border last:border-0">
+                          <td className="py-3 pr-6 font-mono text-xs text-foreground">{tx.reference}</td>
+                          <td className="py-3 pr-6">
+                            <span className={cn(
+                              "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                              tx.record_type === "payout"
+                                ? "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200"
+                                : "border border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-700 dark:bg-sky-950/30 dark:text-sky-200"
+                            )}>
+                              {tx.record_type === "payout" ? "Payout Activity" : "Reconciled Bank"}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-6"><StatusBadge status={transactionStatus(tx.status)} label={tx.status} /></td>
+                          <td className="py-3 pr-6 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
+                          <td className="py-3 pr-6 text-muted-foreground">{tx.channel || "—"}</td>
+                          <td className="py-3 pr-6 text-muted-foreground">{tx.counterparty_name || "—"}</td>
+                          <td className="py-3 text-muted-foreground">{tx.date ? formatDateTime(tx.date) : "—"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
