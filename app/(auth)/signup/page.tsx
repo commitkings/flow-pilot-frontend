@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { BlobAside } from "@/components/auth/BlobAside";
 import { AccountStep } from "@/components/auth/AccountStep";
@@ -9,7 +8,6 @@ import { useAuth } from "@/context/auth-context";
 
 export default function SignupPage() {
   const { registerUser } = useAuth();
-  const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -61,7 +59,6 @@ export default function SignupPage() {
       const name = `${firstName.trim()} ${lastName.trim()}`;
       await registerUser(name, workEmail.trim().toLowerCase(), password);
       setSuccess(true);
-      setTimeout(() => router.push("/onboarding"), 900);
     } catch {
       // error toast is handled in auth context
     } finally {
