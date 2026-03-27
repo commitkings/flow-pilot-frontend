@@ -33,21 +33,21 @@ const SLOT_CONFIGS: SlotConfig[] = [
   {
     key: "date_from",
     label: "Start Date",
-    required: false,
+    required: true,
     aliases: ["date_range_start"],
     format: (v) => (v ? new Date(String(v)).toLocaleDateString() : ""),
   },
   {
     key: "date_to",
     label: "End Date",
-    required: false,
+    required: true,
     aliases: ["date_range_end"],
     format: (v) => (v ? new Date(String(v)).toLocaleDateString() : ""),
   },
   {
     key: "risk_tolerance",
     label: "Risk Tolerance",
-    required: false,
+    required: true,
     format: (v) => {
       const val = Number(v);
       if (val <= 0.3) return `${val} (Low)`;
