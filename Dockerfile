@@ -13,6 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+
 # Environment variables must be present at build time
 # for Next.js to bake them into the client-side code
 ARG NEXT_PUBLIC_API_URL
