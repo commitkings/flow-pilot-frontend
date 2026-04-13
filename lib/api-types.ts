@@ -103,6 +103,7 @@ export interface ApiRunRecord {
   objective: string;
   status: ApiRunStatus;
   created_at: string;
+  risk_tolerance?: number | null;
   current_step?: string | null;
   candidate_count?: number;
   // Detail-only fields (absent in list response)

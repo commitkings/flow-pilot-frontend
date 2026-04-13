@@ -33,6 +33,7 @@ export type RunRecord = {
   objective: string;
   status: RunStatus;
   candidates: number;
+  riskTolerance?: number | null;
   startedRelative: string;
   startedAt: string;
   startedAtLabel: string;

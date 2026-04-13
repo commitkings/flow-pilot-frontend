@@ -12,7 +12,6 @@ import { Check, AlertCircle } from "lucide-react";
 
 interface RunConfigPreviewProps {
   slots: Record<string, unknown>;
-  readOnly?: boolean;
 }
 
 interface SlotConfig {
@@ -70,7 +69,7 @@ const SLOT_CONFIGS: SlotConfig[] = [
   {
     key: "candidates",
     label: "Candidates",
-    required: false,
+    required: true,
     format: (v) => {
       if (Array.isArray(v)) return `${v.length} beneficiar${v.length === 1 ? "y" : "ies"}`;
       return String(v || "");
@@ -78,7 +77,7 @@ const SLOT_CONFIGS: SlotConfig[] = [
   },
 ];
 
-export function RunConfigPreview({ slots, readOnly = true }: RunConfigPreviewProps) {
+export function RunConfigPreview({ slots }: RunConfigPreviewProps) {
   const hasAnySlots = Object.keys(slots).length > 0;
 
   return (

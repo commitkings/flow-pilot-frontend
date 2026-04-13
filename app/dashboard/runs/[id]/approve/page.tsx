@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Check, Loader2, ShieldCheck, X } from "lucide-react";
@@ -10,12 +10,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { maskAccount, naira, truncateRunId } from "@/lib/mock-data";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 import { useApproveCandidates } from "@/hooks/use-candidate-mutations";
+import { useRun } from "@/hooks/use-run-queries";
 
 export default function ApprovalGatePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [overrideDecision, setOverrideDecision] = useState("review");
   const [overrideReason, setOverrideReason] = useState("");
@@ -27,15 +28,14 @@ export default function ApprovalGatePage() {
     isLoading: loadingCandidates,
     isError: candidatesError,
   } = useCandidates(id);
+  const { data: run, isLoading: loadingRun } = useRun(id);
 
   const approveMutation = useApproveCandidates(id, () => {
     router.push(`/dashboard/runs/${id}?phase=executing`);
   });
 
-  // Pre-select already-approved candidates when data loads
-  useEffect(() => {
-    setSelectedIds(allCandidates.filter((c) => c.approvalStatus === "selected").map((c) => c.id));
-  }, [allCandidates]);
+  const effectiveSelectedIds =
+    selectedIds ?? allCandidates.filter((c) => c.approvalStatus === "selected").map((c) => c.id);
 
   const rows = useMemo(
     () =>
@@ -47,15 +47,20 @@ export default function ApprovalGatePage() {
     [query, allCandidates]
   );
 
-  const selectedCandidates = allCandidates.filter((candidate) => selectedIds.includes(candidate.id));
+  const selectedCandidates = allCandidates.filter((candidate) => effectiveSelectedIds.includes(candidate.id));
   const selectedTotal = selectedCandidates.reduce((acc, candidate) => acc + candidate.amount, 0);
+  const riskTolerance = run?.riskTolerance ?? 0.35;
+  const reviewThreshold = riskTolerance + (1 - riskTolerance) / 2;
 
   const activeCandidate = allCandidates.find((candidate) => candidate.id === activeCandidateId) ?? null;
 
   const toggle = (candidateId: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(candidateId) ? prev.filter((cid) => cid !== candidateId) : [...prev, candidateId]
-    );
+    setSelectedIds((prev) => {
+      const base = prev ?? effectiveSelectedIds;
+      return base.includes(candidateId)
+        ? base.filter((cid) => cid !== candidateId)
+        : [...base, candidateId];
+    });
   };
 
   const selectAllSafe = () => {
@@ -68,10 +73,10 @@ export default function ApprovalGatePage() {
 
   const onApprove = () => {
     if (!confirmChecked || approveMutation.isPending) return;
-    approveMutation.mutate(selectedIds);
+    approveMutation.mutate(effectiveSelectedIds);
   };
 
-  if (loadingCandidates) {
+  if (loadingCandidates || loadingRun) {
     return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>;
   }
 
@@ -87,12 +92,16 @@ export default function ApprovalGatePage() {
           Runs / Run {truncateRunId(id)} / Approve
         </Link>
         <h1 className="mt-1 text-2xl font-semibold text-slate-900">Approval Gate.</h1>
-        <p className="mt-1 text-sm text-slate-500">Reconcile today and execute payroll payouts under risk threshold 0.35.</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Reconcile today and execute payroll payouts under risk threshold {riskTolerance.toFixed(2)}.
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">Run ID {truncateRunId(id)}</span>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">Risk Tolerance 0.35</span>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+          Risk Tolerance {riskTolerance.toFixed(2)}
+        </span>
         <StatusBadge status="review" label="Forecast Feasibility: Caution" />
       </div>
 
@@ -106,7 +115,7 @@ export default function ApprovalGatePage() {
       <Card className="rounded-xl border-slate-200 bg-white">
         <CardContent className="space-y-4 py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-slate-700">{selectedIds.length} of {allCandidates.length} candidates selected</p>
+            <p className="text-sm font-medium text-slate-700">{effectiveSelectedIds.length} of {allCandidates.length} candidates selected</p>
             <div className="flex flex-wrap items-center gap-2">
               <Button variant="outline" size="sm" className="rounded-lg" onClick={selectAllSafe}>Select All Safe</Button>
               <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setSelectedIds([])}>Deselect All</Button>
@@ -137,7 +146,7 @@ export default function ApprovalGatePage() {
               </thead>
               <tbody>
                 {rows.map((candidate) => {
-                  const selected = selectedIds.includes(candidate.id);
+                  const selected = effectiveSelectedIds.includes(candidate.id);
                   const blocked = candidate.decision === "block";
                   return (
                     <tr
@@ -165,7 +174,16 @@ export default function ApprovalGatePage() {
                       <td className="py-2">
                         <div className="flex items-center gap-2">
                           <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100">
-                            <div className={`${candidate.riskScore < 0.35 ? "bg-emerald-500" : candidate.riskScore < 0.65 ? "bg-amber-500" : "bg-red-500"} h-full`} style={{ width: `${candidate.riskScore * 100}%` }} />
+                            <div
+                              className={`${
+                                candidate.riskScore < riskTolerance
+                                  ? "bg-emerald-500"
+                                  : candidate.riskScore < reviewThreshold
+                                    ? "bg-amber-500"
+                                    : "bg-red-500"
+                              } h-full`}
+                              style={{ width: `${candidate.riskScore * 100}%` }}
+                            />
                           </div>
                           <span>{candidate.riskScore.toFixed(2)}</span>
                         </div>
@@ -247,11 +265,11 @@ export default function ApprovalGatePage() {
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-6 py-3">
           <p className="text-sm font-semibold text-slate-900">
-            Approving {selectedIds.length} payouts totalling {naira(selectedTotal)}
+            Approving {effectiveSelectedIds.length} payouts totalling {naira(selectedTotal)}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="outline" className="rounded-xl border-red-300 text-red-700 hover:bg-red-50">Reject All</Button>
-            <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={selectedIds.length === 0} onClick={() => setConfirmOpen(true)}>
+            <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={effectiveSelectedIds.length === 0} onClick={() => setConfirmOpen(true)}>
               <ShieldCheck className="h-4 w-4" />
               Approve Selected
             </Button>

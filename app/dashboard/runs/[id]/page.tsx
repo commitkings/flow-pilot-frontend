@@ -358,80 +358,149 @@ function summarizeAuditTrailEntry(entry: AuditEntry): string {
   const agentType = entry.agent_type ?? "";
   const action = entry.action ?? "";
 
-  // Semantic humanizers for specific agent_type + action combinations
+  // ── Planner ────────────────────────────────────────────────
   if (agentType === "planner" && action === "plan_generated") {
-    const steps = detail.plan_steps as Array<{ agent_type?: string }> | undefined;
-    if (steps?.length) {
-      const stepNames = steps.map((s) => s.agent_type ?? "step").join(", ");
-      return `Created execution plan with ${steps.length} steps: ${stepNames}`;
+    const stepCount = detail.step_count as number | undefined;
+    const summary = detail.summary as string | undefined;
+    const riskAssessment = detail.risk_assessment as string | undefined;
+    const estimatedCandidates = detail.estimated_candidates as number | undefined;
+    const parts: string[] = [];
+    if (summary && summary.length > 5) {
+      parts.push(summary.slice(0, 180));
+    } else if (stepCount) {
+      parts.push(`Created execution plan with ${stepCount} steps`);
+    } else {
+      parts.push("Generated execution plan");
     }
-    return "Generated execution plan for this run.";
+    if (estimatedCandidates && estimatedCandidates > 0) {
+      parts.push(`${estimatedCandidates} candidate${estimatedCandidates !== 1 ? "s" : ""}`);
+    }
+    if (riskAssessment && riskAssessment.length > 5) {
+      parts.push(`Risk note: ${riskAssessment.slice(0, 120)}`);
+    }
+    return parts.join(" · ");
   }
 
+  // ── Reconciliation ─────────────────────────────────────────
   if (agentType === "reconciliation") {
-    const summary = detail.ai_summary as Record<string, unknown> | undefined;
-    if (summary) {
-      const parts: string[] = [];
-      const insights = summary.insights as unknown[] | undefined;
-      const gaps = summary.gaps as unknown[] | undefined;
-      if (insights?.length) parts.push(`${insights.length} insight${insights.length > 1 ? "s" : ""} found`);
-      if (gaps?.length) parts.push(`${gaps.length} gap${gaps.length > 1 ? "s" : ""} identified`);
-      if (parts.length > 0) return `Reconciliation complete • ${parts.join(" • ")}`;
-    }
+    const aiSummary = detail.ai_summary as Record<string, unknown> | undefined;
     const txnCount = detail.transaction_count ?? detail.total_transactions;
+    if (aiSummary) {
+      const parts: string[] = [];
+      const insights = aiSummary.insights as Array<Record<string, unknown>> | undefined;
+      const gaps = aiSummary.gaps as Array<Record<string, unknown>> | undefined;
+      if (typeof txnCount === "number") {
+        parts.push(`${txnCount.toLocaleString()} transaction${txnCount !== 1 ? "s" : ""} reconciled`);
+      }
+      // Show the first insight verbatim — extract text from the object
+      if (insights?.length) {
+        const first = insights[0];
+        const insightText = typeof first === "string"
+          ? first
+          : (first?.detail ?? first?.metric ?? first?.description ?? "").toString();
+        if (insightText) parts.push(insightText.slice(0, 120));
+        if (insights.length > 1) parts.push(`+${insights.length - 1} more insight${insights.length > 2 ? "s" : ""}`);
+      }
+      if (gaps?.length) {
+        const firstGap = gaps[0];
+        const gapText = typeof firstGap === "string"
+          ? firstGap
+          : (firstGap?.type ?? firstGap?.detail ?? "").toString();
+        parts.push(`${gaps.length} gap${gaps.length > 1 ? "s" : ""}: ${gapText.slice(0, 80)}`);
+      }
+      if (parts.length > 0) return parts.join(" · ");
+    }
     if (typeof txnCount === "number") {
-      return `Reconciled ${txnCount.toLocaleString()} transactions`;
+      return txnCount === 0
+        ? "No bank transactions found for this date range. Reconciliation ran in degraded mode."
+        : `Reconciled ${txnCount.toLocaleString()} transaction${txnCount !== 1 ? "s" : ""}`;
     }
     return "Transaction reconciliation completed.";
   }
 
+  // ── Risk ────────────────────────────────────────────────────
   if (agentType === "risk") {
-    const candidates = detail.candidates as Array<{ risk_decision?: string }> | undefined;
+    const candidates = detail.candidates as Array<{
+      beneficiary_name?: string;
+      risk_score?: number;
+      risk_decision?: string;
+      risk_reasons?: string[];
+    }> | undefined;
     if (candidates?.length) {
       const allow = candidates.filter((c) => c.risk_decision === "allow").length;
       const review = candidates.filter((c) => c.risk_decision === "review").length;
       const block = candidates.filter((c) => c.risk_decision === "block").length;
-      const parts: string[] = [];
+      // For small batches, name each candidate
+      if (candidates.length <= 5) {
+        const names = candidates.map((c) => {
+          const name = c.beneficiary_name ?? "Unknown";
+          const score = c.risk_score !== undefined ? c.risk_score.toFixed(2) : "?";
+          const decision = c.risk_decision ?? "?";
+          return `${name}: ${decision} (score ${score})`;
+        });
+        return `Risk assessed ${candidates.length} candidate${candidates.length !== 1 ? "s" : ""}: ${names.join("; ")}`;
+      }
+      // Large batch: aggregate
+      const parts: string[] = [`${candidates.length} candidates scored`];
       if (allow > 0) parts.push(`${allow} approved`);
-      if (review > 0) parts.push(`${review} for review`);
+      if (review > 0) parts.push(`${review} flagged for review`);
       if (block > 0) parts.push(`${block} blocked`);
-      return `Risk assessment complete • ${parts.join(" • ") || "All candidates scored"}`;
+      return parts.join(" · ");
     }
     return "Risk scoring completed for all candidates.";
   }
 
+  // ── Execution ───────────────────────────────────────────────
   if (agentType === "execution") {
-    const submitted = detail.candidates_submitted ?? detail.total_executed;
-    const success = detail.successful ?? detail.success_count;
-    if (typeof submitted === "number") {
-      const parts = [`Executed ${submitted} transaction${submitted !== 1 ? "s" : ""}`];
-      if (typeof success === "number" && submitted > 0) {
-        const rate = Math.round((success / submitted) * 100);
-        parts.push(`${rate}% success rate`);
-      }
-      return parts.join(" • ");
+    const payoutMode = detail.payout_mode as string | undefined;
+    const verifiedCount = detail.verified_count as number | undefined;
+    const successCount = detail.success_count as number | undefined;
+    const failedCount = detail.failed_count as number | undefined;
+    const pendingCount = detail.pending_count as number | undefined;
+    const totalAmount = detail.total_amount_executed as number | undefined;
+    const parts: string[] = [];
+    if (typeof verifiedCount === "number") {
+      parts.push(`${verifiedCount} verified via Interswitch`);
     }
-    return "Payout execution completed.";
+    if (typeof successCount === "number" || typeof pendingCount === "number") {
+      const s = successCount ?? 0;
+      const p = pendingCount ?? 0;
+      parts.push(`${s + p} payout${(s + p) !== 1 ? "s" : ""} submitted`);
+    }
+    if (typeof totalAmount === "number" && totalAmount > 0) {
+      parts.push(`₦${totalAmount.toLocaleString("en-NG")} disbursed`);
+    }
+    if (typeof failedCount === "number" && failedCount > 0) {
+      parts.push(`${failedCount} failed`);
+    }
+    if (payoutMode === "simulated") {
+      parts.push("simulated mode");
+    }
+    return parts.length > 0 ? parts.join(" · ") : "Payout execution completed.";
   }
 
+  // ── Audit ───────────────────────────────────────────────────
   if (agentType === "audit" && action === "final_report") {
+    const execSummary = detail.executive_summary as string | undefined;
+    if (execSummary && execSummary.length > 5) {
+      return execSummary.slice(0, 200);
+    }
     return "Generated compliance and audit report for this run.";
   }
 
-  // Fallback: extract key metrics without raw JSON
-  const skipKeys = ["plan_steps", "data_integrity", "raw_response", "data_integrity_hash", "generated_at"];
+  // ── Fallback: extract key metrics ──────────────────────────
+  const skipKeys = ["plan_steps", "data_integrity", "raw_response", "data_integrity_hash", "generated_at", "ai_summary"];
   const pairs = Object.entries(detail).filter(([key]) => !skipKeys.includes(key));
 
   if (pairs.length === 0) return "Recorded by FlowPilot.";
 
-  // For remaining cases, extract meaningful values
   return pairs
-    .slice(0, 3)
+    .slice(0, 4)
     .map(([key, value]) => {
       const label = key.replaceAll("_", " ");
       if (typeof value === "number") return `${label}: ${value.toLocaleString()}`;
       if (typeof value === "boolean") return `${label}: ${value ? "Yes" : "No"}`;
-      if (typeof value === "string" && value.length < 50) return `${label}: ${value}`;
+      if (typeof value === "string" && value.length < 80) return `${label}: ${value}`;
       if (Array.isArray(value)) return `${label}: ${value.length} item${value.length !== 1 ? "s" : ""}`;
       if (typeof value === "object" && value !== null) {
         const keys = Object.keys(value);
@@ -1073,7 +1142,7 @@ function CandidateCard({
 
       <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>Amount: <span className="font-semibold text-foreground">{formatCurrency(candidate.amount)}</span></span>
-        <span>Risk: <span className="font-semibold text-foreground">{candidate.riskScore === null ? "—" : candidate.riskScore.toFixed(2)}</span></span>
+        <span>Risk Score: <span className="font-semibold text-foreground">{candidate.riskScore === null ? "—" : candidate.riskScore.toFixed(2)}</span></span>
         <span>Purpose: <span className="text-foreground">{candidate.purpose || "—"}</span></span>
       </div>
 
