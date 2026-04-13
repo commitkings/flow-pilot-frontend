@@ -13,7 +13,8 @@ import {
   ChevronsLeft,
   Users,
   LogOut,
-  ScrollText
+  ScrollText,
+  ClipboardCheck,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "Overview", href: "/dashboard", icon: Home },
   { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
+  { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
   { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
   { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
   { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
