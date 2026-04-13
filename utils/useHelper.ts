@@ -83,6 +83,7 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     objective: r.objective,
     status: mapRunStatus(r.status),
     candidates: r.candidate_count ?? 0,
+    riskTolerance: r.risk_tolerance ?? null,
     error: r.error ?? null,
     startedRelative,
     startedAt: r.created_at,
