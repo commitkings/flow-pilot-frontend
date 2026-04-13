@@ -15,6 +15,7 @@ import {
   LogOut,
   ScrollText,
   ClipboardCheck,
+  Radio,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ const navItems: NavItem[] = [
   { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
   { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
   { label: "Team Members", href: "/dashboard/team", icon: Users, roles: ["owner"] },
+  { label: "Sessions", href: "/dashboard/sessions", icon: Radio, roles: ["owner"] },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];

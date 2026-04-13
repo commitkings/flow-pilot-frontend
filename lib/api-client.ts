@@ -195,6 +195,22 @@ export function listTransactions(filters: TransactionFilters = {}): Promise<Tran
     .then((r) => r.data);
 }
 
+export function exportTransactionsEmail(
+  email: string,
+  rows: import("./api-types").TransactionRow[],
+  format: "csv" | "pdf" = "csv",
+  pdfBase64?: string,
+): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/transactions/export-email", {
+      email,
+      rows,
+      format,
+      pdf_base64: pdfBase64 ?? null,
+    })
+    .then((r) => r.data);
+}
+
 // ── 9. Approvals Queue ────────────────────────────────────────────────────────
 
 export interface ApprovalFilters {
@@ -229,6 +245,22 @@ export interface AuditFilters {
 export function listAuditEntries(filters: AuditFilters = {}): Promise<AuditListResponse> {
   return apiClient
     .get<AuditListResponse>("/audit", { params: filters })
+    .then((r) => r.data);
+}
+
+export function exportAuditEmail(
+  email: string,
+  entries: import("./api-types").AuditEntry[],
+  format: "csv" | "pdf" = "csv",
+  pdfBase64?: string,
+): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/audit/export-email", {
+      email,
+      entries,
+      format,
+      pdf_base64: pdfBase64 ?? null,
+    })
     .then((r) => r.data);
 }
 
@@ -302,6 +334,22 @@ export function updateOrgProfile(data: Record<string, unknown>): Promise<Record<
 
 export function updateOrgConfig(data: Record<string, unknown>): Promise<Record<string, unknown>> {
   return apiClient.patch("/org/profile/config", data).then((r) => r.data);
+}
+
+export interface ActiveSessionsResponse {
+  active_count: number;
+  total_members: number;
+  members: {
+    user_id: string;
+    display_name: string;
+    email: string;
+    role: string;
+    is_online: boolean;
+  }[];
+}
+
+export function getActiveSessions(): Promise<ActiveSessionsResponse> {
+  return apiClient.get<ActiveSessionsResponse>("/org/sessions").then((r) => r.data);
 }
 
 // ── 14. Auth (Extended) ──────────────────────────────────────────────────────

@@ -5,68 +5,48 @@ import { Download, Mail, FileText, FileSpreadsheet, Loader2 } from "lucide-react
 import { toast } from "sonner";
 import { Modal } from "@/components/modals/Modal";
 import { Button } from "@/components/ui/button";
-import { Field, TextInput, SelectInput, DateInput } from "@/components/ui/form-fields";
-import { exportTransactionsEmail } from "@/lib/api-client";
+import { Field, DateInput } from "@/components/ui/form-fields";
+import { exportAuditEmail } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
-import type { TransactionRow } from "@/lib/api-types";
+import type { AuditEntry } from "@/lib/api-types";
 
-const STATUS_OPTIONS = [
-  { label: "Success", value: "SUCCESS" },
-  { label: "Pending", value: "PENDING" },
-  { label: "Failed", value: "FAILED" },
-  { label: "Reversed", value: "REVERSED" },
-];
-
-const CHANNEL_OPTIONS = [
-  { label: "Card", value: "CARD" },
-  { label: "Transfer", value: "TRANSFER" },
-  { label: "USSD", value: "USSD" },
-  { label: "QR", value: "QR" },
-];
-
-interface ExportFilters {
-  reference: string;
-  status: string;
-  channel: string;
-  fromDate: string;
-  toDate: string;
-}
-
-const EMPTY: ExportFilters = { reference: "", status: "", channel: "", fromDate: "", toDate: "" };
-
-interface ExportTransactionsModalProps {
+interface ExportAuditModalProps {
   open: boolean;
   onClose: () => void;
-  rows: TransactionRow[];
+  entries: AuditEntry[];
 }
 
-function applyFilters(rows: TransactionRow[], f: ExportFilters): TransactionRow[] {
-  return rows.filter((r) => {
-    if (f.reference && !r.reference.toLowerCase().includes(f.reference.toLowerCase())) return false;
-    if (f.status && r.status !== f.status) return false;
-    if (f.channel && r.channel !== f.channel) return false;
-    if (f.fromDate && (r.date ?? "") < f.fromDate) return false;
-    if (f.toDate && (r.date ?? "") > f.toDate) return false;
+function applyDateFilter(entries: AuditEntry[], fromDate: string, toDate: string): AuditEntry[] {
+  return entries.filter((e) => {
+    const d = e.created_at.slice(0, 10);
+    if (fromDate && d < fromDate) return false;
+    if (toDate && d > toDate) return false;
     return true;
   });
 }
 
-function downloadCSV(rows: TransactionRow[]) {
-  const header = "Reference,Status,Amount,Channel,Direction,Counterparty,Date";
-  const lines = rows.map((t) =>
-    [t.reference, t.status, t.amount, t.channel, t.direction, `"${(t.counterparty_name ?? "").replace(/"/g, '""')}"`, t.date ?? ""].join(",")
+function downloadCSV(entries: AuditEntry[]) {
+  const header = "ID,Agent,Action,Run ID,Timestamp";
+  const lines = entries.map((e) =>
+    [
+      e.id,
+      e.agent_type,
+      `"${e.action.replace(/"/g, '""')}"`,
+      e.run_id,
+      e.created_at,
+    ].join(",")
   );
   const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `audit-log-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-async function buildPDFDoc(rows: TransactionRow[]) {
+async function buildPDFDoc(entries: AuditEntry[]) {
   const { default: jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
 
@@ -74,28 +54,27 @@ async function buildPDFDoc(rows: TransactionRow[]) {
 
   doc.setFontSize(16);
   doc.setTextColor(22, 33, 58);
-  doc.text("Transaction Export", 14, 18);
+  doc.text("Audit Log Export", 14, 18);
 
   doc.setFontSize(10);
   doc.setTextColor(120, 112, 103);
-  doc.text(`Generated: ${new Date().toLocaleString("en-NG")}  ·  ${rows.length} record${rows.length !== 1 ? "s" : ""}`, 14, 26);
+  doc.text(
+    `Generated: ${new Date().toLocaleString("en-NG")}  ·  ${entries.length} entr${entries.length !== 1 ? "ies" : "y"}`,
+    14, 26
+  );
 
   autoTable(doc, {
     startY: 32,
-    head: [["Reference", "Counterparty", "Amount (₦)", "Channel", "Direction", "Status", "Date"]],
-    body: rows.map((r) => [
-      r.reference,
-      r.counterparty_name ?? "—",
-      Number(r.amount).toLocaleString("en-NG", { minimumFractionDigits: 2 }),
-      r.channel,
-      r.direction,
-      r.status,
-      r.date ? r.date.slice(0, 10) : "—",
+    head: [["Agent", "Action", "Run ID", "Timestamp"]],
+    body: entries.map((e) => [
+      e.agent_type,
+      e.action,
+      e.run_id.slice(0, 8),
+      new Date(e.created_at).toLocaleString("en-NG"),
     ]),
     headStyles: { fillColor: [22, 33, 58], fontSize: 9, fontStyle: "bold" },
     bodyStyles: { fontSize: 8.5 },
     alternateRowStyles: { fillColor: [250, 249, 247] },
-    columnStyles: { 2: { halign: "right" } },
   });
 
   return doc;
@@ -104,18 +83,16 @@ async function buildPDFDoc(rows: TransactionRow[]) {
 type Format = "csv" | "pdf";
 type Delivery = "download" | "email";
 
-export function ExportTransactionsModal({ open, onClose, rows }: ExportTransactionsModalProps) {
+export function ExportAuditModal({ open, onClose, entries }: ExportAuditModalProps) {
   const { user } = useAuth();
-  const [draft, setDraft] = useState<ExportFilters>(EMPTY);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [format, setFormat] = useState<Format>("csv");
   const [delivery, setDelivery] = useState<Delivery>("download");
   const [emailTo, setEmailTo] = useState(user?.email ?? "");
   const [loading, setLoading] = useState(false);
 
-  const set = <K extends keyof ExportFilters>(key: K, value: ExportFilters[K]) =>
-    setDraft((prev) => ({ ...prev, [key]: value }));
-
-  const preview = applyFilters(rows, draft);
+  const preview = applyDateFilter(entries, fromDate, toDate);
 
   const handleExport = async () => {
     if (preview.length === 0) return;
@@ -125,15 +102,15 @@ export function ExportTransactionsModal({ open, onClose, rows }: ExportTransacti
         if (format === "pdf") {
           const doc = await buildPDFDoc(preview);
           const pdfBase64 = doc.output("datauristring").split(",")[1];
-          await exportTransactionsEmail(emailTo, preview, "pdf", pdfBase64);
+          await exportAuditEmail(emailTo, preview, "pdf", pdfBase64);
         } else {
-          await exportTransactionsEmail(emailTo, preview, "csv");
+          await exportAuditEmail(emailTo, preview, "csv");
         }
         toast.success(`Export sent to ${emailTo}`);
         onClose();
       } else if (format === "pdf") {
         const doc = await buildPDFDoc(preview);
-        doc.save(`transactions-${new Date().toISOString().slice(0, 10)}.pdf`);
+        doc.save(`audit-log-${new Date().toISOString().slice(0, 10)}.pdf`);
         onClose();
       } else {
         downloadCSV(preview);
@@ -150,13 +127,13 @@ export function ExportTransactionsModal({ open, onClose, rows }: ExportTransacti
     <Modal
       open={open}
       onClose={onClose}
-      title="Export Transactions"
-      description="Filter which transactions to include before exporting."
-      maxWidth="max-w-md"
+      title="Export Audit Log"
+      description="Filter by date range before exporting."
+      maxWidth="max-w-sm"
       footer={
         <>
           <span className="text-xs text-muted-foreground">
-            {preview.length} of {rows.length} transaction{rows.length !== 1 ? "s" : ""} selected
+            {preview.length} of {entries.length} entr{entries.length !== 1 ? "ies" : "y"} selected
           </span>
           <Button
             className="gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90"
@@ -188,9 +165,7 @@ export function ExportTransactionsModal({ open, onClose, rows }: ExportTransacti
                   onClick={() => setFormat(f)}
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-bold transition-colors",
-                    format === f
-                      ? "bg-brand text-white"
-                      : "bg-background text-muted-foreground hover:bg-muted"
+                    format === f ? "bg-brand text-white" : "bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >
                   {f === "csv" ? <FileSpreadsheet className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
@@ -210,9 +185,7 @@ export function ExportTransactionsModal({ open, onClose, rows }: ExportTransacti
                   onClick={() => setDelivery(d)}
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-bold transition-colors",
-                    delivery === d
-                      ? "bg-brand text-white"
-                      : "bg-background text-muted-foreground hover:bg-muted"
+                    delivery === d ? "bg-brand text-white" : "bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >
                   {d === "download" ? <Download className="h-3.5 w-3.5" /> : <Mail className="h-3.5 w-3.5" />}
@@ -223,47 +196,24 @@ export function ExportTransactionsModal({ open, onClose, rows }: ExportTransacti
           </div>
         </div>
 
-        {/* Email address field — only shown in email mode */}
         {delivery === "email" && (
           <Field label="Send to">
-            <TextInput
+            <input
               type="email"
               value={emailTo}
-              onChange={setEmailTo}
+              onChange={(e) => setEmailTo(e.target.value)}
               placeholder="email@example.com"
+              className="h-12 w-full rounded-full border border-border bg-background px-5 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10"
             />
           </Field>
         )}
 
-
-        <Field label="Reference contains">
-          <TextInput value={draft.reference} onChange={(v) => set("reference", v)} placeholder="e.g. TXN-001" />
-        </Field>
-
-        <Field label="Status">
-          <SelectInput
-            value={draft.status}
-            onChange={(v) => set("status", v)}
-            placeholder="All statuses"
-            options={STATUS_OPTIONS}
-          />
-        </Field>
-
-        <Field label="Channel">
-          <SelectInput
-            value={draft.channel}
-            onChange={(v) => set("channel", v)}
-            placeholder="All channels"
-            options={CHANNEL_OPTIONS}
-          />
-        </Field>
-
         <div className="grid grid-cols-2 gap-4">
           <Field label="From">
-            <DateInput value={draft.fromDate} onChange={(v) => set("fromDate", v)} placeholder="Start date" />
+            <DateInput value={fromDate} onChange={setFromDate} placeholder="Start date" />
           </Field>
           <Field label="To">
-            <DateInput value={draft.toDate} onChange={(v) => set("toDate", v)} placeholder="End date" />
+            <DateInput value={toDate} onChange={setToDate} placeholder="End date" />
           </Field>
         </div>
       </div>

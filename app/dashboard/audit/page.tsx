@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, FileText, Activity, Shield } from "lucide-react";
+import { Loader2, FileText, Activity, Shield, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
+import { ExportAuditModal } from "@/components/dashboard/audit/ExportAuditModal";
 import { useAuditEntries } from "@/hooks/use-audit-queries";
 import type { AuditFilters } from "@/lib/api-client";
 
@@ -30,6 +30,7 @@ function agentBadge(agent: string) {
 
 export default function AuditPage() {
   const [agentFilter, setAgentFilter] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
 
   const apiFilters: AuditFilters = {
     agent_type: agentFilter || undefined,
@@ -88,6 +89,16 @@ export default function AuditPage() {
               </Button>
             ))}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 rounded-full shrink-0"
+            onClick={() => setExportOpen(true)}
+            disabled={entries.length === 0}
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
         </div>
 
         <div className="overflow-x-auto">
@@ -144,6 +155,12 @@ export default function AuditPage() {
           </table>
         </div>
       </div>
+
+      <ExportAuditModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        entries={entries}
+      />
     </div>
   );
 }

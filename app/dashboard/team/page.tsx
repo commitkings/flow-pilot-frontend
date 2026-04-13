@@ -40,9 +40,10 @@ import {
   useUpdateMemberRole,
 } from "@/hooks/use-team-queries";
 import { useAuth } from "@/context/auth-context";
-import { importTeamMembers, getTeamImportTemplateUrl } from "@/lib/api-client";
+import { importTeamMembers, getTeamImportTemplateUrl, getActiveSessions } from "@/lib/api-client";
 import type { BulkImportResult } from "@/lib/api-client";
 import type { TeamMember } from "@/lib/api-types";
+import { useQuery } from "@tanstack/react-query";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,11 @@ export default function TeamPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError } = useTeamMembers();
+  const { data: sessionData } = useQuery({
+    queryKey: ["org-sessions"],
+    queryFn: getActiveSessions,
+    refetchInterval: 30_000, // refresh every 30s
+  });
   const inviteMutation = useInviteMember();
 
   const members = data?.members ?? [];
@@ -389,13 +395,25 @@ export default function TeamPage() {
       </div>
 
       {/* Metric cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <MetricCard
           label="Total Members"
           value={isLoading ? "…" : String(totalCount)}
           subtext="In your workspace"
           icon={<Users className="h-4 w-4" />}
           accent="brand"
+        />
+        <MetricCard
+          label="Online Now"
+          value={sessionData ? String(sessionData.active_count) : "…"}
+          subtext="Active in last 15 min"
+          icon={
+            <span className="relative flex h-4 w-4 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-50" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            </span>
+          }
+          accent="green"
         />
         <MetricCard
           label="Approvers"
