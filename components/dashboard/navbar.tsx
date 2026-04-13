@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Plus, Users } from "lucide-react";
+import { Compass, Menu, Plus, Users } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -9,7 +9,7 @@ import { SearchInput } from "@/components/ui/form-fields";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 
 export function Navbar() {
-  const { openNewRun, toggleMobileMenu, setInviteOpen } = useDashboardShell();
+  const { openNewRun, toggleMobileMenu, setInviteOpen, startTour } = useDashboardShell();
   const [query, setQuery] = useState("");
   const pathname = usePathname();
 
@@ -33,7 +33,7 @@ export function Navbar() {
         />
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {isRunsPage && (
           <Button
             onClick={openNewRun}
@@ -52,6 +52,16 @@ export function Navbar() {
             <span className="hidden md:inline">Invite Member</span>
           </Button>
         )}
+
+        {/* Tour guide button — always visible */}
+        <button
+          onClick={startTour}
+          title="Product Tour"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Compass className="h-4 w-4" />
+        </button>
+
         {/* Mobile: menu icon right */}
         <button
           onClick={toggleMobileMenu}

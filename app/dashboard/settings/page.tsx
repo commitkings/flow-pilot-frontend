@@ -2,7 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useAuth } from "@/context/auth-context";
+import { getUserRole } from "@/lib/api-types";
 import {
+  AlertTriangle,
   Camera,
   Loader2,
   LogOut,
@@ -21,10 +23,13 @@ import {
   useChangePassword,
   useUpdateOrgProfile,
   useExportAccountData,
+  useDeleteAccount,
 } from "@/hooks/use-settings-queries";
 
 export default function SettingsPage() {
   const { user, logout, refreshUser } = useAuth();
+  const isOwner = getUserRole(user) === "owner";
+
   const orgQuery = useOrgProfile();
   const connectionsQuery = useConnections();
   const updateProfile = useUpdateProfile();
@@ -33,7 +38,12 @@ export default function SettingsPage() {
   const changePasswordMut = useChangePassword();
   const updateOrg = useUpdateOrgProfile();
   const exportData = useExportAccountData();
+  const deleteAccount = useDeleteAccount(() => logout());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete account confirmation modal state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Profile form state
   const [firstName, setFirstName] = useState(user?.first_name ?? "");
@@ -332,23 +342,26 @@ export default function SettingsPage() {
 
         <Section title="Danger Zone" description="Irreversible and destructive actions." variant="danger">
           <div className="space-y-4">
-            <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
-              <div>
-                <p className="font-bold text-foreground">Export All Data</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Download your workspace data in JSON format.
-                </p>
+            {/* Export All Data — owner only */}
+            {isOwner ? (
+              <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
+                <div>
+                  <p className="font-bold text-foreground">Export All Data</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Download your full workspace data (runs, transactions, team, audit logs) as JSON.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  className="shrink-0 rounded-full"
+                  onClick={() => exportData.mutate()}
+                  disabled={exportData.isPending}
+                >
+                  {exportData.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Export Data
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                className="shrink-0 rounded-full"
-                onClick={() => exportData.mutate()}
-                disabled={exportData.isPending}
-              >
-                {exportData.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Export Data
-              </Button>
-            </div>
+            ) : null}
 
             <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
               <div>
@@ -366,19 +379,90 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-              <div>
-                <p className="font-bold text-destructive">Delete Account</p>
-                <p className="mt-0.5 text-sm text-destructive/80">
-                  Permanent deletion of account and all associated data.
-                </p>
+            {/* Delete Account — owner only */}
+            {isOwner ? (
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div>
+                  <p className="font-bold text-destructive">Delete Account</p>
+                  <p className="mt-0.5 text-sm text-destructive/80">
+                    Permanently deactivates your account and entire workspace. This cannot be undone.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  className="shrink-0 rounded-full shadow-sm"
+                  onClick={() => { setDeleteOpen(true); setDeleteConfirmText(""); }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete Account
+                </Button>
               </div>
-              <Button variant="destructive" className="relative shrink-0 overflow-hidden rounded-full shadow-sm">
-                <Trash2 className="mr-2 h-4 w-4" /> Delete Account
-              </Button>
-            </div>
+            ) : null}
           </div>
         </Section>
+
+        {/* ── Delete Account Confirmation Modal ───────────────────────────── */}
+        {deleteOpen && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-md rounded-2xl bg-card shadow-2xl border border-border animate-in zoom-in-95 duration-200 overflow-hidden">
+              <div className="px-6 py-5 border-b border-border">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 mb-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">Delete Account &amp; Workspace</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This will permanently deactivate your account, your business workspace, and remove dashboard access for all team members. This action <strong>cannot be undone</strong>.
+                </p>
+              </div>
+
+              <div className="px-6 py-5 space-y-4">
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  <p className="font-semibold">What gets deleted:</p>
+                  <ul className="mt-1 list-disc pl-4 space-y-0.5 text-destructive/80">
+                    <li>Your account and login access</li>
+                    <li>Your business workspace</li>
+                    <li>All team members lose access</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-foreground">
+                    Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm
+                  </label>
+                  <Input
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="h-10 rounded-xl font-mono"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+                <Button
+                  variant="ghost"
+                  className="rounded-full px-6"
+                  onClick={() => setDeleteOpen(false)}
+                  disabled={deleteAccount.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="rounded-full px-6 shadow-sm"
+                  disabled={deleteConfirmText !== "DELETE" || deleteAccount.isPending}
+                  onClick={() => deleteAccount.mutate()}
+                >
+                  {deleteAccount.isPending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</>
+                  ) : (
+                    <><Trash2 className="mr-2 h-4 w-4" />Delete Everything</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

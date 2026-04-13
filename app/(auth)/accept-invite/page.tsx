@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Field, PasswordInput, TextInput } from "@/components/ui/form-fields";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { getInviteDetails, registerViaInvite } from "@/lib/api-client";
-import { setToken } from "@/lib/token-storage";
 import type { InviteDetails } from "@/lib/api-types";
 
 function RoleBadge({ role }: { role: string }) {
@@ -60,15 +59,16 @@ function AcceptInviteForm() {
     if (!canSubmit) return;
     setLoading(true);
     try {
-      const { token: jwt } = await registerViaInvite({
+      await registerViaInvite({
         token,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         password,
       });
-      setToken(jwt);
+      // Don't auto-login — require the user to log in manually so they
+      // go through the normal auth flow into the correct business dashboard.
       setDone(true);
-      setTimeout(() => router.push("/dashboard"), 1500);
+      setTimeout(() => router.push("/login"), 2000);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Something went wrong. Please try again.";
@@ -156,10 +156,15 @@ function AcceptInviteForm() {
   // ── Success state (after registration) ────────────────────────────────────
   if (done) {
     return (
-      <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
-        <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-        <p className="text-sm font-medium text-green-800">
-          Account created! Taking you to the dashboard&hellip;
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+          <p className="text-sm font-medium text-green-800">
+            Account created! Taking you to the login page&hellip;
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground text-center">
+          Log in with your email and the password you just set.
         </p>
       </div>
     );

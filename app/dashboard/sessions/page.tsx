@@ -51,10 +51,10 @@ type SessionMember = ActiveSessionsResponse["members"][number];
 
 function MemberRow({ member }: { member: SessionMember }) {
   return (
-    <div className="flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition-colors">
+    <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors md:gap-4 md:px-5 md:py-4">
       {/* Avatar */}
       <div className="relative shrink-0">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-bold text-muted-foreground md:h-10 md:w-10">
           {getInitials(member.display_name || member.email)}
         </span>
         <span className="absolute -bottom-0.5 -right-0.5">
@@ -70,8 +70,8 @@ function MemberRow({ member }: { member: SessionMember }) {
         <p className="truncate text-xs text-muted-foreground">{member.email}</p>
       </div>
 
-      {/* Role */}
-      <div className="shrink-0">
+      {/* Role — hidden on xs, visible from sm */}
+      <div className="hidden shrink-0 sm:block">
         <StatusBadge
           status={
             member.role === "owner" || member.role === "approver"
@@ -82,17 +82,17 @@ function MemberRow({ member }: { member: SessionMember }) {
         />
       </div>
 
-      {/* Online status label */}
-      <div className="shrink-0 w-28 flex items-center justify-end gap-2">
+      {/* Online status */}
+      <div className="shrink-0 flex items-center gap-1.5">
         {member.is_online ? (
           <>
             <Wifi className="h-3.5 w-3.5 text-green-500" />
-            <span className="text-xs font-semibold text-green-600">Online</span>
+            <span className="hidden text-xs font-semibold text-green-600 sm:inline">Online</span>
           </>
         ) : (
           <>
             <WifiOff className="h-3.5 w-3.5 text-muted-foreground/50" />
-            <span className="text-xs text-muted-foreground">Offline</span>
+            <span className="hidden text-xs text-muted-foreground sm:inline">Offline</span>
           </>
         )}
       </div>

@@ -171,8 +171,15 @@ export function downloadRunReport(runId: string): Promise<Blob> {
 
 // ── 7. Institutions ──────────────────────────────────────────────────────────
 
-export function listInstitutions(): Promise<InstitutionsResponse> {
-  return apiClient.get<InstitutionsResponse>("/institutions").then((r) => r.data);
+export interface InstitutionFilters {
+  search?: string;
+  institution_type?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listInstitutions(filters: InstitutionFilters = {}): Promise<InstitutionsResponse> {
+  return apiClient.get<InstitutionsResponse>("/institutions", { params: filters }).then((r) => r.data);
 }
 
 // ── 8. Transactions ──────────────────────────────────────────────────────────
@@ -304,6 +311,10 @@ export function removeTeamMember(memberId: string): Promise<{ status: string }> 
   return apiClient.delete<{ status: string }>(`/team/members/${memberId}`).then((r) => r.data);
 }
 
+export function toggleMemberStatus(memberId: string, isActive: boolean): Promise<{ status: string; member: import("./api-types").TeamMember }> {
+  return apiClient.patch(`/team/members/${memberId}/status`, { is_active: isActive }).then((r) => r.data);
+}
+
 export interface BulkImportResult {
   summary: { added: number; invited: number; skipped: number; failed: number; total: number };
   results: Array<{ line: number; email: string; status: string; role?: string; reason?: string }>;
@@ -427,6 +438,12 @@ export function exportAccountData(): Promise<Blob> {
   return apiClient
     .post("/account/export", {}, { responseType: "blob" })
     .then((r) => r.data as Blob);
+}
+
+export function deleteAccount(): Promise<{ status: string; message: string }> {
+  return apiClient
+    .delete<{ status: string; message: string }>("/account/delete")
+    .then((r) => r.data);
 }
 
 

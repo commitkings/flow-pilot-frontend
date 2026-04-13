@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pagination } from "@/components/ui/pagination";
 import { ExportAuditModal } from "@/components/dashboard/audit/ExportAuditModal";
 import { useAuditEntries } from "@/hooks/use-audit-queries";
 import type { AuditFilters } from "@/lib/api-client";
+
+const PAGE_SIZE = 50;
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("en-NG", {
@@ -31,12 +34,13 @@ function agentBadge(agent: string) {
 export default function AuditPage() {
   const [agentFilter, setAgentFilter] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
+  const [offset, setOffset] = useState(0);
 
   const apiFilters: AuditFilters = {
     agent_type: agentFilter || undefined,
   };
 
-  const { data, isLoading, isError } = useAuditEntries(apiFilters);
+  const { data, isLoading, isError } = useAuditEntries(apiFilters, PAGE_SIZE, offset);
 
   const entries = data?.entries ?? [];
   const total = data?.total ?? 0;
@@ -83,7 +87,7 @@ export default function AuditPage() {
                 variant={agentFilter === a ? "default" : "outline"}
                 size="sm"
                 className="rounded-full capitalize"
-                onClick={() => setAgentFilter(a)}
+                onClick={() => { setAgentFilter(a); setOffset(0); }}
               >
                 {a || "All"}
               </Button>
@@ -105,11 +109,11 @@ export default function AuditPage() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                {["Agent", "Action", "Run", "Details", "Timestamp"].map((h) => (
-                  <th key={h} className="px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    {h}
-                  </th>
-                ))}
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">Agent</th>
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">Action</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:table-cell">Run</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground lg:table-cell">Details</th>
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">Timestamp</th>
               </tr>
             </thead>
             <tbody>
@@ -137,23 +141,26 @@ export default function AuditPage() {
               ) : (
                 entries.map((entry) => (
                   <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-3">
+                    <td className="px-4 py-3 md:px-6">
                       <StatusBadge status={agentBadge(entry.agent_type)} label={entry.agent_type} />
                     </td>
-                    <td className="px-6 py-3 font-medium text-foreground">{entry.action}</td>
-                    <td className="px-6 py-3 font-mono text-xs text-muted-foreground">
+                    <td className="px-4 py-3 font-medium text-foreground md:px-6">{entry.action}</td>
+                    <td className="hidden px-6 py-3 font-mono text-xs text-muted-foreground md:table-cell">
                       {entry.run_id.slice(0, 8)}
                     </td>
-                    <td className="px-6 py-3 text-xs text-muted-foreground max-w-[300px] truncate">
+                    <td className="hidden px-6 py-3 text-xs text-muted-foreground max-w-[300px] truncate lg:table-cell">
                       {entry.detail ? JSON.stringify(entry.detail).slice(0, 80) : "—"}
                     </td>
-                    <td className="px-6 py-3 text-muted-foreground">{formatDateTime(entry.created_at)}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground md:px-6 md:text-sm">
+                      {formatDateTime(entry.created_at)}
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+        <Pagination total={total} limit={PAGE_SIZE} offset={offset} onChange={setOffset} />
       </div>
 
       <ExportAuditModal

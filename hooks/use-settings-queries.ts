@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   changePassword,
+  deleteAccount,
   exportAccountData,
   getConnections,
   getOrgProfile,
@@ -111,6 +112,19 @@ export function useExportAccountData() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to export data");
+    },
+  });
+}
+
+export function useDeleteAccount(onDeleted: () => void) {
+  return useMutation({
+    mutationFn: () => deleteAccount(),
+    onSuccess: () => {
+      toast.success("Account deleted. Signing you out…");
+      onDeleted();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete account");
     },
   });
 }

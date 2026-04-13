@@ -87,10 +87,17 @@ function NavLink({
       : pathname.startsWith(item.href);
   const Icon = item.icon;
 
+  // Derive a data-tour id from the href for the tour guide
+  const tourId =
+    item.href === "/dashboard"
+      ? "overview"
+      : item.href.split("/").pop() ?? undefined;
+
   return (
     <Link
       href={item.href}
       onClick={onClick}
+      data-tour={tourId}
       className={cn(
         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all",
         isActive
