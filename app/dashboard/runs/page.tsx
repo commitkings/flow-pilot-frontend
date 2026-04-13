@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  Activity,
+  ArrowRight,
   Copy,
   Download,
   FileSearch,
@@ -24,6 +26,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useRuns } from "@/hooks/use-run-queries";
 import { RunFilterModal } from "@/components/dashboard/run/RunFilterModal";
 import { ExportRunsModal } from "@/components/dashboard/run/ExportRunsModal";
+
+const LIVE_STATUSES = new Set(["planning", "reconciling", "scoring", "executing"]);
 
 const columns: TableColumn<RunRecord>[] = [
   {
@@ -185,6 +189,35 @@ export default function RunsPage() {
           accent="red"
         />
       </div>
+
+      {/* Live Now strip */}
+      {(() => {
+        const liveRuns = rows.filter((r) => LIVE_STATUSES.has(r.status));
+        if (!liveRuns.length) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand/20 bg-brand/5 px-5 py-3.5">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
+              </span>
+              <span className="text-sm font-bold text-brand">Live</span>
+            </div>
+            {liveRuns.map((run) => (
+              <button
+                key={run.id}
+                type="button"
+                onClick={() => router.push(`/dashboard/runs/${run.id}`)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand/20 bg-background px-3 py-1 text-xs font-semibold text-foreground shadow-sm transition-all hover:border-brand/50"
+              >
+                <Activity className="h-3 w-3 text-brand" />
+                <span className="max-w-[180px] truncate">{run.objective}</span>
+                <ArrowRight className="h-3 w-3 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Runs table */}
       <div className="">

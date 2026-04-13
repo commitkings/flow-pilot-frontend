@@ -25,6 +25,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace("/login");
       return;
     }
+    if (user && !user.email_verified) {
+      router.replace("/verify-email");
+      return;
+    }
     if (user && !user.has_completed_onboarding) {
       router.replace("/onboarding");
     }
@@ -43,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <LoadingLogo />;
   }
 
-  if (!isAuthenticated || (user && !user.has_completed_onboarding)) {
+  if (!isAuthenticated || (user && (!user.email_verified || !user.has_completed_onboarding))) {
     return null;
   }
 

@@ -12,12 +12,14 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
     if (isLoading) return;
     if (!isAuthenticated) {
       router.replace("/login");
+    } else if (user && !user.email_verified) {
+      router.replace("/verify-email");
     } else if (user?.has_completed_onboarding) {
       router.replace("/dashboard");
     }
   }, [isAuthenticated, isLoading, user, router]);
 
-  if (isLoading || !isAuthenticated || user?.has_completed_onboarding) return null;
+  if (isLoading || !isAuthenticated || (user && !user.email_verified) || user?.has_completed_onboarding) return null;
 
   return <>{children}</>;
 }

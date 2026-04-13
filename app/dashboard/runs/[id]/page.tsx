@@ -540,6 +540,7 @@ const TABS = [
 export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  // Default to the activity/progress tab — it's the mission-control hero view
   const [activeTab, setActiveTab] = useState("activity");
 
   const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
@@ -772,6 +773,56 @@ export default function RunDetailPage() {
           accent="green"
         />
       </div>
+
+      {/* Risk distribution bar — only when candidates have been scored */}
+      {candidates.length > 0 && candidates.some((c) => c.decision) && (() => {
+        const allowCount = candidates.filter((c) => c.decision === "allow").length;
+        const reviewCount = candidates.filter((c) => c.decision === "review").length;
+        const blockCount = candidates.filter((c) => c.decision === "block").length;
+        const total = candidates.length;
+        const pct = (n: number) => total > 0 ? Math.round((n / total) * 100) : 0;
+        return (
+          <div className="rounded-2xl border border-border bg-card px-6 py-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Risk Distribution</p>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />{allowCount} Safe</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />{reviewCount} Review</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500 inline-block" />{blockCount} Blocked</span>
+              </div>
+            </div>
+            <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted gap-px">
+              {allowCount > 0 && (
+                <div
+                  className="h-full bg-emerald-500 transition-all"
+                  style={{ width: `${pct(allowCount)}%` }}
+                  title={`${allowCount} safe (${pct(allowCount)}%)`}
+                />
+              )}
+              {reviewCount > 0 && (
+                <div
+                  className="h-full bg-amber-400 transition-all"
+                  style={{ width: `${pct(reviewCount)}%` }}
+                  title={`${reviewCount} for review (${pct(reviewCount)}%)`}
+                />
+              )}
+              {blockCount > 0 && (
+                <div
+                  className="h-full bg-red-500 transition-all"
+                  style={{ width: `${pct(blockCount)}%` }}
+                  title={`${blockCount} blocked (${pct(blockCount)}%)`}
+                />
+              )}
+            </div>
+            <div className="mt-2 flex justify-between text-[10px] text-muted-foreground">
+              <span>{pct(allowCount)}% safe to disburse</span>
+              {(reviewCount + blockCount) > 0 && (
+                <span className="text-amber-600 font-semibold">{reviewCount + blockCount} require attention</span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Run info strip */}
       <div className="rounded-2xl border border-border bg-card px-6 py-5">

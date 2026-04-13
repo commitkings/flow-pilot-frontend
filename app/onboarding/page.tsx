@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { StepIndicator } from "@/components/ui/StepIndicator";
@@ -13,6 +13,7 @@ import { Step3InviteTeam, type InviteRow } from "@/components/onboarding/Step3In
 import type { OnboardingPayload } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 import { useCompleteOnboarding } from "@/hooks/use-onboarding-mutations";
+import { inviteTeamMember } from "@/lib/api-client";
 
 const STEPS = ["Business", "Use Case", "Financials", "Team"];
 
@@ -80,17 +81,6 @@ export default function OnboardingPage() {
   const { user, isLoading, refreshUser } = useAuth();
   const [step, setStep] = useState(1);
 
-  const onboardingMutation = useCompleteOnboarding(
-    async () => {
-      await refreshUser();
-      router.push("/dashboard/runs?welcome=1");
-    },
-    async () => {
-      await refreshUser();
-      router.push("/dashboard/runs");
-    },
-  );
-
   // Step 1
   const [businessName, setBusinessName] = useState("");
   const [transactionVolume, setTransactionVolume] = useState("");
@@ -109,10 +99,36 @@ export default function OnboardingPage() {
   const [riskAlertThreshold, setRiskAlertThreshold] = useState("0.35");
   const [liquidityAlertThreshold, setLiquidityAlertThreshold] = useState("15");
 
-  // Step 4
+  // Step 4 — declared before onboardingMutation so the ref can track it
   const [invites, setInvites] = useState<InviteRow[]>([
     { id: createClientId(), email: "", role: "Approver" },
   ]);
+
+  // Keep a stable ref so the async onSuccess callback always sees latest invites
+  const invitesRef = useRef(invites);
+  useEffect(() => { invitesRef.current = invites; }, [invites]);
+
+  const onboardingMutation = useCompleteOnboarding(
+    async () => {
+      // Fire invites in parallel after onboarding succeeds; failures don't block redirect
+      const validInvites = invitesRef.current.filter((r) => r.email.trim());
+      await Promise.allSettled(
+        validInvites.map((r) =>
+          inviteTeamMember({ email: r.email.trim(), role: r.role.toLowerCase() })
+            .then(() => updateInviteRow(r.id, { sent: true, error: undefined }))
+            .catch((err: Error) =>
+              updateInviteRow(r.id, { error: err.message ?? "Failed to send invite" }),
+            ),
+        ),
+      );
+      await refreshUser();
+      router.push("/dashboard/runs?welcome=1");
+    },
+    async () => {
+      await refreshUser();
+      router.push("/dashboard/runs");
+    },
+  );
 
   const step1Valid = !!(businessName.trim() && transactionVolume && monthlyPayouts && primaryBank);
   const step2Valid = !!(selectedUseCases.length > 0 && riskAppetite);

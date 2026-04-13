@@ -30,9 +30,44 @@ export interface User {
   timezone: string | null;
   department: string | null;
   is_active: boolean;
+  email_verified: boolean;
   last_login_at: string | null;
   memberships: Membership[];
   has_completed_onboarding: boolean;
+}
+
+/** Convenience helper — returns the current user's role or null */
+export function getUserRole(user: User | null): string | null {
+  return user?.memberships?.[0]?.role ?? null;
+}
+
+/** Returns true if the user can create runs or approve payouts */
+export function canManageRuns(user: User | null): boolean {
+  const role = getUserRole(user);
+  return role === "owner" || role === "approver";
+}
+
+/** Returns true if the user can modify organisation settings */
+export function isOwner(user: User | null): boolean {
+  return getUserRole(user) === "owner";
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+
+export interface DashboardRecentRun {
+  run_id: string;
+  objective: string;
+  status: string;
+  candidate_count: number | null;
+  created_at: string | null;
+}
+
+export interface DashboardStats {
+  total_volume_disbursed: number;
+  runs_this_month: number;
+  pending_approvals: number;
+  active_runs: number;
+  recent_runs: DashboardRecentRun[];
 }
 
 // ── Onboarding ───────────────────────────────────────────────
@@ -482,6 +517,33 @@ export interface ConfirmRunResponse {
 export interface AbandonConversationResponse {
   conversation_id: string;
   status: string;
+}
+
+// ── Invitations ──────────────────────────────────────────────
+
+export interface InviteDetails {
+  status: "pending" | "accepted" | "expired";
+  business_name: string | null;
+  invited_email: string;
+  role: string;
+  inviter_name: string | null;
+  expires_at?: string;
+}
+
+export interface RegisterViaInvitePayload {
+  token: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+}
+
+export interface InviteResult {
+  status: "added" | "invited";
+  /** Present when status === "added" */
+  member?: TeamMember;
+  /** Present when status === "invited" */
+  invite_id?: string;
+  invited_email?: string;
 }
 
 // ── Errors ───────────────────────────────────────────────────

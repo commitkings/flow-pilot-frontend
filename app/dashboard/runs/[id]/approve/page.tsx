@@ -1,20 +1,40 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Check, Loader2, ShieldCheck, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 import { maskAccount, naira, truncateRunId } from "@/lib/mock-data";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 import { useApproveCandidates } from "@/hooks/use-candidate-mutations";
 import { useRun } from "@/hooks/use-run-queries";
+import { useAuth } from "@/context/auth-context";
+import { cn } from "@/lib/utils";
 
 export default function ApprovalGatePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
+  const role = user?.memberships?.[0]?.role;
+
+  // Analysts cannot approve — redirect to the run detail page
+  useEffect(() => {
+    if (user && role === "analyst") {
+      router.replace(`/dashboard/runs/${id}`);
+    }
+  }, [user, role, id, router]);
+
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
@@ -22,6 +42,7 @@ export default function ApprovalGatePage() {
   const [overrideReason, setOverrideReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
+  const [expandedRisk, setExpandedRisk] = useState<string | null>(null);
 
   const {
     data: allCandidates = [],
@@ -40,15 +61,16 @@ export default function ApprovalGatePage() {
   const rows = useMemo(
     () =>
       allCandidates.filter(
-        (candidate) =>
-          candidate.beneficiaryName.toLowerCase().includes(query.toLowerCase()) ||
-          candidate.institution.toLowerCase().includes(query.toLowerCase())
+        (c) =>
+          c.beneficiaryName.toLowerCase().includes(query.toLowerCase()) ||
+          c.institution.toLowerCase().includes(query.toLowerCase())
       ),
-    [query, allCandidates]
+    [query, allCandidates],
   );
 
   const selectedCandidates = allCandidates.filter((candidate) => effectiveSelectedIds.includes(candidate.id));
   const selectedTotal = selectedCandidates.reduce((acc, candidate) => acc + candidate.amount, 0);
+  
   const riskTolerance = run?.riskTolerance ?? 0.35;
   const reviewThreshold = riskTolerance + (1 - riskTolerance) / 2;
 
@@ -64,11 +86,7 @@ export default function ApprovalGatePage() {
   };
 
   const selectAllSafe = () => {
-    setSelectedIds(
-      allCandidates
-        .filter((candidate) => candidate.decision === "allow")
-        .map((candidate) => candidate.id)
-    );
+    setSelectedIds(allCandidates.filter((c) => c.decision === "allow").map((c) => c.id));
   };
 
   const onApprove = () => {
@@ -77,251 +95,457 @@ export default function ApprovalGatePage() {
   };
 
   if (loadingCandidates || loadingRun) {
-    return <div className="flex items-center justify-center py-24"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>;
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   if (candidatesError) {
-    return <div className="flex items-center justify-center py-24"><p className="text-sm text-red-600">Failed to load candidates. Please go back and try again.</p></div>;
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-sm text-destructive">Failed to load candidates. Please go back and try again.</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-5 pb-28">
+      {/* ── Header ── */}
       <div>
-        <Link href={`/dashboard/runs/${id}`} className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+        <Link
+          href={`/dashboard/runs/${id}`}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
           <ArrowLeft className="h-4 w-4" />
           Runs / Run {truncateRunId(id)} / Approve
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">Approval Gate.</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Reconcile today and execute payroll payouts under risk threshold {riskTolerance.toFixed(2)}.
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground">Approval Gate.</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Review risk scores and authorise disbursements before execution under risk threshold {riskTolerance.toFixed(2)}.
         </p>
       </div>
 
+      {/* ── Info badges ── */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">Run ID {truncateRunId(id)}</span>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+        <span className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-foreground">
+          Run {truncateRunId(id)}
+        </span>
+        <span className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-foreground">
           Risk Tolerance {riskTolerance.toFixed(2)}
         </span>
-        <StatusBadge status="review" label="Forecast Feasibility: Caution" />
+        <StatusBadge status="review" label="Forecast: Caution" />
       </div>
 
-      <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {/* ── Liquidity warning ── */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
         <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 h-4 w-4" />
-          ForecastAgent flagged this payout batch as cautionary for liquidity. Review this run carefully before approving, especially the payout total and any risk flags.
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          ForecastAgent flagged this batch as cautionary for liquidity. Review carefully before approving.
         </div>
       </div>
 
-      <Card className="rounded-xl border-slate-200 bg-white">
-        <CardContent className="space-y-4 py-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm font-medium text-slate-700">{effectiveSelectedIds.length} of {allCandidates.length} candidates selected</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" className="rounded-lg" onClick={selectAllSafe}>Select All Safe</Button>
-              <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => setSelectedIds([])}>Deselect All</Button>
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Filter by name or bank..."
-                className="h-9 rounded-lg border border-slate-300 px-3 text-sm"
-              />
-            </div>
-          </div>
+      {/* ── Toolbar ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm font-semibold text-foreground">
+          {effectiveSelectedIds.length} of {allCandidates.length} candidates selected
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="rounded-full" onClick={selectAllSafe}>
+            Select All Safe
+          </Button>
+          <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setSelectedIds([])}>
+            Deselect All
+          </Button>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter by name or bank…"
+            className="h-9 rounded-full border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 w-full sm:w-auto"
+          />
+        </div>
+      </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] text-left text-sm">
-              <thead className="border-b border-slate-200 text-slate-600">
-                <tr>
-                  <th className="py-2">Select</th>
-                  <th className="py-2">Beneficiary Name</th>
-                  <th className="py-2">Institution</th>
-                  <th className="py-2">Account Number</th>
-                  <th className="py-2">Amount</th>
-                  <th className="py-2">Risk Score</th>
-                  <th className="py-2">Risk Reasons</th>
-                  <th className="py-2">Lookup Status</th>
-                  <th className="py-2">Decision</th>
-                  <th className="py-2">Override</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((candidate) => {
-                  const selected = effectiveSelectedIds.includes(candidate.id);
-                  const blocked = candidate.decision === "block";
-                  return (
-                    <tr
-                      key={candidate.id}
-                      className={`border-b border-slate-100 ${blocked ? "bg-red-50" : selected ? "border-l-4 border-l-emerald-500" : candidate.decision === "review" ? "border-l-4 border-l-amber-500" : ""}`}
+      {/* ── Desktop table ── */}
+      <div className="hidden lg:block overflow-x-auto rounded-2xl border border-border bg-card">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-border bg-muted/50">
+            <tr>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Select</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Beneficiary</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Institution</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Account</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Amount</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Risk Score</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Decision</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Lookup</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Risk Flags</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {rows.map((candidate) => {
+              const selected = effectiveSelectedIds.includes(candidate.id);
+              const blocked = candidate.decision === "block";
+              return (
+                <tr
+                  key={candidate.id}
+                  className={cn(
+                    "transition-colors hover:bg-muted/30",
+                    blocked && "bg-red-50/50 dark:bg-red-950/10",
+                    selected && !blocked && "bg-emerald-50/50 dark:bg-emerald-950/10",
+                  )}
+                >
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex h-5 w-5 items-center justify-center rounded border transition-colors",
+                        selected && !blocked
+                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          : blocked
+                          ? "cursor-not-allowed border-border bg-muted text-muted-foreground"
+                          : "border-border hover:border-brand",
+                      )}
+                      onClick={() => !blocked && toggle(candidate.id)}
+                      disabled={blocked}
                     >
-                      <td className="py-2">
-                        <button
-                          type="button"
-                          className={`inline-flex h-5 w-5 items-center justify-center rounded border ${selected ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300"}`}
-                          onClick={() => toggle(candidate.id)}
-                          disabled={blocked}
-                        >
-                          {blocked ? "🔒" : selected ? <Check className="h-3 w-3" /> : null}
-                        </button>
-                      </td>
-                      <td className="py-2">
-                        <button type="button" className="font-medium text-slate-900" onClick={() => setActiveCandidateId(candidate.id)}>
-                          {candidate.beneficiaryName}
-                        </button>
-                      </td>
-                      <td className="py-2">{candidate.institution}</td>
-                      <td className="py-2">{maskAccount(candidate.accountNumber)}</td>
-                      <td className="py-2">{naira(candidate.amount)}</td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              className={`${
-                                candidate.riskScore < riskTolerance
-                                  ? "bg-emerald-500"
-                                  : candidate.riskScore < reviewThreshold
-                                    ? "bg-amber-500"
-                                    : "bg-red-500"
-                              } h-full`}
-                              style={{ width: `${candidate.riskScore * 100}%` }}
-                            />
-                          </div>
-                          <span>{candidate.riskScore.toFixed(2)}</span>
-                        </div>
-                      </td>
-                      <td className="py-2">
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs">{candidate.riskReasons[0]}</span>
-                        <button
-                          type="button"
-                          className="ml-2 text-xs text-blue-700"
-                          onClick={() => setActiveCandidateId(candidate.id)}
-                        >
-                          See All
-                        </button>
-                      </td>
-                      <td className="py-2">
-                        <StatusBadge
-                          status={candidate.lookupStatus === "verified" ? "verified" : candidate.lookupStatus}
-                          label={candidate.lookupStatus === "pending" ? "Pending" : undefined}
+                      {blocked ? "🔒" : selected ? <Check className="h-3 w-3" /> : null}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      className="font-semibold text-foreground hover:text-brand transition-colors text-left"
+                      onClick={() => setActiveCandidateId(candidate.id)}
+                    >
+                      {candidate.beneficiaryName}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{candidate.institution}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{maskAccount(candidate.accountNumber)}</td>
+                  <td className="px-4 py-3 font-semibold text-foreground">{naira(candidate.amount)}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full transition-all",
+                            candidate.riskScore < riskTolerance 
+                              ? "bg-emerald-500" 
+                              : candidate.riskScore < reviewThreshold 
+                                ? "bg-amber-400" 
+                                : "bg-red-500",
+                          )}
+                          style={{ width: `${candidate.riskScore * 100}%` }}
                         />
-                      </td>
-                      <td className="py-2"><StatusBadge status={candidate.decision} /></td>
-                      <td className="py-2"><button type="button" className="text-xs text-blue-700">Override</button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                      </div>
+                      <span className="text-xs tabular-nums text-muted-foreground">{candidate.riskScore.toFixed(2)}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={candidate.decision} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge
+                      status={candidate.lookupStatus === "verified" ? "verified" : candidate.lookupStatus}
+                      label={candidate.lookupStatus === "pending" ? "Pending" : undefined}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    {candidate.riskReasons[0] ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground max-w-[140px] truncate">
+                          {candidate.riskReasons[0]}
+                        </span>
+                        {candidate.riskReasons.length > 1 && (
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-brand hover:opacity-80"
+                            onClick={() => setActiveCandidateId(candidate.id)}
+                          >
+                            +{candidate.riskReasons.length - 1}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-      {activeCandidate && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-slate-200 bg-white p-5 shadow-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-lg font-semibold text-slate-900">{activeCandidate.beneficiaryName}</p>
-              <p className="text-sm text-slate-600">{activeCandidate.institution}</p>
+      {/* ── Mobile candidate cards ── */}
+      <div className="lg:hidden space-y-3">
+        {rows.map((candidate) => {
+          const selected = effectiveSelectedIds.includes(candidate.id);
+          const blocked = candidate.decision === "block";
+          const expanded = expandedRisk === candidate.id;
+          return (
+            <div
+              key={candidate.id}
+              className={cn(
+                "rounded-2xl border bg-card p-4 transition-all",
+                blocked ? "border-red-200 bg-red-50/30" : selected ? "border-emerald-300 bg-emerald-50/30" : "border-border",
+              )}
+            >
+              {/* Top row */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    className={cn(
+                      "shrink-0 inline-flex h-6 w-6 items-center justify-center rounded border transition-colors",
+                      selected && !blocked
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : blocked
+                        ? "cursor-not-allowed border-border bg-muted"
+                        : "border-border",
+                    )}
+                    onClick={() => !blocked && toggle(candidate.id)}
+                    disabled={blocked}
+                  >
+                    {blocked ? "🔒" : selected ? <Check className="h-3.5 w-3.5" /> : null}
+                  </button>
+                  <div className="min-w-0">
+                    <p className="font-bold text-foreground truncate">{candidate.beneficiaryName}</p>
+                    <p className="text-xs text-muted-foreground">{candidate.institution} · {maskAccount(candidate.accountNumber)}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-bold text-foreground">{naira(candidate.amount)}</p>
+                  <StatusBadge status={candidate.decision} />
+                </div>
+              </div>
+
+              {/* Risk row */}
+              <div className="mt-3 flex items-center gap-4">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Risk</span>
+                  <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn(
+                        "h-full",
+                        candidate.riskScore < riskTolerance ? "bg-emerald-500" : candidate.riskScore < reviewThreshold ? "bg-amber-400" : "bg-red-500",
+                      )}
+                      style={{ width: `${candidate.riskScore * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs tabular-nums text-muted-foreground">{candidate.riskScore.toFixed(2)}</span>
+                </div>
+                <StatusBadge
+                  status={candidate.lookupStatus === "verified" ? "verified" : candidate.lookupStatus}
+                  label={candidate.lookupStatus === "pending" ? "Pending" : undefined}
+                />
+              </div>
+
+              {/* Risk flags */}
+              {candidate.riskReasons.length > 0 && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs font-semibold text-brand"
+                    onClick={() => setExpandedRisk(expanded ? null : candidate.id)}
+                  >
+                    {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    {candidate.riskReasons.length} risk flag{candidate.riskReasons.length > 1 ? "s" : ""}
+                  </button>
+                  {expanded && (
+                    <ul className="mt-2 space-y-1">
+                      {candidate.riskReasons.map((reason) => (
+                        <li key={reason} className="text-xs text-muted-foreground flex gap-1.5">
+                          <span className="text-amber-500 shrink-0">·</span>
+                          {reason}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
-            <Button variant="ghost" size="icon" onClick={() => setActiveCandidateId(null)}><X className="h-4 w-4" /></Button>
-          </div>
+          );
+        })}
+      </div>
 
-          <div className="mt-4 space-y-3 text-sm">
-            <p><span className="text-slate-500">Account:</span> {activeCandidate.accountNumber}</p>
-            <p><span className="text-slate-500">Amount:</span> {naira(activeCandidate.amount)}</p>
-            <p><span className="text-slate-500">Purpose:</span> {activeCandidate.purpose}</p>
-            <p className="font-medium text-slate-800">Risk Reasons</p>
-            <ul className="list-disc space-y-1 pl-5 text-slate-600">
-              {activeCandidate.riskReasons.map((reason) => (
-                <li key={reason}>{reason}</li>
-              ))}
-            </ul>
-            <p><span className="text-slate-500">Name on file:</span> {activeCandidate.nameOnFile}</p>
-            <p><span className="text-slate-500">Name returned:</span> {activeCandidate.returnedName}</p>
-            <p><span className="text-slate-500">Similarity:</span> {activeCandidate.similarity}%</p>
+      {/* ── Candidate detail panel (desktop right sidebar / mobile bottom sheet) ── */}
+      {activeCandidate && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => setActiveCandidateId(null)}
+          />
+          {/* Panel */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-t border-border bg-card p-5 shadow-2xl lg:inset-y-0 lg:left-auto lg:right-0 lg:w-96 lg:rounded-none lg:rounded-l-2xl lg:border-t-0 lg:border-l">
+            <div className="flex items-start justify-between mb-5">
+              <div>
+                <p className="text-base font-black text-foreground">{activeCandidate.beneficiaryName}</p>
+                <p className="text-sm text-muted-foreground">{activeCandidate.institution}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setActiveCandidateId(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="mb-2 text-sm font-medium text-slate-800">Decision Override</p>
-              <select value={overrideDecision} onChange={(event) => setOverrideDecision(event.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm">
-                <option value="allow">Allow</option>
-                <option value="review">Review</option>
-                <option value="block">Block</option>
-              </select>
-              <textarea
-                rows={3}
-                value={overrideReason}
-                onChange={(event) => setOverrideReason(event.target.value)}
-                placeholder="Reason is required"
-                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <div className="mt-2 flex justify-end gap-2">
-                <Button variant="outline" className="rounded-lg">Close</Button>
-                <Button className="rounded-lg bg-blue-600 text-white hover:bg-blue-700">Apply Override</Button>
+            <div className="space-y-3 text-sm overflow-y-auto max-h-[60vh] lg:max-h-[calc(100vh-260px)]">
+              <Row label="Account" value={activeCandidate.accountNumber} />
+              <Row label="Amount" value={naira(activeCandidate.amount)} />
+              <Row label="Purpose" value={activeCandidate.purpose || "—"} />
+              <Row label="Name on file" value={activeCandidate.nameOnFile || "—"} />
+              <Row label="Returned name" value={activeCandidate.returnedName || "—"} />
+              <Row label="Similarity" value={activeCandidate.similarity ? `${activeCandidate.similarity}%` : "—"} />
+
+              {activeCandidate.riskReasons.length > 0 && (
+                <div>
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Risk Flags</p>
+                  <ul className="space-y-1.5">
+                    {activeCandidate.riskReasons.map((reason) => (
+                      <li key={reason} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-amber-500 mt-0.5 shrink-0">·</span>
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+                <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Decision Override</p>
+                <select
+                  value={overrideDecision}
+                  onChange={(e) => setOverrideDecision(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-brand"
+                >
+                  <option value="allow">Allow</option>
+                  <option value="review">Review</option>
+                  <option value="block">Block</option>
+                </select>
+                <textarea
+                  rows={3}
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="Override reason (required)"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-brand resize-none"
+                />
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 rounded-full" onClick={() => setActiveCandidateId(null)}>Cancel</Button>
+                  <Button className="flex-1 rounded-full bg-brand text-white hover:opacity-90">Apply</Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-3 px-6 py-3">
-          <p className="text-sm font-semibold text-slate-900">
-            Approving {effectiveSelectedIds.length} payouts totalling {naira(selectedTotal)}
-          </p>
+      {/* ── Fixed bottom bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-card/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div>
+            <p className="text-sm font-bold text-foreground">
+              Approving {effectiveSelectedIds.length} payout{effectiveSelectedIds.length !== 1 ? "s" : ""}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Total: <span className="font-semibold text-foreground">{naira(selectedTotal)}</span>
+            </p>
+          </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="rounded-xl border-red-300 text-red-700 hover:bg-red-50">Reject All</Button>
-            <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={effectiveSelectedIds.length === 0} onClick={() => setConfirmOpen(true)}>
-              <ShieldCheck className="h-4 w-4" />
+            <Button
+              variant="outline"
+              className="flex-1 rounded-full border-destructive/30 text-destructive hover:bg-destructive/5 sm:flex-none"
+            >
+              Reject All
+            </Button>
+            <Button
+              className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm sm:flex-none"
+              disabled={effectiveSelectedIds.length === 0}
+              onClick={() => setConfirmOpen(true)}
+            >
+              <ShieldCheck className="mr-1.5 h-4 w-4" />
               Approve Selected
             </Button>
           </div>
         </div>
       </div>
 
+      {/* ── Confirmation modal ── */}
       {confirmOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-[520px] rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[520px] rounded-2xl bg-card border border-border p-6 shadow-2xl animate-in slide-in-from-bottom-4 sm:animate-in sm:zoom-in-95 duration-200">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <h3 className="mt-3 text-center text-2xl font-semibold text-slate-900">Confirm Payout Approval.</h3>
-            <p className="mt-2 text-center text-sm text-slate-600">
-              This action will instruct FlowPilot to execute the following disbursements through Interswitch immediately. This cannot be undone.
+            <h3 className="mt-4 text-center text-xl font-black tracking-tight text-foreground">
+              Confirm Payout Approval
+            </h3>
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              FlowPilot will execute these disbursements through Interswitch immediately. This cannot be undone.
             </p>
 
-            <div className="mt-4 rounded-xl bg-slate-50 p-3">
-              {selectedCandidates.map((candidate) => (
-                <div key={candidate.id} className="flex items-center justify-between border-b border-slate-200 py-2 last:border-0">
-                  <div>
-                    <p className="font-medium text-slate-900">{candidate.beneficiaryName}</p>
-                    <p className="text-xs text-slate-500">{candidate.institution}</p>
+            <div className="mt-5 max-h-48 overflow-y-auto rounded-xl border border-border bg-muted/30 p-3">
+              {selectedCandidates.map((c) => (
+                <div key={c.id} className="flex items-center justify-between border-b border-border py-2 last:border-0">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">{c.beneficiaryName}</p>
+                    <p className="text-xs text-muted-foreground">{c.institution}</p>
                   </div>
-                  <p className="font-semibold text-slate-900">{naira(candidate.amount)}</p>
+                  <p className="font-bold text-foreground ml-3 shrink-0">{naira(c.amount)}</p>
                 </div>
               ))}
-              <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2">
-                <p className="font-medium text-slate-700">Total Disbursement</p>
-                <p className="text-xl font-bold text-emerald-700">{naira(selectedTotal)}</p>
+              <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
+                <p className="text-sm font-semibold text-muted-foreground">Total Disbursement</p>
+                <p className="text-lg font-black text-emerald-600">{naira(selectedTotal)}</p>
               </div>
             </div>
 
-            <label className="mt-4 flex items-start gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)} className="mt-1" />
-              I confirm I have reviewed all risk flags and lookup results and authorize these payments.
+            <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={confirmChecked}
+                onChange={(e) => setConfirmChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-emerald-600"
+              />
+              I confirm I have reviewed all risk flags and lookup results and authorise these payments.
             </label>
 
-            <div className="mt-4 space-y-2">
-              {approveMutation.isError && <p className="text-sm text-red-600">Approval failed. Please try again.</p>}
-              <Button className="h-11 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" disabled={!confirmChecked || approveMutation.isPending} onClick={onApprove}>
-                <Check className="h-4 w-4" />
-                {approveMutation.isPending ? "Processing…" : "Confirm and Execute Payouts"}
+            <div className="mt-5 space-y-2">
+              {approveMutation.isError && (
+                <p className="text-sm text-destructive text-center">Approval failed. Please try again.</p>
+              )}
+              <Button
+                className="h-11 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
+                disabled={!confirmChecked || approveMutation.isPending}
+                onClick={onApprove}
+              >
+                {approveMutation.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing…</>
+                ) : (
+                  <><Check className="mr-2 h-4 w-4" />Confirm and Execute Payouts</>
+                )}
               </Button>
-              <Button variant="ghost" className="h-11 w-full rounded-xl" onClick={() => setConfirmOpen(false)}>
+              <Button
+                variant="ghost"
+                className="h-11 w-full rounded-full"
+                onClick={() => setConfirmOpen(false)}
+              >
                 Go Back and Review
               </Button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-muted-foreground shrink-0">{label}</span>
+      <span className="font-medium text-foreground text-right">{value}</span>
     </div>
   );
 }

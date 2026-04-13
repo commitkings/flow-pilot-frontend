@@ -1,20 +1,42 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+import { forgotPassword } from "@/lib/api-client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const onSubmit = (e: { preventDefault(): void }) => {
+  const onSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setSent(true);
+    setLoading(true);
+    try {
+      await forgotPassword(email.trim().toLowerCase());
+      setSent(true);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onResend = () => setSent(false);
+  const onResend = async () => {
+    setSent(false);
+    setLoading(true);
+    try {
+      await forgotPassword(email.trim().toLowerCase());
+      setSent(true);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <main className="h-screen md:grid md:grid-cols-[420px_1fr]">
@@ -28,6 +50,7 @@ export default function ForgotPasswordPage() {
             email={email}
             setEmail={setEmail}
             sent={sent}
+            loading={loading}
             onSubmit={onSubmit}
             onResend={onResend}
           />
