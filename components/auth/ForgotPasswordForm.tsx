@@ -7,6 +7,7 @@ interface ForgotPasswordFormProps {
   email: string;
   setEmail: (v: string) => void;
   sent: boolean;
+  loading?: boolean;
   onSubmit: (e: { preventDefault(): void }) => void;
   onResend: () => void;
 }
@@ -15,6 +16,7 @@ export function ForgotPasswordForm({
   email,
   setEmail,
   sent,
+  loading = false,
   onSubmit,
   onResend,
 }: ForgotPasswordFormProps) {
@@ -95,6 +97,8 @@ export function ForgotPasswordForm({
 
           <Button
             type="submit"
+            disabled={loading}
+            loading={loading}
             className="h-12 w-full rounded-full bg-primary text-primary-foreground font-bold transition-all hover:opacity-90 active:scale-[0.98] shadow-lg shadow-black/5"
           >
             Send Reset Link

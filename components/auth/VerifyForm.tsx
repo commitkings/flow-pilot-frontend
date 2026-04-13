@@ -8,6 +8,7 @@ interface VerifyFormProps {
   formattedTime: string;
   resendLocked: boolean;
   allFilled: boolean;
+  code?: string;
   onCodeChange: (code: string) => void;
   onVerify: () => void;
   onResend: () => void;
@@ -18,6 +19,7 @@ export function VerifyForm({
   formattedTime,
   resendLocked,
   allFilled,
+  code = "",
   onCodeChange,
   onVerify,
   onResend,
@@ -37,7 +39,7 @@ export function VerifyForm({
       </p>
 
       <div className="mt-8">
-        <OtpInput length={6} onChange={onCodeChange} />
+        <OtpInput length={6} value={code} onChange={onCodeChange} />
       </div>
 
       <p className="mt-3 text-center text-sm text-muted-foreground">

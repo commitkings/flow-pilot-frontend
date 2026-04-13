@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ArrowLeft, Download, MessageSquare, Plus, Rocket, Settings2, Trash2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,14 @@ export default function NewRunPage() {
   const router = useRouter();
   const { user } = useAuth();
   const businessId = user?.memberships?.[0]?.business_id;
+  const role = user?.memberships?.[0]?.role;
+
+  // Analysts cannot create runs — redirect them to the runs list
+  useEffect(() => {
+    if (user && role === "analyst") {
+      router.replace("/dashboard/runs");
+    }
+  }, [user, role, router]);
 
   // Mode toggle: "chat" (default) or "form"
   const [mode, setMode] = useState<Mode>("chat");

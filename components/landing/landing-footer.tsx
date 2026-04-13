@@ -44,9 +44,9 @@ export function LandingFooter() {
           <div>
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">Legal</h4>
             <ul className="mt-6 space-y-4 text-sm font-medium text-[#6B6B6B]">
-              <li><a href="#" className="transition hover:text-[#e86727]">Privacy Policy</a></li>
-              <li><a href="#" className="transition hover:text-[#e86727]">Terms of Service</a></li>
-              <li><a href="#" className="transition hover:text-[#e86727]">Security Audit</a></li>
+              <li><Link href="/privacy" className="transition hover:text-[#e86727]">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="transition hover:text-[#e86727]">Terms of Service</Link></li>
+              <li><Link href="/security" className="transition hover:text-[#e86727]">Security Audit</Link></li>
               <li><a href="mailto:support@flowpilot.ai" className="transition hover:text-[#e86727]">Contact Support</a></li>
             </ul>
           </div>

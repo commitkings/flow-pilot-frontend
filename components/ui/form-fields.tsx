@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Calendar, Eye, EyeOff, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -55,9 +55,9 @@ export function TextInput({
 export type SelectOption =
   | string
   | {
-      label: string;
-      value: string;
-    };
+    label: string;
+    value: string;
+  };
 
 /**
  * Select Input: Styled for both modes
@@ -385,8 +385,8 @@ export function DateInput({
 
   const formatted = value
     ? new Date(value + "T00:00:00")
-        .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-        .replace(/ /g, ",")
+      .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      .replace(/ /g, ",")
     : null;
 
   return (
@@ -439,8 +439,8 @@ export function DateRangeInput({
   const fmt = (value: string) =>
     value
       ? new Date(value + "T00:00:00")
-          .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-          .replace(/ /g, ",")
+        .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+        .replace(/ /g, ",")
       : null;
 
   return (
@@ -492,13 +492,24 @@ export function DateRangeInput({
  */
 export function OtpInput({
   length = 6,
+  value = "",
   onChange,
 }: {
   length?: number;
+  /** Controlled value — pass an empty string to programmatically reset the input */
+  value?: string;
   onChange: (code: string) => void;
 }) {
-  const [digits, setDigits] = useState<string[]>(Array(length).fill(""));
+  const toDigits = (v: string, len: number) =>
+    Array.from({ length: len }, (_, i) => v?.[i] ?? "");
+
+  const [digits, setDigits] = useState<string[]>(() => toDigits(value ?? "", length));
   const refs = useRef<Array<HTMLInputElement | null>>([]);
+
+  // Reset internal digits when the controlled value is cleared externally
+  useEffect(() => {
+    setDigits(toDigits(value ?? "", length));
+  }, [value, length]);
 
   const update = (next: string[]) => {
     setDigits(next);

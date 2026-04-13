@@ -1,7 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Loader2, Plus, Users, UserCheck, UserX } from "lucide-react";
+import { useRef, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Download,
+  FileText,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Shield,
+  Trash2,
+  Upload,
+  UserCheck,
+  Users,
+  UserX,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
@@ -11,12 +27,24 @@ import { SearchInput } from "@/components/ui/form-fields";
 import { DataTable, type TableColumn } from "@/components/ui/data-table";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 import {
-  useTeamMembers,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   useInviteMember,
   useRemoveMember,
+  useTeamMembers,
   useUpdateMemberRole,
 } from "@/hooks/use-team-queries";
+import { useAuth } from "@/context/auth-context";
+import { importTeamMembers, getTeamImportTemplateUrl } from "@/lib/api-client";
+import type { BulkImportResult } from "@/lib/api-client";
 import type { TeamMember } from "@/lib/api-types";
+
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(name: string | null): string {
   if (!name) return "??";
@@ -28,113 +56,336 @@ function getInitials(name: string | null): string {
     .slice(0, 2);
 }
 
-const columns: TableColumn<TeamMember>[] = [
-  {
-    id: "member",
-    header: "Member",
-    cell: (member) => (
-      <div className="flex items-center gap-2">
-        {member.user?.avatar_url ? (
-          <img src={member.user.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
-        ) : (
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
-            {getInitials(member.user?.display_name ?? null)}
+// ── sub-components ────────────────────────────────────────────────────────────
+
+function RoleChip({ role }: { role: string }) {
+  return (
+    <StatusBadge
+      status={role === "approver" || role === "owner" ? "planning" : "pending"}
+      label={role}
+    />
+  );
+}
+
+/** Inline role-change + remove dropdown, shown only to the business owner. */
+function MemberActions({
+  member,
+  currentUserId,
+}: {
+  member: TeamMember;
+  currentUserId: string;
+}) {
+  const updateRole = useUpdateMemberRole();
+  const removeMember = useRemoveMember();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  const isSelf = member.user_id === currentUserId;
+  const isOwner = member.role === "owner";
+
+  // Owners and self cannot be acted on
+  if (isSelf || isOwner) return null;
+
+  const otherRole = member.role === "approver" ? "analyst" : "approver";
+  const otherLabel = otherRole === "approver" ? "Approver" : "Analyst";
+
+  const handleRoleChange = () => {
+    updateRole.mutate({ memberId: member.id, role: otherRole });
+  };
+
+  const handleRemove = () => {
+    if (!confirmRemove) {
+      setConfirmRemove(true);
+      // auto-reset after 3 s so stray clicks don't delete
+      setTimeout(() => setConfirmRemove(false), 3000);
+      return;
+    }
+    removeMember.mutate(member.id);
+    setConfirmRemove(false);
+  };
+
+  const busy = updateRole.isPending || removeMember.isPending;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={busy}
+          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground data-[state=open]:bg-muted"
+        >
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" className="w-48">
+        {/* Role toggle */}
+        <DropdownMenuItem
+          onClick={handleRoleChange}
+          className="cursor-pointer gap-2"
+        >
+          <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>
+            Change to{" "}
+            <span className="font-semibold">{otherLabel}</span>
           </span>
-        )}
-        <div>
-          <p className="font-medium text-foreground">
-            {member.user?.display_name ?? "Unknown"} {member.role === "owner" ? "👑" : ""}
-          </p>
-          <p className="text-xs text-muted-foreground">{member.user?.email ?? "—"}</p>
-        </div>
-      </div>
-    ),
-  },
-  {
-    id: "role",
-    header: "Role",
-    cell: (member) => (
-      <StatusBadge
-        status={member.role === "approver" || member.role === "owner" ? "planning" : "pending"}
-        label={member.role}
-      />
-    ),
-  },
-  {
-    id: "joinedAt",
-    header: "Joined",
-    cell: (member) => (
-      <span className="text-muted-foreground">
-        {member.joined_at
-          ? new Date(member.joined_at).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" })
-          : "—"}
-      </span>
-    ),
-  },
-  {
-    id: "createdAt",
-    header: "Added",
-    cell: (member) => (
-      <span className="text-muted-foreground">
-        {new Date(member.created_at).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" })}
-      </span>
-    ),
-  },
-];
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        {/* Remove — two-tap confirm pattern */}
+        <DropdownMenuItem
+          onClick={handleRemove}
+          className={`cursor-pointer gap-2 focus:bg-destructive/10 ${
+            confirmRemove
+              ? "text-destructive focus:text-destructive"
+              : "text-muted-foreground"
+          }`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>{confirmRemove ? "Tap again to confirm" : "Remove member"}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ── main page ─────────────────────────────────────────────────────────────────
 
 export default function TeamPage() {
   const { inviteOpen, setInviteOpen } = useDashboardShell();
+  const { user } = useAuth();
   const [teamQuery, setTeamQuery] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("analyst");
+
+  // ── Bulk import state ──────────────────────────────────────────────────────
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResults, setImportResults] = useState<BulkImportResult | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError } = useTeamMembers();
   const inviteMutation = useInviteMember();
 
   const members = data?.members ?? [];
 
+  // Derive the current user's role in this org
+  const currentUserRole = useMemo(() => {
+    if (!user || !members.length) return null;
+    return members.find((m) => m.user_id === user.id)?.role ?? null;
+  }, [user, members]);
+
+  const isOwner = currentUserRole === "owner";
+
   const filteredMembers = useMemo(
     () =>
       members.filter(
         (m) =>
-          (m.user?.display_name ?? "").toLowerCase().includes(teamQuery.toLowerCase()) ||
-          (m.user?.email ?? "").toLowerCase().includes(teamQuery.toLowerCase())
+          (m.user?.display_name ?? "")
+            .toLowerCase()
+            .includes(teamQuery.toLowerCase()) ||
+          (m.user?.email ?? "")
+            .toLowerCase()
+            .includes(teamQuery.toLowerCase()),
       ),
-    [members, teamQuery]
+    [members, teamQuery],
   );
 
   const totalCount = members.length;
   const ownerApproverCount = members.filter(
-    (m) => m.role === "owner" || m.role === "approver"
+    (m) => m.role === "owner" || m.role === "approver",
   ).length;
   const analystCount = members.filter((m) => m.role === "analyst").length;
 
+  // Build columns — conditionally add Actions for owners
+  const columns = useMemo<TableColumn<TeamMember>[]>(() => {
+    const base: TableColumn<TeamMember>[] = [
+      {
+        id: "member",
+        header: "Member",
+        cell: (member) => (
+          <div className="flex items-center gap-3">
+            {member.user?.avatar_url ? (
+              <img
+                src={member.user.avatar_url}
+                alt=""
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            ) : (
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                {getInitials(member.user?.display_name ?? null)}
+              </span>
+            )}
+            <div>
+              <p className="font-medium text-foreground">
+                {member.user?.display_name ?? "Unknown"}{" "}
+                {member.role === "owner" ? "👑" : ""}
+                {member.user_id === user?.id ? (
+                  <span className="ml-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    You
+                  </span>
+                ) : null}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {member.user?.email ?? "—"}
+              </p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "role",
+        header: "Role",
+        cell: (member) => <RoleChip role={member.role} />,
+      },
+      {
+        id: "joinedAt",
+        header: "Joined",
+        cell: (member) => (
+          <span className="text-muted-foreground">
+            {member.joined_at
+              ? new Date(member.joined_at).toLocaleDateString("en-NG", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
+              : "—"}
+          </span>
+        ),
+      },
+      {
+        id: "createdAt",
+        header: "Added",
+        cell: (member) => (
+          <span className="text-muted-foreground">
+            {new Date(member.created_at).toLocaleDateString("en-NG", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </span>
+        ),
+      },
+    ];
+
+    if (isOwner) {
+      base.push({
+        id: "actions",
+        header: "",
+        cell: (member) => (
+          <div className="flex justify-end">
+            <MemberActions member={member} currentUserId={user?.id ?? ""} />
+          </div>
+        ),
+      });
+    }
+
+    return base;
+  }, [isOwner, user?.id]);
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.name.endsWith(".csv")) {
+      setImportFile(file);
+      setImportResults(null);
+    } else {
+      toast.error("Please drop a .csv file.");
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImportFile(file);
+      setImportResults(null);
+    }
+    e.target.value = "";
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImportLoading(true);
+    try {
+      const result = await importTeamMembers(importFile);
+      setImportResults(result);
+      const { added, invited, skipped, failed } = result.summary;
+      if (failed === 0) {
+        toast.success(`Import done — ${added} added, ${invited} invited, ${skipped} skipped.`);
+      } else {
+        toast.warning(`Import finished with ${failed} error(s).`);
+      }
+    } catch {
+      toast.error("Import failed. Please check the file and try again.");
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleCloseImport = () => {
+    setImportOpen(false);
+    setImportFile(null);
+    setImportResults(null);
+    setDragOver(false);
+  };
+
   const handleInvite = () => {
-    if (!inviteEmail) return;
+    if (!inviteEmail.trim()) return;
     inviteMutation.mutate(
-      { email: inviteEmail, role: inviteRole },
+      { email: inviteEmail.trim(), role: inviteRole },
       {
         onSuccess: () => {
           setInviteEmail("");
           setInviteRole("analyst");
           setInviteOpen(false);
         },
-      }
+      },
     );
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Team Members"
           description="Manage who has access to your FlowPilot workspace and control what they can do."
         />
+        {isOwner && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="h-10 rounded-full border-border px-4 font-semibold text-foreground hover:bg-muted"
+            >
+              <Upload className="mr-1.5 h-4 w-4" />
+              Import CSV
+            </Button>
+            <Button
+              onClick={() => setInviteOpen(true)}
+              className="h-10 rounded-full bg-primary px-5 text-primary-foreground font-semibold shadow-sm hover:opacity-90"
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              Invite Member
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-4 text-sm text-blue-900 shadow-sm transition-colors">
+      <div className="rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-4 text-sm text-blue-900 shadow-sm">
         <p className="font-semibold mb-1">Role Permissions</p>
-        FlowPilot has two roles. <span className="font-bold">Analysts</span> can view runs, transactions, and reports but cannot approve payouts or start runs. <span className="font-bold">Approvers</span> have full access including creating runs and approving disbursements.
+        FlowPilot has two roles.{" "}
+        <span className="font-bold">Analysts</span> can view runs, transactions,
+        and reports but cannot approve payouts or start runs.{" "}
+        <span className="font-bold">Approvers</span> have full access including
+        creating runs and approving disbursements.
       </div>
 
       {/* Metric cards */}
@@ -162,8 +413,8 @@ export default function TeamPage() {
         />
       </div>
 
-      <div className="">
-        {/* Toolbar */}
+      {/* Table */}
+      <div>
         <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <SearchInput
             value={teamQuery}
@@ -188,79 +439,284 @@ export default function TeamPage() {
             keyExtractor={(member) => member.id}
             emptyState={
               <div className="py-12 text-center">
-                <p className="text-base font-black text-foreground">No team members found</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {teamQuery ? "No matches for your search query." : "You have not invited any team members yet."}
+                <p className="text-base font-black text-foreground">
+                  No team members found
                 </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {teamQuery
+                    ? "No matches for your search query."
+                    : "You haven't invited any team members yet."}
+                </p>
+                {!teamQuery && isOwner && (
+                  <Button
+                    onClick={() => setInviteOpen(true)}
+                    variant="outline"
+                    className="mt-4 rounded-full border-brand/30 text-brand hover:bg-brand/5 hover:border-brand"
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Invite your first member
+                  </Button>
+                )}
               </div>
             }
           />
         )}
       </div>
 
-      {/* Invite Modal */}
+      {/* ── Bulk Import Modal ────────────────────────────────────────────────── */}
+      {importOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl bg-card shadow-2xl border border-border animate-in zoom-in-95 duration-200 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+              <div>
+                <h3 className="text-xl font-bold tracking-tight text-foreground">Import Team Members</h3>
+                <p className="text-sm text-muted-foreground mt-0.5">Upload a CSV to add or invite multiple people at once.</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full text-muted-foreground shrink-0"
+                onClick={handleCloseImport}
+              >
+                ×
+              </Button>
+            </div>
+
+            <div className="px-6 py-5 space-y-5">
+              {/* Template download */}
+              <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">CSV Template</p>
+                    <p className="text-xs text-muted-foreground">email, role, first_name, last_name</p>
+                  </div>
+                </div>
+                <a
+                  href={getTeamImportTemplateUrl()}
+                  download="team_import_template.csv"
+                  className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/5 px-3 py-1.5 text-xs font-semibold text-brand transition-all hover:bg-brand/10"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </a>
+              </div>
+
+              {/* Drop zone */}
+              {!importResults && (
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handleFileDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-10 transition-all ${
+                    dragOver
+                      ? "border-brand bg-brand/5"
+                      : importFile
+                      ? "border-brand/50 bg-brand/5"
+                      : "border-border bg-muted/20 hover:border-brand/40 hover:bg-muted/40"
+                  }`}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    className="sr-only"
+                    onChange={handleFileSelect}
+                  />
+                  <Upload className={`h-8 w-8 ${importFile ? "text-brand" : "text-muted-foreground"}`} />
+                  {importFile ? (
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-foreground">{importFile.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{(importFile.size / 1024).toFixed(1)} KB · Click to change</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-foreground">Drop your CSV here</p>
+                      <p className="text-xs text-muted-foreground mt-1">or click to browse files</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Results */}
+              {importResults && (
+                <div className="space-y-3">
+                  {/* Summary bar */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { label: "Added", value: importResults.summary.added, color: "text-green-600 bg-green-50 border-green-200" },
+                      { label: "Invited", value: importResults.summary.invited, color: "text-blue-600 bg-blue-50 border-blue-200" },
+                      { label: "Skipped", value: importResults.summary.skipped, color: "text-amber-600 bg-amber-50 border-amber-200" },
+                      { label: "Failed", value: importResults.summary.failed, color: "text-destructive bg-destructive/5 border-destructive/20" },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className={`rounded-xl border px-3 py-2 text-center ${color}`}>
+                        <p className="text-lg font-bold">{value}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Per-row results */}
+                  <div className="max-h-52 overflow-y-auto rounded-xl border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">#</th>
+                          <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">Email</th>
+                          <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {importResults.results.map((row) => (
+                          <tr key={row.line} className="hover:bg-muted/30">
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{row.line}</td>
+                            <td className="px-3 py-2 font-medium text-foreground max-w-[180px] truncate">{row.email}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1.5">
+                                {row.status === "added" && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                                {row.status === "invited" && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
+                                {row.status === "skipped" && <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                                {row.status === "error" && <XCircle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                                <span className={`text-xs font-medium capitalize ${
+                                  row.status === "added" ? "text-green-600"
+                                  : row.status === "invited" ? "text-blue-600"
+                                  : row.status === "skipped" ? "text-amber-600"
+                                  : "text-destructive"
+                                }`}>
+                                  {row.status}
+                                </span>
+                                {row.reason && (
+                                  <span className="text-xs text-muted-foreground">· {row.reason}</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <Button variant="ghost" className="rounded-full px-6" onClick={handleCloseImport}>
+                {importResults ? "Close" : "Cancel"}
+              </Button>
+              {!importResults && (
+                <Button
+                  className="rounded-full bg-brand px-6 text-white hover:opacity-90 shadow-sm"
+                  disabled={!importFile || importLoading}
+                  onClick={handleImport}
+                >
+                  {importLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing…</>
+                  ) : (
+                    <><Upload className="mr-2 h-4 w-4" />Import</>
+                  )}
+                </Button>
+              )}
+              {importResults && (
+                <Button
+                  variant="outline"
+                  className="rounded-full px-6"
+                  onClick={() => { setImportFile(null); setImportResults(null); }}
+                >
+                  Import Another
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Invite Modal ─────────────────────────────────────────────────────── */}
       {inviteOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200 border border-border">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xl font-bold tracking-tight text-foreground">Invite a Team Member</h3>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setInviteOpen(false)}>×</Button>
+              <h3 className="text-xl font-bold tracking-tight text-foreground">
+                Invite a Team Member
+              </h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-full text-muted-foreground"
+                onClick={() => setInviteOpen(false)}
+              >
+                ×
+              </Button>
             </div>
-            <p className="text-sm text-muted-foreground mb-6">They will receive an email invitation to join your FlowPilot workspace.</p>
+            <p className="text-sm text-muted-foreground mb-6">
+              They&apos;ll get an email to join your FlowPilot workspace. If
+              they don&apos;t have an account yet, we&apos;ll send them a
+              sign-up link.
+            </p>
 
             <div className="space-y-4">
-              <div className="space-y-3">
-                <Input
-                  placeholder="Email Address"
-                  className="h-11 rounded-xl"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                />
-              </div>
+              <Input
+                type="email"
+                placeholder="Email address"
+                className="h-11 rounded-xl"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleInvite()}
+              />
 
-              <div className="pt-2">
-                <p className="text-sm font-semibold mb-3 text-foreground">Select Role</p>
+              <div>
+                <p className="text-sm font-semibold mb-3 text-foreground">
+                  Select Role
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    className={`rounded-xl border p-4 text-left transition-all ${
-                      inviteRole === "analyst"
-                        ? "border-2 border-brand bg-brand/5"
-                        : "border-border hover:border-brand/50 hover:bg-muted/50"
-                    }`}
-                    onClick={() => setInviteRole("analyst")}
-                  >
-                    <p className={`font-bold text-sm mb-1 ${inviteRole === "analyst" ? "text-brand" : "text-foreground"}`}>Analyst</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">Can view runs, transactions, reports, and forecasts.</p>
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded-xl border p-4 text-left transition-all ${
-                      inviteRole === "approver"
-                        ? "border-2 border-brand bg-brand/5"
-                        : "border-border hover:border-brand/50 hover:bg-muted/50"
-                    }`}
-                    onClick={() => setInviteRole("approver")}
-                  >
-                    <p className={`font-bold text-sm mb-1 ${inviteRole === "approver" ? "text-brand" : "text-foreground"}`}>Approver</p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">Can create runs and approve payouts.</p>
-                  </button>
+                  {(["analyst", "approver"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setInviteRole(r)}
+                      className={`rounded-xl border p-4 text-left transition-all ${
+                        inviteRole === r
+                          ? "border-2 border-brand bg-brand/5"
+                          : "border-border hover:border-brand/50 hover:bg-muted/50"
+                      }`}
+                    >
+                      <p
+                        className={`font-bold text-sm mb-1 capitalize ${
+                          inviteRole === r ? "text-brand" : "text-foreground"
+                        }`}
+                      >
+                        {r}
+                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {r === "analyst"
+                          ? "Can view runs, transactions, reports, and forecasts."
+                          : "Can create runs and approve payouts."}
+                      </p>
+                    </button>
+                  ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-                  You can change a member&apos;s role at any time from the Team settings.
+                <p className="mt-3 text-xs text-muted-foreground leading-relaxed">
+                  You can change a member&apos;s role at any time from this
+                  page.
                 </p>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 mt-6 border-t border-border/50">
-                <Button variant="ghost" className="rounded-full px-6" onClick={() => setInviteOpen(false)}>Cancel</Button>
+              <div className="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-border/50">
                 <Button
-                  className="rounded-full bg-brand px-6 text-white hover:opacity-90 shadow-sm transition-all hover:shadow"
-                  onClick={handleInvite}
-                  disabled={inviteMutation.isPending || !inviteEmail}
+                  variant="ghost"
+                  className="rounded-full px-6"
+                  onClick={() => setInviteOpen(false)}
                 >
-                  {inviteMutation.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
+                  Cancel
+                </Button>
+                <Button
+                  className="rounded-full bg-brand px-6 text-white hover:opacity-90 shadow-sm"
+                  onClick={handleInvite}
+                  disabled={inviteMutation.isPending || !inviteEmail.trim()}
+                  loading={inviteMutation.isPending}
+                >
                   Send Invitation
                 </Button>
               </div>

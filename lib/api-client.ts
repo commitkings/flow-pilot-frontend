@@ -34,6 +34,7 @@ import type {
   CandidatesResponse,
   ConnectionsResponse,
   CreateRunPayload,
+  DashboardStats,
   InstitutionsResponse,
   InviteMemberPayload,
   NotificationsResponse,
@@ -73,6 +74,14 @@ export function updateMe(data: Partial<Pick<User, "display_name" | "avatar_url" 
 
 export function logout(): Promise<void> {
   return apiClient.post<void>("/auth/logout").then(() => undefined);
+}
+
+export function verifyEmail(code: string): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/verify-email", { code }).then((r) => r.data);
+}
+
+export function resendVerification(): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/resend-verification").then((r) => r.data);
 }
 
 // ── 2. Onboarding ────────────────────────────────────────────────────────────
@@ -263,6 +272,24 @@ export function removeTeamMember(memberId: string): Promise<{ status: string }> 
   return apiClient.delete<{ status: string }>(`/team/members/${memberId}`).then((r) => r.data);
 }
 
+export interface BulkImportResult {
+  summary: { added: number; invited: number; skipped: number; failed: number; total: number };
+  results: Array<{ line: number; email: string; status: string; role?: string; reason?: string }>;
+}
+
+export function importTeamMembers(file: File): Promise<BulkImportResult> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return apiClient
+    .post<BulkImportResult>("/team/import", fd, { headers: { "Content-Type": "multipart/form-data" } })
+    .then((r) => r.data);
+}
+
+export function getTeamImportTemplateUrl(): string {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1";
+  return `${base}/team/import/template`;
+}
+
 // ── 13. Org Profile ──────────────────────────────────────────────────────────
 
 export function getOrgProfile(): Promise<OrgProfile> {
@@ -278,6 +305,48 @@ export function updateOrgConfig(data: Record<string, unknown>): Promise<Record<s
 }
 
 // ── 14. Auth (Extended) ──────────────────────────────────────────────────────
+
+export function forgotPassword(email: string): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/auth/forgot-password", { email })
+    .then((r) => r.data);
+}
+
+export function resetPassword(
+  token: string,
+  new_password: string,
+): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/auth/reset-password", { token, new_password })
+    .then((r) => r.data);
+}
+
+export function getInviteDetails(
+  token: string,
+): Promise<import("./api-types").InviteDetails> {
+  return apiClient
+    .get<import("./api-types").InviteDetails>(`/team/invite/${token}`)
+    .then((r) => r.data);
+}
+
+export function registerViaInvite(
+  payload: import("./api-types").RegisterViaInvitePayload,
+): Promise<AuthResponse> {
+  return apiClient
+    .post<AuthResponse>("/auth/register-via-invite", payload)
+    .then((r) => r.data);
+}
+
+export function acceptInviteToken(
+  token: string,
+): Promise<{ status: string; business_id: string; role: string }> {
+  return apiClient
+    .post<{ status: string; business_id: string; role: string }>(
+      `/team/accept-invite/${token}`,
+      {},
+    )
+    .then((r) => r.data);
+}
 
 export function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
   return apiClient
@@ -313,7 +382,13 @@ export function exportAccountData(): Promise<Blob> {
 }
 
 
-// ── 15. Health (unauthenticated) ──────────────────────────────────────────────
+// ── 15. Dashboard ─────────────────────────────────────────────────────────────
+
+export function getDashboardStats(): Promise<DashboardStats> {
+  return apiClient.get<DashboardStats>("/dashboard/stats").then((r) => r.data);
+}
+
+// ── 16. Health (unauthenticated) ─────────────────────────────────────────────
 
 export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
   const root = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1").replace(

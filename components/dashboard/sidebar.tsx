@@ -6,12 +6,15 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ArrowLeftRight,
+  Home,
   ShieldCheck,
   Settings,
   Bell,
   ChevronsLeft,
   Users,
   LogOut,
+  ScrollText,
+  ClipboardCheck,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -20,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from "@/hooks/use-notification-queries";
+import { getUserRole } from "@/lib/api-types";
 
 function getInitials(name: string | null | undefined): string {
   if (!name?.trim()) return "??";
@@ -48,13 +52,18 @@ type NavItem = {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  /** Roles that can see this item. Undefined = all roles. */
+  roles?: string[];
 };
 
 const navItems: NavItem[] = [
+  { label: "Overview", href: "/dashboard", icon: Home },
   { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
+  { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
   { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
+  { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
   { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
-  { label: "Team Members", href: "/dashboard/team", icon: Users },
+  { label: "Team Members", href: "/dashboard/team", icon: Users, roles: ["owner"] },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
@@ -69,7 +78,11 @@ function NavLink({
   onClick?: () => void;
 }) {
   const pathname = usePathname();
-  const isActive = pathname.startsWith(item.href);
+  // Exact match for overview, prefix match for all others
+  const isActive =
+    item.href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(item.href);
   const Icon = item.icon;
 
   return (
@@ -131,13 +144,19 @@ export function Sidebar() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const displayName = user?.display_name?.trim() || user?.email || "Account";
   const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
+  const userRole = getUserRole(user);
 
   const { data: notifData } = useNotifications({ limit: 1 });
   const unreadCount = notifData?.unread_count ?? 0;
 
+  // Filter nav items by role
+  const visibleNavItems = navItems.filter(
+    (item) => !item.roles || (userRole && item.roles.includes(userRole))
+  );
+
   const renderNav = (isCollapsed?: boolean, onClose?: () => void) => (
     <>
-      {navItems.map((item) => {
+      {visibleNavItems.map((item) => {
         const badge = item.href === "/dashboard/notifications" && unreadCount > 0
           ? String(unreadCount)
           : item.badge;

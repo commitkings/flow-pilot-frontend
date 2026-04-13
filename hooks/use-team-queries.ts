@@ -3,12 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  listTeamMembers,
   inviteTeamMember,
-  updateTeamMemberRole,
+  listTeamMembers,
   removeTeamMember,
+  updateTeamMemberRole,
 } from "@/lib/api-client";
-import type { InviteMemberPayload } from "@/lib/api-types";
+import type { InviteMemberPayload, InviteResult } from "@/lib/api-types";
 
 export function useTeamMembers() {
   return useQuery({
@@ -21,13 +21,20 @@ export function useTeamMembers() {
 export function useInviteMember() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: InviteMemberPayload) => inviteTeamMember(payload),
-    onSuccess: () => {
+    mutationFn: (payload: InviteMemberPayload) =>
+      inviteTeamMember(payload) as Promise<InviteResult>,
+    onSuccess: (result: InviteResult) => {
       qc.invalidateQueries({ queryKey: ["team-members"] });
-      toast.success("Invitation sent successfully");
+      if (result.status === "added") {
+        toast.success("Member added to your team");
+      } else {
+        toast.success("Invite email sent — they'll get a link to sign up");
+      }
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Failed to invite member");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to invite member",
+      );
     },
   });
 }
