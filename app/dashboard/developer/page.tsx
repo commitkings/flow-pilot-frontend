@@ -22,7 +22,7 @@ export default function DeveloperPage() {
   const [activeTab, setActiveTab] = useState<Tab>("api-keys");
 
   return (
-    <div className="mx-auto max-w-4xl pb-16 space-y-6">
+    <div className="mx-auto max-w-6xl pb-16 space-y-6">
       <PageHeader
         title="Developer"
         description="Manage API keys and webhooks to integrate FlowPilot with your systems."

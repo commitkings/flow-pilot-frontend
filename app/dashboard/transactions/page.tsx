@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Download, FileSearch, Loader2, ShieldAlert, SlidersHorizontal, TrendingUp, Zap, Building, Activity } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -144,12 +143,12 @@ export default function TransactionsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 rounded-full border border-border bg-muted/30 p-1">
+            <div className="flex items-center gap-1 rounded-full border border-border/60 bg-transparent p-1">
               <button
                 onClick={() => setViewMode("bank")}
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
                   viewMode === "bank"
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-brand text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -160,7 +159,7 @@ export default function TransactionsPage() {
                 onClick={() => setViewMode("all")}
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
                   viewMode === "all"
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-brand text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -168,29 +167,27 @@ export default function TransactionsPage() {
                 All Activity
               </button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
+            <button
+              type="button"
               onClick={() => setFilterOpen(true)}
-              className="relative h-10 gap-2 rounded-full px-5 text-sm font-semibold"
+              className="relative inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
-              <SlidersHorizontal className="h-4 w-4" />
+              <SlidersHorizontal className="h-3.5 w-3.5" />
               Filter
               {activeFilterCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-black text-white">
                   {activeFilterCount}
                 </span>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+            </button>
+            <button
+              type="button"
               onClick={() => setExportOpen(true)}
-              className="h-10 gap-2 rounded-full px-5 text-sm font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
               Export
-            </Button>
+            </button>
           </div>
         </div>
 

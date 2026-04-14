@@ -182,7 +182,17 @@ export interface InstitutionFilters {
 }
 
 export function listInstitutions(filters: InstitutionFilters = {}): Promise<InstitutionsResponse> {
-  return apiClient.get<InstitutionsResponse>("/institutions", { params: filters }).then((r) => r.data);
+  return apiClient.get<InstitutionsResponse>("/institutions", { params: filters }).then((r) => {
+    const raw = r.data;
+    return {
+      ...raw,
+      data: raw.data.map((inst) => ({
+        ...inst,
+        // API returns snake_case is_active; normalize to camelCase
+        isActive: (inst as unknown as Record<string, unknown>).is_active as boolean ?? inst.isActive ?? false,
+      })),
+    };
+  });
 }
 
 // ── 8. Transactions ──────────────────────────────────────────────────────────

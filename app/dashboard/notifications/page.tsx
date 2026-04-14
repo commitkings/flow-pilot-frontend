@@ -55,16 +55,15 @@ export default function NotificationsPage() {
           description="Stay updated on run completions, approvals, and system events."
         />
         {unreadCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
+          <button
+            type="button"
             onClick={() => markAllRead.mutate()}
             disabled={markAllRead.isPending}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40 shrink-0"
           >
-            <Check className="mr-2 h-4 w-4" />
+            <Check className="h-3.5 w-3.5" />
             Mark all as read
-          </Button>
+          </button>
         )}
       </div>
 
@@ -92,21 +91,24 @@ export default function NotificationsPage() {
         />
       </div>
 
-      <div className="flex items-center gap-3 px-1">
+      <div className="flex items-center gap-2 px-1">
         {([
           { label: "All", val: undefined },
           { label: "Unread", val: false },
           { label: "Read", val: true },
         ] as const).map((opt) => (
-          <Button
+          <button
             key={opt.label}
-            variant={readFilter === opt.val ? "default" : "outline"}
-            size="sm"
-            className="rounded-full"
+            type="button"
             onClick={() => { setReadFilter(opt.val); setOffset(0); }}
+            className={`inline-flex items-center rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+              readFilter === opt.val
+                ? "border-brand bg-brand text-white"
+                : "border-border/60 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
+            }`}
           >
             {opt.label}
-          </Button>
+          </button>
         ))}
       </div>
 

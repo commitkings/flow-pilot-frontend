@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
@@ -82,24 +81,26 @@ function AddEntryForm({ onCancel }: AddEntryFormProps) {
   }
 
   return (
-    <tr className="border-b border-border bg-muted/40">
-      <td colSpan={7} className="px-4 py-4 md:px-6">
+    <tr className="border-b border-border bg-muted/20">
+      <td colSpan={7} className="px-4 py-5 md:px-6">
         <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col gap-1 min-w-[160px]">
-            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+
+          {/* Type — dropdown */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1">
               Type
             </label>
             <div className="relative">
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as BlocklistEntryType)}
-                className="h-9 w-full appearance-none rounded-xl border border-input bg-background px-3 pr-8 text-sm text-foreground outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10"
+                className="h-10 appearance-none rounded-full border border-border/60 bg-background pl-4 pr-9 text-sm text-foreground outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10"
               >
                 <option value="account_number">Account Number</option>
                 <option value="beneficiary_name">Beneficiary Name</option>
                 <option value="bank_code">Bank Code</option>
               </select>
-              <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
                   <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                 </svg>
@@ -107,38 +108,40 @@ function AddEntryForm({ onCancel }: AddEntryFormProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 min-w-[180px] flex-1">
-            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+          {/* Value */}
+          <div className="flex flex-col gap-1.5 min-w-44 flex-1">
+            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1">
               Value
             </label>
-            <Input
+            <input
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="e.g. 0123456789"
               required
-              className="h-9 rounded-xl border-input bg-background px-3 text-sm font-mono focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10"
+              className="h-10 rounded-full border border-border/60 bg-background px-4 text-sm font-mono text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
             />
           </div>
 
-          <div className="flex flex-col gap-1 min-w-[200px] flex-[2]">
-            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+          {/* Reason */}
+          <div className="flex flex-col gap-1.5 min-w-52 flex-[2]">
+            <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1">
               Reason <span className="text-destructive">*</span>
             </label>
-            <Input
+            <input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Why is this entry blocked?"
               required
-              className="h-9 rounded-xl border-input bg-background px-3 text-sm focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10"
+              className="h-10 rounded-full border border-border/60 bg-background px-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
             />
           </div>
 
-          <div className="flex items-center gap-2 pb-0.5">
-            <Button
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <button
               type="submit"
-              size="sm"
-              className="h-9 rounded-xl gap-1.5"
               disabled={addMutation.isPending || !value.trim() || !reason.trim()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
             >
               {addMutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -146,17 +149,15 @@ function AddEntryForm({ onCancel }: AddEntryFormProps) {
                 <Plus className="h-3.5 w-3.5" />
               )}
               Add
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 rounded-xl"
               onClick={onCancel}
               disabled={addMutation.isPending}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
             >
               Cancel
-            </Button>
+            </button>
           </div>
         </form>
       </td>
@@ -283,10 +284,10 @@ export default function BlocklistPage() {
       <div className="overflow-hidden rounded-2xl border border-border">
         {/* Toolbar */}
         <div className="flex flex-col gap-3 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Search */}
-            <div className="flex h-9 items-center gap-2 rounded-xl border border-input bg-muted/40 px-3 transition-all focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10">
-              <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="flex h-10 items-center gap-2 rounded-full border border-border/60 bg-background px-3 transition-all focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10">
+              <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setOffset(0); }}
@@ -295,35 +296,31 @@ export default function BlocklistPage() {
               />
             </div>
 
-            {/* Type filter */}
-            <div className="relative">
-              <select
-                value={typeFilter}
-                onChange={(e) => { setTypeFilter(e.target.value as BlocklistEntryType | ""); setOffset(0); }}
-                className="h-9 appearance-none rounded-xl border border-input bg-background px-3 pr-8 text-sm text-foreground outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10"
+            {/* Type filter pills */}
+            {TYPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => { setTypeFilter(opt.value as BlocklistEntryType | ""); setOffset(0); }}
+                className={`inline-flex items-center rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+                  typeFilter === opt.value
+                    ? "border-brand bg-brand text-white"
+                    : "border-border/60 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
+                }`}
               >
-                {TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
-                <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
-            </div>
+                {opt.label}
+              </button>
+            ))}
           </div>
 
-          <Button
-            size="sm"
-            className="gap-2 rounded-xl shrink-0"
-            onClick={() => { setShowAddForm((v) => !v); }}
+          <button
+            type="button"
+            onClick={() => setShowAddForm((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground shrink-0"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             Add Entry
-          </Button>
+          </button>
         </div>
 
         {/* Table */}

@@ -21,7 +21,7 @@ export type StatusType =
   | "active";
 
 const styles: Record<StatusType, string> = {
-  pending: "bg-slate-100 text-slate-700",
+  pending: "border border-slate-200 bg-slate-100 text-slate-500",
   planning: "border border-blue-300 bg-blue-50 text-blue-700",
   running: "bg-blue-600 text-white",
   awaiting_approval: "bg-amber-500/15 text-amber-800 border border-amber-300",
@@ -38,7 +38,7 @@ const styles: Record<StatusType, string> = {
   requires_followup: "bg-amber-500/15 text-amber-800 border border-amber-300",
   invited: "bg-amber-500/15 text-amber-800 border border-amber-300",
   suspended: "border border-red-300 bg-red-50 text-red-700",
-  active: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
+  active: "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300",
 };
 
 const pulseStatuses: StatusType[] = ["running", "awaiting_approval", "executing"];
