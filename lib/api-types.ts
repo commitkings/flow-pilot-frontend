@@ -104,6 +104,13 @@ export interface OnboardingPayload {
   primary_bank?: string;
   primary_use_cases?: string[];
   risk_appetite?: "conservative" | "moderate" | "aggressive";
+  // Step 3 financial setup
+  interswitch_merchant_id?: string;
+  merchant_state?: string;
+  daily_payout_limit?: number;
+  single_payout_cap?: number;
+  risk_alert_threshold?: number;
+  liquidity_alert_buffer?: number;
 }
 
 export interface OnboardingBusiness {
@@ -461,6 +468,12 @@ export interface OrgConfig {
   risk_appetite: string | null;
   default_risk_tolerance: number | null;
   default_budget_cap: number | null;
+  // Financial setup
+  merchant_state: string | null;
+  daily_payout_limit: number | null;
+  single_payout_cap: number | null;
+  risk_alert_threshold: number | null;
+  liquidity_alert_buffer: number | null;
   preferences: Record<string, unknown> | null;
 }
 

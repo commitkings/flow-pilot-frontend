@@ -14,6 +14,8 @@ import {
   Loader2,
   LogOut,
   RefreshCw,
+  Scale,
+  Shield,
   ShieldCheck,
   ShieldOff,
   Trash2,
@@ -21,6 +23,7 @@ import {
   Building2,
   Lock,
   AlertOctagon,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,9 +38,11 @@ import {
   useRemoveAvatar,
   useChangePassword,
   useUpdateOrgProfile,
+  useUpdateOrgConfig,
   useExportAccountData,
   useDeleteAccount,
 } from "@/hooks/use-settings-queries";
+import { CardSelect, PillSelect, type CardSelectOption } from "@/components/ui/select-fields";
 import {
   use2FAStatus,
   use2FASetup,
@@ -64,9 +69,23 @@ export default function SettingsPage() {
   const removeAvatarMut = useRemoveAvatar();
   const changePasswordMut = useChangePassword();
   const updateOrg = useUpdateOrgProfile();
+  const updateOrgConfigMut = useUpdateOrgConfig();
   const exportData = useExportAccountData();
   const deleteAccount = useDeleteAccount(() => logout());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Business configuration constants
+  type RiskAppetite = "conservative" | "moderate" | "aggressive";
+  const MONTHLY_VOLUMES = ["Below ₦1M", "₦1M–₦10M", "₦10M–₦50M", "₦50M–₦200M", "Above ₦200M"];
+  const MONTHLY_PAYOUTS = ["Below 50", "50–200", "200–1000", "Above 1000"];
+  const NIGERIAN_BANKS = ["Access Bank", "First Bank", "GTBank", "UBA", "Zenith Bank", "Stanbic IBTC", "Fidelity Bank", "Union Bank", "Polaris Bank", "Sterling Bank", "Wema Bank", "Other"];
+  const USE_CASE_OPTIONS = ["Payroll Disbursement", "Vendor Payments", "Supplier Payments", "Contractor Payments", "Refunds and Reversals", "Inter-account Transfers"];
+  const NIGERIAN_STATES = ["Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT - Abuja", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara"];
+  const RISK_OPTIONS: CardSelectOption<RiskAppetite>[] = [
+    { value: "conservative", title: "Conservative", description: "Strict risk controls. Only very low risk payouts auto-approved.", icon: <Shield className="h-5 w-5 text-brand" /> },
+    { value: "moderate", title: "Moderate", description: "Balanced approach. Review borderline cases.", icon: <Scale className="h-5 w-5 text-brand" /> },
+    { value: "aggressive", title: "Aggressive", description: "Speed-focused. Flag only high-risk payouts.", icon: <Zap className="h-5 w-5 text-brand" /> },
+  ];
 
   // 2FA hooks
   const twoFAStatus = use2FAStatus();
@@ -143,6 +162,20 @@ export default function SettingsPage() {
   const [orgEditing, setOrgEditing] = useState(false);
   const [orgForm, setOrgForm] = useState<Record<string, string>>({});
 
+  // Business config edit state
+  const [configEditing, setConfigEditing] = useState(false);
+  const [configVolume, setConfigVolume] = useState("");
+  const [configPayouts, setConfigPayouts] = useState("");
+  const [configBank, setConfigBank] = useState("");
+  const [configUseCases, setConfigUseCases] = useState<string[]>([]);
+  const [configRisk, setConfigRisk] = useState<RiskAppetite | "">("");
+  const [configMerchantId, setConfigMerchantId] = useState("");
+  const [configMerchantState, setConfigMerchantState] = useState("");
+  const [configDailyLimit, setConfigDailyLimit] = useState("");
+  const [configSingleCap, setConfigSingleCap] = useState("");
+  const [configRiskThreshold, setConfigRiskThreshold] = useState("");
+  const [configLiquidityBuffer, setConfigLiquidityBuffer] = useState("");
+
   const org = orgQuery.data;
   const connections = connectionsQuery.data?.connections ?? [];
 
@@ -188,6 +221,44 @@ export default function SettingsPage() {
 
   const handleOrgSave = () => {
     updateOrg.mutate(orgForm, { onSuccess: () => setOrgEditing(false) });
+  };
+
+  const handleEditConfig = () => {
+    setConfigVolume(org?.config?.monthly_txn_volume_range ?? "");
+    setConfigPayouts(org?.config?.avg_monthly_payouts_range ?? "");
+    setConfigBank(org?.config?.primary_bank ?? "");
+    setConfigUseCases(org?.config?.primary_use_cases ?? []);
+    setConfigRisk((org?.config?.risk_appetite as RiskAppetite | "") ?? "");
+    setConfigMerchantId(org?.interswitch_merchant_id ?? "");
+    setConfigMerchantState(org?.config?.merchant_state ?? "");
+    setConfigDailyLimit(org?.config?.daily_payout_limit != null ? String(org.config.daily_payout_limit) : "");
+    setConfigSingleCap(org?.config?.single_payout_cap != null ? String(org.config.single_payout_cap) : "");
+    setConfigRiskThreshold(org?.config?.risk_alert_threshold != null ? String(org.config.risk_alert_threshold) : "");
+    setConfigLiquidityBuffer(org?.config?.liquidity_alert_buffer != null ? String(org.config.liquidity_alert_buffer) : "");
+    setConfigEditing(true);
+  };
+
+  const handleConfigSave = async () => {
+    try {
+      await Promise.all([
+        updateOrgConfigMut.mutateAsync({
+          monthly_txn_volume_range: configVolume || null,
+          avg_monthly_payouts_range: configPayouts || null,
+          primary_bank: configBank || null,
+          primary_use_cases: configUseCases.length ? configUseCases : null,
+          risk_appetite: configRisk || null,
+          merchant_state: configMerchantState || null,
+          daily_payout_limit: configDailyLimit ? parseFloat(configDailyLimit.replace(/,/g, "")) : null,
+          single_payout_cap: configSingleCap ? parseFloat(configSingleCap.replace(/,/g, "")) : null,
+          risk_alert_threshold: configRiskThreshold ? parseFloat(configRiskThreshold) : null,
+          liquidity_alert_buffer: configLiquidityBuffer ? parseFloat(configLiquidityBuffer) : null,
+        }),
+        updateOrg.mutateAsync({ interswitch_merchant_id: configMerchantId || null }),
+      ]);
+      setConfigEditing(false);
+    } catch {
+      // errors handled by each hook's onError
+    }
   };
 
   // Tab definitions
@@ -361,6 +432,121 @@ export default function SettingsPage() {
                   <div className="mt-5">
                     <Button variant="outline" className="rounded-full shadow-sm" onClick={() => setOrgEditing(true)}>
                       Edit Business Information
+                    </Button>
+                  </div>
+                </>
+              )}
+            </Section>
+
+            <Section title="Business Configuration" description="Payout rules, risk profile, and financial thresholds set during onboarding.">
+              {orgQuery.isLoading ? (
+                <div className="py-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : configEditing ? (
+                <div className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Monthly Transaction Volume</label>
+                      <select value={configVolume} onChange={(e) => setConfigVolume(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Select volume range</option>
+                        {MONTHLY_VOLUMES.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Average Monthly Payouts</label>
+                      <select value={configPayouts} onChange={(e) => setConfigPayouts(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Select payout range</option>
+                        {MONTHLY_PAYOUTS.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Primary Bank</label>
+                      <select value={configBank} onChange={(e) => setConfigBank(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Select primary bank</option>
+                        {NIGERIAN_BANKS.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Interswitch Merchant ID</label>
+                      <Input value={configMerchantId} onChange={(e) => setConfigMerchantId(e.target.value)} className="h-10 rounded-xl" placeholder="Enter merchant account ID" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Registered State</label>
+                      <select value={configMerchantState} onChange={(e) => setConfigMerchantState(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">Select state</option>
+                        {NIGERIAN_STATES.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Default Daily Payout Limit (₦)</label>
+                      <Input inputMode="decimal" value={configDailyLimit} onChange={(e) => setConfigDailyLimit(e.target.value.replace(/[^0-9,.]/g, ""))} className="h-10 rounded-xl" placeholder="e.g. 5,000,000" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Single Payout Cap (₦)</label>
+                      <Input inputMode="decimal" value={configSingleCap} onChange={(e) => setConfigSingleCap(e.target.value.replace(/[^0-9,.]/g, ""))} className="h-10 rounded-xl" placeholder="e.g. 250,000" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Risk Alert Threshold</label>
+                      <Input inputMode="decimal" value={configRiskThreshold} onChange={(e) => setConfigRiskThreshold(e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1"))} className="h-10 rounded-xl" placeholder="e.g. 0.35" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Liquidity Alert Buffer (%)</label>
+                      <Input inputMode="numeric" value={configLiquidityBuffer} onChange={(e) => setConfigLiquidityBuffer(e.target.value.replace(/\D/g, ""))} className="h-10 rounded-xl" placeholder="e.g. 15" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Primary Use Cases</label>
+                    <PillSelect
+                      options={USE_CASE_OPTIONS}
+                      selected={configUseCases}
+                      onToggle={(v) => setConfigUseCases((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v])}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Risk Appetite</label>
+                    <CardSelect options={RISK_OPTIONS} selected={configRisk} onChange={setConfigRisk} />
+                  </div>
+                  <div className="flex gap-3 justify-end">
+                    <Button variant="ghost" className="rounded-full" onClick={() => setConfigEditing(false)}>Cancel</Button>
+                    <Button className="rounded-full bg-brand text-white" onClick={handleConfigSave} disabled={updateOrgConfigMut.isPending || updateOrg.isPending}>
+                      {(updateOrgConfigMut.isPending || updateOrg.isPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {([
+                      ["Monthly Transaction Volume", org?.config?.monthly_txn_volume_range],
+                      ["Average Monthly Payouts", org?.config?.avg_monthly_payouts_range],
+                      ["Primary Bank", org?.config?.primary_bank],
+                      ["Risk Appetite", org?.config?.risk_appetite ? org.config.risk_appetite.charAt(0).toUpperCase() + org.config.risk_appetite.slice(1) : null],
+                      ["Interswitch Merchant ID", org?.interswitch_merchant_id],
+                      ["Registered State", org?.config?.merchant_state],
+                      ["Daily Payout Limit", org?.config?.daily_payout_limit != null ? `₦${org.config.daily_payout_limit.toLocaleString()}` : null],
+                      ["Single Payout Cap", org?.config?.single_payout_cap != null ? `₦${org.config.single_payout_cap.toLocaleString()}` : null],
+                      ["Risk Alert Threshold", org?.config?.risk_alert_threshold != null ? String(org.config.risk_alert_threshold) : null],
+                      ["Liquidity Alert Buffer", org?.config?.liquidity_alert_buffer != null ? `${org.config.liquidity_alert_buffer}%` : null],
+                    ] as [string, string | null | undefined][]).map(([label, value]) => (
+                      <div key={label} className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-sm shadow-sm">
+                        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+                        <p className="mt-0.5 font-semibold text-foreground">{value || "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {org?.config?.primary_use_cases && org.config.primary_use_cases.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Primary Use Cases</p>
+                      <div className="flex flex-wrap gap-2">
+                        {org.config.primary_use_cases.map((uc) => (
+                          <span key={uc} className="rounded-full border border-brand/30 bg-brand/5 px-3 py-1 text-xs font-medium text-brand">{uc}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="mt-5">
+                    <Button variant="outline" className="rounded-full shadow-sm" onClick={handleEditConfig}>
+                      Edit Business Configuration
                     </Button>
                   </div>
                 </>

@@ -167,6 +167,12 @@ export default function OnboardingPage() {
       primary_bank: primaryBank || undefined,
       primary_use_cases: selectedUseCases.length ? selectedUseCases : undefined,
       risk_appetite: riskAppetite || undefined,
+      interswitch_merchant_id: merchantAccountId.trim() || undefined,
+      merchant_state: merchantState || undefined,
+      daily_payout_limit: dailyPayoutLimit ? parseFloat(dailyPayoutLimit.replace(/,/g, "")) : undefined,
+      single_payout_cap: singlePayoutLimit ? parseFloat(singlePayoutLimit.replace(/,/g, "")) : undefined,
+      risk_alert_threshold: riskAlertThreshold ? parseFloat(riskAlertThreshold) : undefined,
+      liquidity_alert_buffer: liquidityAlertThreshold ? parseFloat(liquidityAlertThreshold) : undefined,
     };
     onboardingMutation.mutate(payload);
   };

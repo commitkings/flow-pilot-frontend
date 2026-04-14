@@ -10,6 +10,7 @@ import {
   getOrgProfile,
   removeAvatar,
   updateMe,
+  updateOrgConfig,
   updateOrgProfile,
   uploadAvatar,
 } from "@/lib/api-client";
@@ -94,6 +95,20 @@ export function useUpdateOrgProfile() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to update organisation");
+    },
+  });
+}
+
+export function useUpdateOrgConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => updateOrgConfig(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-profile"] });
+      toast.success("Business configuration updated");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to update configuration");
     },
   });
 }
