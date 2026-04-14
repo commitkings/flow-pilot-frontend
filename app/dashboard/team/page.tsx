@@ -13,6 +13,8 @@ import {
   Trash2,
   Upload,
   UserCheck,
+  UserMinus,
+  UserPlus,
   Users,
   UserX,
   XCircle,
@@ -37,12 +39,14 @@ import {
   useInviteMember,
   useRemoveMember,
   useTeamMembers,
+  useToggleMemberStatus,
   useUpdateMemberRole,
 } from "@/hooks/use-team-queries";
 import { useAuth } from "@/context/auth-context";
-import { importTeamMembers, getTeamImportTemplateUrl } from "@/lib/api-client";
+import { importTeamMembers, getTeamImportTemplateUrl, getActiveSessions } from "@/lib/api-client";
 import type { BulkImportResult } from "@/lib/api-client";
 import type { TeamMember } from "@/lib/api-types";
+import { useQuery } from "@tanstack/react-query";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -67,7 +71,7 @@ function RoleChip({ role }: { role: string }) {
   );
 }
 
-/** Inline role-change + remove dropdown, shown only to the business owner. */
+/** Inline role-change + disable/enable + remove dropdown, shown only to the business owner. */
 function MemberActions({
   member,
   currentUserId,
@@ -77,6 +81,7 @@ function MemberActions({
 }) {
   const updateRole = useUpdateMemberRole();
   const removeMember = useRemoveMember();
+  const toggleStatus = useToggleMemberStatus();
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   const isSelf = member.user_id === currentUserId;
@@ -92,10 +97,13 @@ function MemberActions({
     updateRole.mutate({ memberId: member.id, role: otherRole });
   };
 
+  const handleToggleStatus = () => {
+    toggleStatus.mutate({ memberId: member.id, isActive: !member.is_active });
+  };
+
   const handleRemove = () => {
     if (!confirmRemove) {
       setConfirmRemove(true);
-      // auto-reset after 3 s so stray clicks don't delete
       setTimeout(() => setConfirmRemove(false), 3000);
       return;
     }
@@ -103,7 +111,7 @@ function MemberActions({
     setConfirmRemove(false);
   };
 
-  const busy = updateRole.isPending || removeMember.isPending;
+  const busy = updateRole.isPending || removeMember.isPending || toggleStatus.isPending;
 
   return (
     <DropdownMenu>
@@ -122,17 +130,41 @@ function MemberActions({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-48">
-        {/* Role toggle */}
+      <DropdownMenuContent align="end" className="w-52">
+        {/* Role toggle — only available when member is active */}
+        {member.is_active && (
+          <DropdownMenuItem
+            onClick={handleRoleChange}
+            className="cursor-pointer gap-2"
+          >
+            <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>
+              Change to{" "}
+              <span className="font-semibold">{otherLabel}</span>
+            </span>
+          </DropdownMenuItem>
+        )}
+
+        {/* Disable / Enable */}
         <DropdownMenuItem
-          onClick={handleRoleChange}
-          className="cursor-pointer gap-2"
+          onClick={handleToggleStatus}
+          className={`cursor-pointer gap-2 ${
+            member.is_active
+              ? "text-amber-600 focus:text-amber-700 focus:bg-amber-50"
+              : "text-green-600 focus:text-green-700 focus:bg-green-50"
+          }`}
         >
-          <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-          <span>
-            Change to{" "}
-            <span className="font-semibold">{otherLabel}</span>
-          </span>
+          {member.is_active ? (
+            <>
+              <UserMinus className="h-3.5 w-3.5" />
+              <span>Disable access</span>
+            </>
+          ) : (
+            <>
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Re-enable access</span>
+            </>
+          )}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
@@ -172,6 +204,11 @@ export default function TeamPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isError } = useTeamMembers();
+  const { data: sessionData } = useQuery({
+    queryKey: ["org-sessions"],
+    queryFn: getActiveSessions,
+    refetchInterval: 30_000, // refresh every 30s
+  });
   const inviteMutation = useInviteMember();
 
   const members = data?.members ?? [];
@@ -216,20 +253,25 @@ export default function TeamPage() {
               <img
                 src={member.user.avatar_url}
                 alt=""
-                className="h-8 w-8 rounded-full object-cover"
+                className={`h-8 w-8 rounded-full object-cover${!member.is_active ? " opacity-40 grayscale" : ""}`}
               />
             ) : (
-              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+              <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground${!member.is_active ? " opacity-40" : ""}`}>
                 {getInitials(member.user?.display_name ?? null)}
               </span>
             )}
             <div>
-              <p className="font-medium text-foreground">
+              <p className={`font-medium ${member.is_active ? "text-foreground" : "text-muted-foreground"}`}>
                 {member.user?.display_name ?? "Unknown"}{" "}
                 {member.role === "owner" ? "👑" : ""}
                 {member.user_id === user?.id ? (
                   <span className="ml-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                     You
+                  </span>
+                ) : null}
+                {!member.is_active ? (
+                  <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                    Disabled
                   </span>
                 ) : null}
               </p>
@@ -389,13 +431,25 @@ export default function TeamPage() {
       </div>
 
       {/* Metric cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <MetricCard
           label="Total Members"
           value={isLoading ? "…" : String(totalCount)}
           subtext="In your workspace"
           icon={<Users className="h-4 w-4" />}
           accent="brand"
+        />
+        <MetricCard
+          label="Online Now"
+          value={sessionData ? String(sessionData.active_count) : "…"}
+          subtext="Active in last 15 min"
+          icon={
+            <span className="relative flex h-4 w-4 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-50" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-500" />
+            </span>
+          }
+          accent="green"
         />
         <MetricCard
           label="Approvers"

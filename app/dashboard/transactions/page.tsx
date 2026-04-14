@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Download, FileSearch, Loader2, ShieldAlert, SlidersHorizontal, TrendingUp, Zap, Building, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
+import { Pagination } from "@/components/ui/pagination";
 import { useTransactions } from "@/hooks/use-transaction-queries";
+
+const PAGE_SIZE = 50;
 import {
   TransactionFilterModal,
   EMPTY_TX_FILTERS,
@@ -49,6 +52,10 @@ export default function TransactionsPage() {
   const [exportOpen, setExportOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<TransactionFilters>(EMPTY_TX_FILTERS);
   const [viewMode, setViewMode] = useState<"bank" | "all">("all");
+  const [offset, setOffset] = useState(0);
+
+  // Reset to first page when filters change
+  useEffect(() => { setOffset(0); }, [search, appliedFilters, viewMode]);
 
   const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
 
@@ -62,9 +69,10 @@ export default function TransactionsPage() {
     include_payouts: viewMode === "all",
   };
 
-  const { data, isLoading, isError } = useTransactions(apiFilters);
+  const { data, isLoading, isError } = useTransactions(apiFilters, PAGE_SIZE, offset);
 
   const transactions = data?.transactions ?? [];
+  const total = data?.total ?? 0;
   const summary = data?.summary ?? { total_transactions: 0, total_volume: 0, anomaly_count: 0, failed_count: 0 };
   const isBankView = viewMode === "bank";
   const pageDescription = isBankView
@@ -191,11 +199,14 @@ export default function TransactionsPage() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                {["Reference", "Source", "Status", "Amount", "Channel", "Direction", "Counterparty", "Date"].map((h) => (
-                  <th key={h} className="px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground">
-                    {h}
-                  </th>
-                ))}
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">Reference</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground sm:table-cell">Source</th>
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">Status</th>
+                <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">Amount</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground lg:table-cell">Channel</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground lg:table-cell">Direction</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:table-cell">Counterparty</th>
+                <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground sm:table-cell">Date</th>
               </tr>
             </thead>
             <tbody>
@@ -223,20 +234,20 @@ export default function TransactionsPage() {
               ) : (
                 transactions.map((tx) => (
                   <tr key={tx.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-3 font-mono text-xs text-foreground">{tx.reference}</td>
-                    <td className="px-6 py-3">
+                    <td className="px-4 py-3 font-mono text-xs text-foreground md:px-6">{tx.reference}</td>
+                    <td className="hidden px-6 py-3 sm:table-cell">
                       <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${sourceBadgeClass(tx.record_type)}`}>
-                        {tx.record_type === "payout" ? "Payout Activity" : "Reconciled Bank"}
+                        {tx.record_type === "payout" ? "Payout" : "Bank"}
                       </span>
                     </td>
-                    <td className="px-6 py-3">
+                    <td className="px-4 py-3 md:px-6">
                       <StatusBadge status={txStatus(tx.status)} label={tx.status} />
                     </td>
-                    <td className="px-6 py-3 font-semibold text-foreground">{formatCurrency(tx.amount)}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{tx.channel || "—"}</td>
-                    <td className="px-6 py-3 text-muted-foreground capitalize">{tx.direction}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{tx.counterparty_name || "—"}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{tx.date ? formatDateTime(tx.date) : "—"}</td>
+                    <td className="px-4 py-3 font-semibold text-foreground md:px-6">{formatCurrency(tx.amount)}</td>
+                    <td className="hidden px-6 py-3 text-muted-foreground lg:table-cell">{tx.channel || "—"}</td>
+                    <td className="hidden px-6 py-3 text-muted-foreground capitalize lg:table-cell">{tx.direction}</td>
+                    <td className="hidden px-6 py-3 text-muted-foreground md:table-cell">{tx.counterparty_name || "—"}</td>
+                    <td className="hidden px-6 py-3 text-xs text-muted-foreground sm:table-cell md:text-sm">{tx.date ? formatDateTime(tx.date) : "—"}</td>
                   </tr>
                 ))
               )}
@@ -244,6 +255,8 @@ export default function TransactionsPage() {
           </table>
         </div>
       </div>
+
+      <Pagination total={total} limit={PAGE_SIZE} offset={offset} onChange={setOffset} />
 
       <TransactionFilterModal
         open={filterOpen}

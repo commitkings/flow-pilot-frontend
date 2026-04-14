@@ -10,6 +10,7 @@ type DashboardShellContextType = {
   toggleMobileMenu: () => void;
   inviteOpen: boolean;
   setInviteOpen: (open: boolean) => void;
+  startTour: () => void;
 };
 
 const DashboardShellContext = createContext<DashboardShellContextType | null>(null);

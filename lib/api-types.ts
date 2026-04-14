@@ -30,6 +30,7 @@ export interface User {
   timezone: string | null;
   department: string | null;
   is_active: boolean;
+  has_taken_tour: boolean;
   email_verified: boolean;
   last_login_at: string | null;
   memberships: Membership[];
@@ -270,13 +271,17 @@ export interface Institution {
   shortName?: string | null;
   nipCode?: string | null;
   cbnCode?: string | null;
+  institutionType?: string | null;
   isActive: boolean;
   lastSyncedAt: string | null;
 }
 
 export interface InstitutionsResponse {
-  count: number;
-  source: string;
+  total: number;
+  count?: number;
+  source?: string;
+  limit?: number;
+  offset?: number;
   data: Institution[];
 }
 
@@ -384,6 +389,7 @@ export interface TeamMember {
   id: string;
   user_id: string;
   role: string;
+  is_active: boolean;
   joined_at: string | null;
   created_at: string;
   user: {

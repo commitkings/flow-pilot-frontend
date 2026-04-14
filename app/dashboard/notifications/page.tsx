@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { Pagination } from "@/components/ui/pagination";
 import {
   useNotifications,
   useMarkNotificationRead,
   useMarkAllRead,
   useDeleteNotification,
 } from "@/hooks/use-notification-queries";
+
+const PAGE_SIZE = 20;
 
 function formatRelative(dateStr: string): string {
   const now = Date.now();
@@ -34,7 +37,8 @@ function typeIcon(type: string) {
 
 export default function NotificationsPage() {
   const [readFilter, setReadFilter] = useState<boolean | undefined>(undefined);
-  const { data, isLoading, isError } = useNotifications({ is_read: readFilter });
+  const [offset, setOffset] = useState(0);
+  const { data, isLoading, isError } = useNotifications({ is_read: readFilter, limit: PAGE_SIZE, offset });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllRead();
   const deleteNotif = useDeleteNotification();
@@ -99,7 +103,7 @@ export default function NotificationsPage() {
             variant={readFilter === opt.val ? "default" : "outline"}
             size="sm"
             className="rounded-full"
-            onClick={() => setReadFilter(opt.val)}
+            onClick={() => { setReadFilter(opt.val); setOffset(0); }}
           >
             {opt.label}
           </Button>
@@ -166,6 +170,7 @@ export default function NotificationsPage() {
           ))
         )}
       </div>
+      <Pagination total={total} limit={PAGE_SIZE} offset={offset} onChange={setOffset} />
     </div>
   );
 }

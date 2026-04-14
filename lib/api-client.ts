@@ -171,8 +171,15 @@ export function downloadRunReport(runId: string): Promise<Blob> {
 
 // ── 7. Institutions ──────────────────────────────────────────────────────────
 
-export function listInstitutions(): Promise<InstitutionsResponse> {
-  return apiClient.get<InstitutionsResponse>("/institutions").then((r) => r.data);
+export interface InstitutionFilters {
+  search?: string;
+  institution_type?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listInstitutions(filters: InstitutionFilters = {}): Promise<InstitutionsResponse> {
+  return apiClient.get<InstitutionsResponse>("/institutions", { params: filters }).then((r) => r.data);
 }
 
 // ── 8. Transactions ──────────────────────────────────────────────────────────
@@ -192,6 +199,22 @@ export interface TransactionFilters {
 export function listTransactions(filters: TransactionFilters = {}): Promise<TransactionsResponse> {
   return apiClient
     .get<TransactionsResponse>("/transactions", { params: filters })
+    .then((r) => r.data);
+}
+
+export function exportTransactionsEmail(
+  email: string,
+  rows: import("./api-types").TransactionRow[],
+  format: "csv" | "pdf" = "csv",
+  pdfBase64?: string,
+): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/transactions/export-email", {
+      email,
+      rows,
+      format,
+      pdf_base64: pdfBase64 ?? null,
+    })
     .then((r) => r.data);
 }
 
@@ -229,6 +252,22 @@ export interface AuditFilters {
 export function listAuditEntries(filters: AuditFilters = {}): Promise<AuditListResponse> {
   return apiClient
     .get<AuditListResponse>("/audit", { params: filters })
+    .then((r) => r.data);
+}
+
+export function exportAuditEmail(
+  email: string,
+  entries: import("./api-types").AuditEntry[],
+  format: "csv" | "pdf" = "csv",
+  pdfBase64?: string,
+): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>("/audit/export-email", {
+      email,
+      entries,
+      format,
+      pdf_base64: pdfBase64 ?? null,
+    })
     .then((r) => r.data);
 }
 
@@ -272,6 +311,10 @@ export function removeTeamMember(memberId: string): Promise<{ status: string }> 
   return apiClient.delete<{ status: string }>(`/team/members/${memberId}`).then((r) => r.data);
 }
 
+export function toggleMemberStatus(memberId: string, isActive: boolean): Promise<{ status: string; member: import("./api-types").TeamMember }> {
+  return apiClient.patch(`/team/members/${memberId}/status`, { is_active: isActive }).then((r) => r.data);
+}
+
 export interface BulkImportResult {
   summary: { added: number; invited: number; skipped: number; failed: number; total: number };
   results: Array<{ line: number; email: string; status: string; role?: string; reason?: string }>;
@@ -302,6 +345,22 @@ export function updateOrgProfile(data: Record<string, unknown>): Promise<Record<
 
 export function updateOrgConfig(data: Record<string, unknown>): Promise<Record<string, unknown>> {
   return apiClient.patch("/org/profile/config", data).then((r) => r.data);
+}
+
+export interface ActiveSessionsResponse {
+  active_count: number;
+  total_members: number;
+  members: {
+    user_id: string;
+    display_name: string;
+    email: string;
+    role: string;
+    is_online: boolean;
+  }[];
+}
+
+export function getActiveSessions(): Promise<ActiveSessionsResponse> {
+  return apiClient.get<ActiveSessionsResponse>("/org/sessions").then((r) => r.data);
 }
 
 // ── 14. Auth (Extended) ──────────────────────────────────────────────────────
@@ -379,6 +438,12 @@ export function exportAccountData(): Promise<Blob> {
   return apiClient
     .post("/account/export", {}, { responseType: "blob" })
     .then((r) => r.data as Blob);
+}
+
+export function deleteAccount(): Promise<{ status: string; message: string }> {
+  return apiClient
+    .delete<{ status: string; message: string }>("/account/delete")
+    .then((r) => r.data);
 }
 
 

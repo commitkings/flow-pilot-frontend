@@ -2,22 +2,25 @@
 
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Navbar } from "@/components/dashboard/navbar";
+import { TourGuide } from "@/components/dashboard/TourGuide";
 import { DashboardShellProvider } from "@/components/dashboard-shell-context";
 import { LoadingLogo } from "@/components/brand/LoadingLogo";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
-import { fetchHealth } from "@/lib/api-client";
+import { fetchHealth, updateMe } from "@/lib/api-client";
+import { getUserRole } from "@/lib/api-types";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
   const router = useRouter();
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [payoutMode, setPayoutMode] = useState<string | null>(null);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
@@ -31,6 +34,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     if (user && !user.has_completed_onboarding) {
       router.replace("/onboarding");
+      return;
+    }
+    // Auto-show tour for users who haven't taken it yet, or if retake was requested
+    if (user) {
+      const retake = typeof window !== "undefined" && sessionStorage.getItem("fp-retake-tour") === "1";
+      if (!user.has_taken_tour || retake) {
+        if (retake) sessionStorage.removeItem("fp-retake-tour");
+        // Small delay so the sidebar fully renders before we measure element positions
+        setTimeout(() => setShowTour(true), 600);
+      }
     }
   }, [isLoading, isAuthenticated, user, router]);
 
@@ -43,6 +56,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { cancelled = true; };
   }, []);
 
+  const handleTourDone = async () => {
+    setShowTour(false);
+    try {
+      await updateMe({ has_taken_tour: true } as never);
+      await refreshUser();
+    } catch {
+      // best-effort — tour still closes
+    }
+  };
+
   if (isLoading) {
     return <LoadingLogo />;
   }
@@ -52,6 +75,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <>
+    {showTour && (
+      <TourGuide
+        userRole={getUserRole(user)}
+        onComplete={handleTourDone}
+        onSkip={handleTourDone}
+      />
+    )}
     <DashboardShellProvider
       value={{
         collapsed,
@@ -61,6 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         toggleMobileMenu: () => setMobileMenuOpen((prev) => !prev),
         inviteOpen,
         setInviteOpen,
+        startTour: () => setShowTour(true),
       }}
     >
       <div className="min-h-screen bg-background text-foreground">
@@ -85,5 +117,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </div>
     </DashboardShellProvider>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import {
   inviteTeamMember,
   listTeamMembers,
   removeTeamMember,
+  toggleMemberStatus,
   updateTeamMemberRole,
 } from "@/lib/api-client";
 import type { InviteMemberPayload, InviteResult } from "@/lib/api-types";
@@ -64,6 +65,21 @@ export function useRemoveMember() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to remove member");
+    },
+  });
+}
+
+export function useToggleMemberStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ memberId, isActive }: { memberId: string; isActive: boolean }) =>
+      toggleMemberStatus(memberId, isActive),
+    onSuccess: (_, { isActive }) => {
+      qc.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success(isActive ? "Member re-enabled" : "Member disabled");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to update member status");
     },
   });
 }

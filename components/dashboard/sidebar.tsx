@@ -15,6 +15,7 @@ import {
   LogOut,
   ScrollText,
   ClipboardCheck,
+  Radio,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ const navItems: NavItem[] = [
   { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
   { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
   { label: "Team Members", href: "/dashboard/team", icon: Users, roles: ["owner"] },
+  { label: "Sessions", href: "/dashboard/sessions", icon: Radio, roles: ["owner"] },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
@@ -85,10 +87,17 @@ function NavLink({
       : pathname.startsWith(item.href);
   const Icon = item.icon;
 
+  // Derive a data-tour id from the href for the tour guide
+  const tourId =
+    item.href === "/dashboard"
+      ? "overview"
+      : item.href.split("/").pop() ?? undefined;
+
   return (
     <Link
       href={item.href}
       onClick={onClick}
+      data-tour={tourId}
       className={cn(
         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all",
         isActive

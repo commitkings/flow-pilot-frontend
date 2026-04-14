@@ -86,7 +86,7 @@ export default function NewRunPage() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
   // Form state (existing)
-  const { data: institutionsData, isLoading: loadingInstitutions, isError: institutionsIsError } = useInstitutions(true);
+  const { data: institutionsData, isLoading: loadingInstitutions, isError: institutionsIsError } = useInstitutions({ enabled: true });
   const institutionOptions = useMemo(
     () => buildInstitutionOptions(institutionsData?.data ?? []),
     [institutionsData]
