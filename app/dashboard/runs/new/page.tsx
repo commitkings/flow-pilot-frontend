@@ -10,6 +10,8 @@ import { useInstitutions } from "@/hooks/use-institutions";
 import type { CreateRunPayload, Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 import { useCreateRun } from "@/hooks/use-run-mutations";
+import { useKycStatus } from "@/hooks/use-kyc-queries";
+import Link from "next/link";
 import { ChatContainer, RunConfigPreview, ConversationSidebar } from "@/components/chat";
 import { useConfirmRun, useAbandonConversation } from "@/hooks/use-chat-mutations";
 import type { ConversationSummary } from "@/lib/api-types";
@@ -69,12 +71,40 @@ export default function NewRunPage() {
   const businessId = user?.memberships?.[0]?.business_id;
   const role = user?.memberships?.[0]?.role;
 
+  const { data: kycData } = useKycStatus();
+  const kycStatus = kycData?.kyc_status;
+
   // Analysts cannot create runs — redirect them to the runs list
   useEffect(() => {
     if (user && role === "analyst") {
       router.replace("/dashboard/runs");
     }
   }, [user, role, router]);
+
+  // KYC gate — show wall before rendering the form
+  if (kycData && kycStatus !== "verified") {
+    return (
+      <div className="mx-auto max-w-lg py-24 text-center space-y-5">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 mx-auto">
+          <svg className="h-8 w-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Verification Required</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {kycStatus === "pending"
+            ? "Your business documents are under review. You'll be able to create payout runs once verification is complete (typically within 10 minutes)."
+            : "You need to complete business verification (KYC) before creating payout runs. This helps us ensure compliance and protect your account."}
+        </p>
+        <Link
+          href="/dashboard/kyc"
+          className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+        >
+          {kycStatus === "pending" ? "Check Verification Status" : "Complete KYC Verification"}
+        </Link>
+      </div>
+    );
+  }
 
   // Mode toggle: "chat" (default) or "form"
   const [mode, setMode] = useState<Mode>("chat");

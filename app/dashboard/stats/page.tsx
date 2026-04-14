@@ -18,7 +18,6 @@ import { AnalyticsSection } from "@/components/dashboard/AnalyticsSection";
 import { StatusBadge, type StatusType } from "@/components/status-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { getDashboardStats } from "@/lib/api-client";
-import { useRuns } from "@/hooks/use-run-queries";
 import { useTransactions } from "@/hooks/use-transaction-queries";
 
 function formatCurrency(n: number): string {
@@ -59,39 +58,30 @@ export default function StatsPage() {
     refetchInterval: 30_000,
   });
 
-  const { data: runs, isLoading: runsLoading } = useRuns();
-
   const { data: txResponse, isLoading: txLoading } = useTransactions({}, 200, 0);
 
-  // ── Derived metrics ───────────────────────────────────────────────────────
+  // ── Server-computed metrics (accurate, no pagination cap) ─────────────────
 
-  const totalRuns = runs?.length ?? 0;
-  const completedRuns = useMemo(
-    () =>
-      (runs ?? []).filter(
-        (r) => r.status === "completed" || r.status === "completed_with_errors"
-      ).length,
-    [runs]
-  );
-  const failedRuns = useMemo(
-    () => (runs ?? []).filter((r) => r.status === "failed").length,
-    [runs]
-  );
-  const successRate = totalRuns > 0 ? Math.round((completedRuns / totalRuns) * 100) : 0;
+  const totalRuns = stats?.total_runs ?? 0;
+  const completedRuns = stats?.completed_runs ?? 0;
+  const failedRuns = stats?.failed_runs ?? 0;
+  const successRate = stats?.success_rate ?? 0;
 
-  // ── Run status breakdown ──────────────────────────────────────────────────
+  // ── Run status breakdown (from server recent_runs — for visual only) ──────
 
   const statusBreakdown = useMemo(() => {
-    const counts: Record<string, number> = {};
-    (runs ?? []).forEach((r) => {
-      counts[r.status] = (counts[r.status] ?? 0) + 1;
-    });
-    return STATUS_ORDER.filter((s) => counts[s] > 0).map((s) => ({
-      status: s,
-      count: counts[s],
-      pct: totalRuns > 0 ? Math.round((counts[s] / totalRuns) * 100) : 0,
+    if (!stats) return [];
+    const breakdown = [
+      { status: "completed", count: completedRuns },
+      { status: "failed", count: failedRuns },
+      { status: "awaiting_approval", count: stats.pending_approvals },
+      { status: "executing", count: stats.active_runs },
+    ].filter((s) => s.count > 0);
+    return breakdown.map((s) => ({
+      ...s,
+      pct: totalRuns > 0 ? Math.round((s.count / totalRuns) * 100) : 0,
     }));
-  }, [runs, totalRuns]);
+  }, [stats, totalRuns, completedRuns, failedRuns]);
 
   // ── Top transactions by amount ────────────────────────────────────────────
 
@@ -124,14 +114,14 @@ export default function StatsPage() {
         />
         <MetricCard
           label="Total Runs"
-          value={runsLoading ? "…" : String(totalRuns)}
+          value={statsLoading ? "…" : String(totalRuns)}
           subtext={`${completedRuns} completed · ${failedRuns} failed`}
           icon={<Zap className="h-4 w-4" />}
           accent="green"
         />
         <MetricCard
           label="Success Rate"
-          value={runsLoading ? "…" : `${successRate}%`}
+          value={statsLoading ? "…" : `${successRate}%`}
           subtext="Runs completed successfully"
           icon={<CheckCircle2 className="h-4 w-4" />}
           accent={successRate >= 80 ? "green" : successRate >= 50 ? "amber" : "default"}
@@ -158,14 +148,14 @@ export default function StatsPage() {
         <div className="rounded-2xl border border-border bg-card p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-sm font-black text-foreground">Run Status Breakdown</h3>
-            {!runsLoading && (
+            {!statsLoading && (
               <span className="text-[11px] font-semibold text-muted-foreground">
                 {totalRuns} total
               </span>
             )}
           </div>
 
-          {runsLoading ? (
+          {statsLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-3">

@@ -91,6 +91,10 @@ export interface DashboardStats {
   runs_this_month: number;
   pending_approvals: number;
   active_runs: number;
+  total_runs: number;
+  completed_runs: number;
+  failed_runs: number;
+  success_rate: number;
   recent_runs: DashboardRecentRun[];
 }
 
@@ -456,8 +460,28 @@ export interface OrgProfile {
   website: string | null;
   phone: string | null;
   interswitch_merchant_id: string | null;
+  logo_url: string | null;
+  kyc_status: "not_submitted" | "pending" | "verified";
   is_active: boolean;
   config: OrgConfig | null;
+}
+
+// ── KYC ──────────────────────────────────────────────────────
+
+export interface KycSubmission {
+  status: "pending" | "verified" | "rejected";
+  director_name: string | null;
+  submitted_at: string | null;
+  verified_at: string | null;
+  has_cac_certificate: boolean;
+  has_tin_document: boolean;
+  has_director_id: boolean;
+  has_proof_of_address: boolean;
+}
+
+export interface KycStatusResponse {
+  kyc_status: "not_submitted" | "pending" | "verified";
+  submission: KycSubmission | null;
 }
 
 export interface OrgConfig {
