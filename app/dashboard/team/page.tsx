@@ -87,8 +87,8 @@ function MemberActions({
   const isSelf = member.user_id === currentUserId;
   const isOwner = member.role === "owner";
 
-  // Owners and self cannot be acted on
-  if (isSelf || isOwner) return null;
+  // Owners, self, and pending invites cannot be acted on
+  if (isSelf || isOwner || member.is_pending) return null;
 
   const otherRole = member.role === "approver" ? "analyst" : "approver";
   const otherLabel = otherRole === "approver" ? "Approver" : "Analyst";
@@ -262,14 +262,18 @@ export default function TeamPage() {
             )}
             <div>
               <p className={`font-medium ${member.is_active ? "text-foreground" : "text-muted-foreground"}`}>
-                {member.user?.display_name ?? "Unknown"}{" "}
+                {member.user?.display_name ?? (member.is_pending ? "Invited" : "Unknown")}{" "}
                 {member.role === "owner" ? "👑" : ""}
                 {member.user_id === user?.id ? (
                   <span className="ml-1.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                     You
                   </span>
                 ) : null}
-                {!member.is_active ? (
+                {member.is_pending ? (
+                  <span className="ml-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                    Pending Invite
+                  </span>
+                ) : !member.is_active ? (
                   <span className="ml-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                     Disabled
                   </span>

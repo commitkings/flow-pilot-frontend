@@ -19,6 +19,9 @@
 import apiClient from "./axios";
 import type {
   AbandonConversationResponse,
+  MfaRequiredResponse,
+  TwoFASetupResponse,
+  TwoFAStatus,
   ApiRunRecord,
   ApproveRejectPayload,
   ApproveResponse,
@@ -60,8 +63,8 @@ export function register(name: string, email: string, password: string): Promise
   return apiClient.post<AuthResponse>("/auth/register", { name, email, password }).then((r) => r.data);
 }
 
-export function login(email: string, password: string): Promise<AuthResponse> {
-  return apiClient.post<AuthResponse>("/auth/login", { email, password }).then((r) => r.data);
+export function login(email: string, password: string): Promise<AuthResponse | MfaRequiredResponse> {
+  return apiClient.post<AuthResponse | MfaRequiredResponse>("/auth/login", { email, password }).then((r) => r.data);
 }
 
 export function fetchMe(): Promise<User> {
@@ -447,13 +450,47 @@ export function deleteAccount(): Promise<{ status: string; message: string }> {
 }
 
 
-// ── 15. Dashboard ─────────────────────────────────────────────────────────────
+// ── 15. Two-Factor Authentication ────────────────────────────────────────────
+
+export function get2FAStatus(): Promise<TwoFAStatus> {
+  return apiClient.get<TwoFAStatus>("/auth/2fa/status").then((r) => r.data);
+}
+
+export function setup2FA(): Promise<TwoFASetupResponse> {
+  return apiClient.post<TwoFASetupResponse>("/auth/2fa/setup").then((r) => r.data);
+}
+
+export function enable2FA(code: string): Promise<{ backup_codes: string[] }> {
+  return apiClient.post<{ backup_codes: string[] }>("/auth/2fa/enable", { code }).then((r) => r.data);
+}
+
+export function disable2FA(password: string, code: string): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/2fa/disable", { password, code }).then((r) => r.data);
+}
+
+export function verifyMfa(mfa_token: string, code: string): Promise<AuthResponse> {
+  return apiClient.post<AuthResponse>("/auth/2fa/verify", { mfa_token, code }).then((r) => r.data);
+}
+
+export function backupCodeLogin(mfa_token: string, backup_code: string): Promise<AuthResponse> {
+  return apiClient.post<AuthResponse>("/auth/2fa/backup-login", { mfa_token, backup_code }).then((r) => r.data);
+}
+
+export function regenerateBackupCodes(): Promise<{ backup_codes: string[] }> {
+  return apiClient.post<{ backup_codes: string[] }>("/auth/2fa/backup-codes/regenerate").then((r) => r.data);
+}
+
+export function setOrgRequire2FA(require: boolean): Promise<{ require_2fa: boolean }> {
+  return apiClient.patch<{ require_2fa: boolean }>("/auth/2fa/org/require", { require }).then((r) => r.data);
+}
+
+// ── 17. Dashboard ─────────────────────────────────────────────────────────────
 
 export function getDashboardStats(): Promise<DashboardStats> {
   return apiClient.get<DashboardStats>("/dashboard/stats").then((r) => r.data);
 }
 
-// ── 16. Health (unauthenticated) ─────────────────────────────────────────────
+// ── 18. Health (unauthenticated) ─────────────────────────────────────────────
 
 export async function fetchHealth(): Promise<{ payout_mode: string; status: string }> {
   const root = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api/v1").replace(

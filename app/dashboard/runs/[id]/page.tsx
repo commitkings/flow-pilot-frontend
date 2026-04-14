@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { AgentTimeline } from "@/components/runs/agent-timeline";
 import { AgentThinking } from "@/components/runs/agent-thinking";
+import { RiskSignalPanel } from "@/components/runs/RiskSignalPanel";
 import type { AuditEntry, TransactionRow, TransactionSummary } from "@/lib/api-types";
 import { LIVE_RUN_STATUSES } from "@/lib/event-types";
 import type { RunEvent, StepSummary } from "@/lib/event-types";
@@ -542,6 +543,7 @@ export default function RunDetailPage() {
   const router = useRouter();
   // Default to the activity/progress tab — it's the mission-control hero view
   const [activeTab, setActiveTab] = useState("activity");
+  const [selectedCandidate, setSelectedCandidate] = useState<PayoutCandidate | null>(null);
 
   const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
   const { data: transactionsResponse, isLoading: loadingTransactions, isError: transactionsError } =
@@ -937,7 +939,12 @@ export default function RunDetailPage() {
                 candidates.map((candidate) => {
                   const borderColor = RISK_BORDER_COLORS[candidate.decision] ?? "border-border";
                   return (
-                    <CandidateCard key={candidate.id} candidate={candidate} borderColor={borderColor} />
+                    <CandidateCard
+                      key={candidate.id}
+                      candidate={candidate}
+                      borderColor={borderColor}
+                      onSelect={() => setSelectedCandidate(candidate)}
+                    />
                   );
                 })
               )}
@@ -1081,6 +1088,13 @@ export default function RunDetailPage() {
           )}
         </div>
       </div>
+
+      {selectedCandidate && (
+        <RiskSignalPanel
+          candidate={selectedCandidate}
+          onClose={() => setSelectedCandidate(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1168,16 +1182,32 @@ function ProgressTab({
 function CandidateCard({
   candidate,
   borderColor,
+  onSelect,
 }: {
   candidate: PayoutCandidate;
   borderColor: string;
+  onSelect?: () => void;
 }) {
   const [showReasons, setShowReasons] = useState(false);
   const lifecycle = getCandidateLifecycle(candidate);
   const lookup = getLookupPresentation(candidate);
 
   return (
-    <div className={cn("rounded-xl border-2 bg-background p-4", borderColor)}>
+    <div
+      className={cn(
+        "rounded-xl border-2 bg-background p-4 cursor-pointer transition-shadow hover:shadow-md",
+        borderColor,
+      )}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect?.();
+        }
+      }}
+    >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="font-semibold text-foreground">{candidate.beneficiaryName}</p>
@@ -1185,9 +1215,21 @@ function CandidateCard({
             {candidate.institution} · {candidate.accountNumber.slice(0, 3)}***{candidate.accountNumber.slice(-3)}
           </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2 items-center">
           <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
           <StatusBadge status={lifecycle.badgeStatus} label={lifecycle.label} />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect?.();
+            }}
+            className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            aria-label="View risk signal details"
+          >
+            <Info className="h-3 w-3" />
+            Details
+          </button>
         </div>
       </div>
 
@@ -1215,7 +1257,7 @@ function CandidateCard({
         <div className="mt-2">
           <button
             type="button"
-            onClick={() => setShowReasons(!showReasons)}
+            onClick={(e) => { e.stopPropagation(); setShowReasons(!showReasons); }}
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <ChevronDown

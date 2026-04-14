@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, FileText, Activity, Shield, Download } from "lucide-react";
+import { Loader2, FileText, Activity, Shield, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { ExportAuditModal } from "@/components/dashboard/audit/ExportAuditModal";
+import { SearchInput, DateRangeInput } from "@/components/ui/form-fields";
 import { useAuditEntries } from "@/hooks/use-audit-queries";
 import type { AuditFilters } from "@/lib/api-client";
 
@@ -33,12 +34,34 @@ function agentBadge(agent: string) {
 
 export default function AuditPage() {
   const [agentFilter, setAgentFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [runIdFilter, setRunIdFilter] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [offset, setOffset] = useState(0);
 
   const apiFilters: AuditFilters = {
     agent_type: agentFilter || undefined,
+    from_date: fromDate || undefined,
+    to_date: toDate || undefined,
+    action: actionFilter || undefined,
+    run_id: runIdFilter || undefined,
   };
+
+  const hasActiveFilters =
+    Boolean(fromDate) ||
+    Boolean(toDate) ||
+    Boolean(actionFilter) ||
+    Boolean(runIdFilter);
+
+  function clearFilters() {
+    setFromDate("");
+    setToDate("");
+    setActionFilter("");
+    setRunIdFilter("");
+    setOffset(0);
+  }
 
   const { data, isLoading, isError } = useAuditEntries(apiFilters, PAGE_SIZE, offset);
 
@@ -79,6 +102,49 @@ export default function AuditPage() {
       </div>
 
       <div className="overflow-hidden">
+        {/* ── Advanced filter row ───────────────────────────────────────── */}
+        <div className="flex flex-wrap items-end gap-3 border-b border-border p-4 md:px-6">
+          <div className="flex-1 min-w-[260px]">
+            <DateRangeInput
+              from={fromDate}
+              to={toDate}
+              onFromChange={(v) => { setFromDate(v); setOffset(0); }}
+              onToChange={(v) => { setToDate(v); setOffset(0); }}
+            />
+          </div>
+
+          <div className="w-44">
+            <SearchInput
+              value={actionFilter}
+              onChange={(v) => { setActionFilter(v); setOffset(0); }}
+              placeholder="Filter by action…"
+              className="h-9 rounded-xl text-sm"
+            />
+          </div>
+
+          <div className="w-36">
+            <SearchInput
+              value={runIdFilter}
+              onChange={(v) => { setRunIdFilter(v); setOffset(0); }}
+              placeholder="Run ID…"
+              className="h-9 rounded-xl text-sm"
+            />
+          </div>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 gap-1.5 rounded-xl text-muted-foreground hover:text-foreground"
+              onClick={clearFilters}
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* ── Agent type filter + export ────────────────────────────────── */}
         <div className="flex flex-col gap-4 border-b border-border px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6">
           <div className="flex items-center gap-3 flex-wrap">
             {["", "planner", "reconciliation", "risk", "forecast", "execution", "audit"].map((a) => (

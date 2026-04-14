@@ -57,6 +57,13 @@ export function LandingNav() {
 
         <div className="flex items-center gap-2">
           <Link
+            href="/docs"
+            className="group relative hidden px-4 py-2 text-sm font-semibold text-[#0F0F0F] sm:block"
+          >
+            Docs
+            <span className="absolute inset-x-4 bottom-1.5 h-0.5 origin-left scale-x-0 bg-[#e86727] transition-transform duration-300 group-hover:scale-x-100" />
+          </Link>
+          <Link
             href="/login"
             className="group relative hidden px-4 py-2 text-sm font-semibold text-[#0F0F0F] sm:block"
           >

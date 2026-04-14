@@ -17,6 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusType } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { AnalyticsSection } from "@/components/dashboard/AnalyticsSection";
 import { useAuth } from "@/context/auth-context";
 import { getDashboardStats } from "@/lib/api-client";
 import { canManageRuns } from "@/lib/api-types";
@@ -137,6 +138,12 @@ export default function DashboardPage() {
           icon={<Activity className="h-4 w-4" />}
           accent={stats?.active_runs ? "brand" : "default"}
         />
+      </div>
+
+      {/* ── Analytics ────────────────────────────────────────────────────── */}
+      <div>
+        <h2 className="text-base font-black text-foreground mb-4">Analytics</h2>
+        <AnalyticsSection />
       </div>
 
       {/* ── Recent runs ──────────────────────────────────────────────────── */}

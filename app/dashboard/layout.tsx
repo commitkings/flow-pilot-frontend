@@ -36,6 +36,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace("/onboarding");
       return;
     }
+    // 2FA enforcement gate: if the org requires 2FA and this user hasn't set it up yet,
+    // send them to the forced setup page regardless of whether the grace period is still active.
+    if (user && !user.totp_enabled && user.totp_grace_until) {
+      router.replace("/setup-2fa");
+      return;
+    }
     // Auto-show tour for users who haven't taken it yet, or if retake was requested
     if (user) {
       const retake = typeof window !== "undefined" && sessionStorage.getItem("fp-retake-tour") === "1";
@@ -70,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <LoadingLogo />;
   }
 
-  if (!isAuthenticated || (user && (!user.email_verified || !user.has_completed_onboarding))) {
+  if (!isAuthenticated || (user && (!user.email_verified || !user.has_completed_onboarding || (!user.totp_enabled && !!user.totp_grace_until)))) {
     return null;
   }
 

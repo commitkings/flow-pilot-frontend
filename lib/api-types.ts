@@ -13,6 +13,25 @@ export interface AuthResponse {
   };
 }
 
+/** Returned by /auth/login when the user has 2FA enabled */
+export interface MfaRequiredResponse {
+  mfa_required: true;
+  mfa_token: string;
+}
+
+export interface TwoFAStatus {
+  totp_enabled: boolean;
+  totp_enabled_at: string | null;
+  grace_until: string | null;
+  backup_codes_remaining: number;
+}
+
+export interface TwoFASetupResponse {
+  secret: string;
+  qr_code: string; // base64 PNG
+  uri: string;
+}
+
 export interface Membership {
   business_id: string;
   role: string;
@@ -35,6 +54,10 @@ export interface User {
   last_login_at: string | null;
   memberships: Membership[];
   has_completed_onboarding: boolean;
+  /** Whether the user has TOTP enabled */
+  totp_enabled: boolean;
+  /** ISO timestamp deadline set by org enforcement — null if not under a grace period */
+  totp_grace_until: string | null;
 }
 
 /** Convenience helper — returns the current user's role or null */
@@ -390,6 +413,7 @@ export interface TeamMember {
   user_id: string;
   role: string;
   is_active: boolean;
+  is_pending?: boolean;
   joined_at: string | null;
   created_at: string;
   user: {

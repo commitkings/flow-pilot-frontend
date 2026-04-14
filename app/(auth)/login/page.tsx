@@ -4,10 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BlobAside } from "@/components/auth/BlobAside";
 import { LoginForm } from "@/components/auth/LoginForm";
+import { MfaVerifyStep } from "@/components/auth/MfaVerifyStep";
 import { useAuth } from "@/context/auth-context";
 
 export default function LoginPage() {
-  const { loginWithCredentials, loginWithGoogle } = useAuth();
+  const { loginWithCredentials, loginWithGoogle, loginWithToken } = useAuth();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -21,17 +22,18 @@ export default function LoginPage() {
   const [invalid, setInvalid] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // 2FA state
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+
   const handleFocus = (e: React.FocusEvent<HTMLElement>) => {
     setFocused(true);
     const target = e.target as HTMLInputElement;
-    // Only update passwordFocused for actual inputs, not buttons
     if (target.tagName === "INPUT") {
       setPasswordFocused(target.type === "password");
     }
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLElement>) => {
-    // Only clear state when focus leaves the section entirely
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setFocused(false);
       setPasswordFocused(false);
@@ -44,7 +46,12 @@ export default function LoginPage() {
     if (!email.trim() || !password.trim()) return;
     setLoading(true);
     try {
-      await loginWithCredentials(email.trim(), password);
+      const result = await loginWithCredentials(email.trim(), password);
+      if (result && result.mfa_required) {
+        // Show the TOTP code step instead of redirecting
+        setMfaToken(result.mfa_token);
+        return;
+      }
       setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 900);
     } catch {
@@ -54,6 +61,12 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMfaSuccess = async (token: string) => {
+    setSuccess(true);
+    await loginWithToken(token);
+    setTimeout(() => router.push("/dashboard"), 900);
   };
 
   return (
@@ -72,17 +85,25 @@ export default function LoginPage() {
         onBlur={handleBlur}
       >
         <div className="mx-auto w-full max-w-md">
-          <LoginForm
-            email={email} setEmail={setEmail}
-            password={password} setPassword={setPassword}
-            rememberMe={rememberMe} setRememberMe={setRememberMe}
-            showPassword={showPassword} onTogglePassword={() => setShowPassword((p) => !p)}
-            loading={loading}
-            credentialsError={false}
-            submitted={submitted}
-            onSubmit={onSubmit}
-            onGoogle={loginWithGoogle}
-          />
+          {mfaToken ? (
+            <MfaVerifyStep
+              mfaToken={mfaToken}
+              onSuccess={handleMfaSuccess}
+              onBack={() => setMfaToken(null)}
+            />
+          ) : (
+            <LoginForm
+              email={email} setEmail={setEmail}
+              password={password} setPassword={setPassword}
+              rememberMe={rememberMe} setRememberMe={setRememberMe}
+              showPassword={showPassword} onTogglePassword={() => setShowPassword((p) => !p)}
+              loading={loading}
+              credentialsError={false}
+              submitted={submitted}
+              onSubmit={onSubmit}
+              onGoogle={loginWithGoogle}
+            />
+          )}
         </div>
       </section>
     </main>

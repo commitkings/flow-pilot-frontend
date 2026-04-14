@@ -8,6 +8,7 @@ import {
   ArrowLeftRight,
   Home,
   ShieldCheck,
+  ShieldBan,
   Settings,
   Bell,
   ChevronsLeft,
@@ -16,6 +17,9 @@ import {
   ScrollText,
   ClipboardCheck,
   Radio,
+  Code2,
+  BarChart2,
+  MessageSquare,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -60,9 +64,13 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "Overview", href: "/dashboard", icon: Home },
   { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
+  { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
   { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
   { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
+  { label: "Analytics", href: "/dashboard/stats", icon: BarChart2 },
   { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
+  { label: "Blocklist", href: "/dashboard/blocklist", icon: ShieldBan, roles: ["owner"] },
+  { label: "Developer", href: "/dashboard/developer", icon: Code2, roles: ["owner"] },
   { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
   { label: "Team Members", href: "/dashboard/team", icon: Users, roles: ["owner"] },
   { label: "Sessions", href: "/dashboard/sessions", icon: Radio, roles: ["owner"] },

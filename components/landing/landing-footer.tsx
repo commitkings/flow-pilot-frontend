@@ -34,9 +34,9 @@ export function LandingFooter() {
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">Product</h4>
             <ul className="mt-6 space-y-4 text-sm font-medium text-[#6B6B6B]">
               <li><Link href="/dashboard/runs" className="transition hover:text-[#e86727]">Live Dashboard</Link></li>
+              <li><Link href="/docs" className="transition hover:text-[#e86727]">API Docs</Link></li>
               <li><a href="#features" className="transition hover:text-[#e86727]">Features</a></li>
               <li><a href="#how-it-works" className="transition hover:text-[#e86727]">How it Works</a></li>
-              <li><a href="#pricing" className="transition hover:text-[#e86727]">Pricing</a></li>
             </ul>
           </div>
 

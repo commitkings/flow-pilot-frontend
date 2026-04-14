@@ -14,6 +14,11 @@ import type { User } from "@/lib/api-types";
 import { getToken, setToken, clearToken } from "@/lib/token-storage";
 import { fetchMe, logout as apiLogout, googleLoginUrl, login as apiLogin, register as apiRegister } from "@/lib/api-client";
 
+export interface MfaChallenge {
+  mfa_required: true;
+  mfa_token: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -22,8 +27,11 @@ interface AuthContextType {
   refreshUser: () => Promise<User | null>;
   /** Store token and hydrate user from /auth/me */
   loginWithToken: (token: string) => Promise<void>;
-  /** Sign in with email + password */
-  loginWithCredentials: (email: string, password: string) => Promise<void>;
+  /**
+   * Sign in with email + password.
+   * Returns `MfaChallenge` when 2FA is required — caller must present TOTP code.
+   */
+  loginWithCredentials: (email: string, password: string) => Promise<MfaChallenge | void>;
   /** Register new account, store token, hydrate user */
   registerUser: (name: string, email: string, password: string) => Promise<void>;
   /** Redirect browser to backend Google OAuth */
@@ -86,10 +94,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loginWithCredentials = useCallback(async (email: string, password: string) => {
+  const loginWithCredentials = useCallback(async (email: string, password: string): Promise<MfaChallenge | void> => {
     setIsLoading(true);
     try {
-      const { token } = await apiLogin(email, password);
+      const response = await apiLogin(email, password);
+      // 2FA gate — hand back the mfa_token so the login page can show the TOTP step
+      if ("mfa_required" in response && response.mfa_required) {
+        setIsLoading(false);
+        return response as MfaChallenge;
+      }
+      const { token } = response as { token: string };
       setToken(token);
       const me = await fetchMe();
       setUser(me);

@@ -28,6 +28,12 @@ const ALL_STEPS: TourStep[] = [
       'Create payout runs by chatting with our AI. Describe who to pay and how much — FlowPilot extracts every detail and builds the candidate list for you. Click "New Run" to start.',
   },
   {
+    tourId: "conversations",
+    title: "Conversation History",
+    description:
+      "Every AI chat session is saved here. Browse past conversations, read the full message thread, resume active ones, or jump straight to the run that was created.",
+  },
+  {
     tourId: "approvals",
     title: "Approval Workflow",
     description:
@@ -41,6 +47,12 @@ const ALL_STEPS: TourStep[] = [
       "Every disbursement is tracked here in real-time. Filter by date, export to CSV or PDF, or email the report directly to your inbox.",
   },
   {
+    tourId: "stats",
+    title: "Analytics",
+    description:
+      "Your workspace at a glance — volume trends, run outcomes, top transactions, and success rates. All updated in real time so you always know where things stand.",
+  },
+  {
     tourId: "team",
     title: "Team Management",
     description:
@@ -52,6 +64,20 @@ const ALL_STEPS: TourStep[] = [
     title: "Audit Log",
     description:
       "Every action across your workspace is logged — who did what and when. Export the full trail for compliance, external audits, or peace of mind.",
+    roles: ["owner"],
+  },
+  {
+    tourId: "blocklist",
+    title: "Blocklist",
+    description:
+      "Block specific account numbers, beneficiary names, or bank codes from ever receiving payouts. FlowPilot checks every candidate against this list before executing.",
+    roles: ["owner"],
+  },
+  {
+    tourId: "developer",
+    title: "Developer Tools",
+    description:
+      "Generate API keys to integrate FlowPilot into your own systems, and configure webhooks to receive real-time event notifications when runs complete or transactions change state.",
     roles: ["owner"],
   },
   {

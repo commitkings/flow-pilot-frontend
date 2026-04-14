@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
   ArrowRight,
+  BookmarkIcon,
+  CalendarClock,
   Copy,
   Download,
   FileSearch,
@@ -26,6 +28,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useRuns } from "@/hooks/use-run-queries";
 import { RunFilterModal } from "@/components/dashboard/run/RunFilterModal";
 import { ExportRunsModal } from "@/components/dashboard/run/ExportRunsModal";
+import { RunTemplatesPicker } from "@/components/runs/RunTemplatesPicker";
 
 const LIVE_STATUSES = new Set(["planning", "reconciling", "scoring", "executing"]);
 
@@ -108,6 +111,7 @@ export default function RunsPage() {
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<import("@/components/dashboard/run/RunFilterModal").RunFilters>({
     runId: "", status: "", minCandidates: "", fromDate: "", toDate: "",
   });
@@ -233,6 +237,24 @@ export default function RunsPage() {
             <Button
               variant="outline"
               size="sm"
+              className="gap-2 rounded-full h-10 px-4 text-sm font-semibold md:h-12 md:px-5"
+              onClick={() => setTemplatesOpen(true)}
+            >
+              <BookmarkIcon className="h-4 w-4" />
+              Templates
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 rounded-full h-10 px-4 text-sm font-semibold md:h-12 md:px-5"
+              onClick={() => router.push("/dashboard/runs/scheduled")}
+            >
+              <CalendarClock className="h-4 w-4" />
+              Scheduled
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setFilterOpen(true)}
               className="relative h-10 flex-1 gap-2 rounded-full px-4 text-sm font-semibold md:h-12 md:flex-none md:px-5"
             >
@@ -266,6 +288,14 @@ export default function RunsPage() {
             open={exportOpen}
             onClose={() => setExportOpen(false)}
             rows={rows}
+          />
+
+          <RunTemplatesPicker
+            open={templatesOpen}
+            onClose={() => setTemplatesOpen(false)}
+            onSelect={() => {
+              router.push("/dashboard/runs/new");
+            }}
           />
         </div>
 
