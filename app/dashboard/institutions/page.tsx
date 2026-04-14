@@ -7,9 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { DataTable, type TableColumn } from "@/components/ui/data-table";
 import { Pagination } from "@/components/ui/pagination";
-import { StatusBadge } from "@/components/status-badge";
 import { SearchInput } from "@/components/ui/form-fields";
-import { Button } from "@/components/ui/button";
 import type { Institution } from "@/lib/api-types";
 
 const PAGE_SIZE = 50;
@@ -77,10 +75,13 @@ const columns: TableColumn<Institution>[] = [
     id: "status",
     header: "Status",
     cell: (inst) => (
-      <StatusBadge
-        status={inst.isActive ? "completed" : "failed"}
-        label={inst.isActive ? "Active" : "Inactive"}
-      />
+      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+        inst.isActive
+          ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border border-slate-200 bg-slate-100 text-slate-500"
+      }`}>
+        {inst.isActive ? "Active" : "Inactive"}
+      </span>
     ),
   },
   {
@@ -168,18 +169,21 @@ export default function InstitutionsPage() {
           {/* Type filter pills */}
           <div className="flex items-center gap-2 flex-wrap">
             {TYPE_FILTERS.map((f) => (
-              <Button
+              <button
                 key={f.value}
-                variant={typeFilter === f.value ? "default" : "outline"}
-                size="sm"
-                className="rounded-full"
+                type="button"
                 onClick={() => handleTypeFilter(f.value)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
+                  typeFilter === f.value
+                    ? "border-brand bg-brand text-white"
+                    : "border-border/60 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
+                }`}
               >
-                {f.value === "bank"         && <Landmark className="mr-1.5 h-3 w-3" />}
-                {f.value === "microfinance" && <Banknote className="mr-1.5 h-3 w-3" />}
-                {f.value === "mobile_money" && <Smartphone className="mr-1.5 h-3 w-3" />}
+                {f.value === "bank"         && <Landmark className="h-3 w-3" />}
+                {f.value === "microfinance" && <Banknote className="h-3 w-3" />}
+                {f.value === "mobile_money" && <Smartphone className="h-3 w-3" />}
                 {f.label}
-              </Button>
+              </button>
             ))}
           </div>
         </div>

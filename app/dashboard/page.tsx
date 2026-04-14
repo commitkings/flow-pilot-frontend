@@ -142,29 +142,27 @@ export default function DashboardPage() {
 
       {/* ── Analytics ────────────────────────────────────────────────────── */}
       <div>
-        <h2 className="text-base font-black text-foreground mb-4">Analytics</h2>
+        <SectionHeader title="Analytics" />
         <AnalyticsSection />
       </div>
 
       {/* ── Recent runs ──────────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-black text-foreground">Recent Runs</h2>
+        <SectionHeader title="Recent Runs">
           <Link
             href="/dashboard/runs"
             className="flex items-center gap-1 text-xs font-semibold text-brand hover:opacity-80 transition-opacity"
           >
             View all <ArrowRight className="h-3.5 w-3.5" />
           </Link>
-        </div>
+        </SectionHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-16 rounded-2xl border border-border">
+          <div className="flex items-center justify-center py-16 rounded-2xl border border-border bg-card">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : !stats?.recent_runs.length ? (
-          /* ── Empty state ── */
-          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 py-16 text-center">
+          <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/10 py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
               <Zap className="h-7 w-7" />
             </div>
@@ -185,18 +183,18 @@ export default function DashboardPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-2xl border border-border overflow-hidden">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">Objective</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Status</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground hidden md:table-cell">Recipients</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">When</th>
-                  <th className="px-4 py-3" />
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Objective</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 hidden sm:table-cell">Status</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground/70 hidden md:table-cell">Recipients</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">When</th>
+                  <th className="px-5 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-border/60">
                 {stats.recent_runs.map((run) => {
                   const isLive = LIVE_STATUSES.has(run.status);
                   return (
@@ -204,24 +202,26 @@ export default function DashboardPage() {
                       key={run.run_id}
                       onClick={() => router.push(`/dashboard/runs/${run.run_id}`)}
                       className={cn(
-                        "cursor-pointer transition-colors hover:bg-muted/40",
-                        isLive && "bg-brand/3"
+                        "group cursor-pointer transition-colors hover:bg-muted/40",
+                        isLive && "bg-brand/[0.03]"
                       )}
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          {isLive && (
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          {isLive ? (
                             <span className="relative flex h-2 w-2 shrink-0">
                               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
                               <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
                             </span>
+                          ) : (
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/20" />
                           )}
-                          <span className="line-clamp-1 font-medium text-foreground max-w-[220px]">
+                          <span className="line-clamp-1 font-semibold text-foreground max-w-[220px]">
                             {run.objective}
                           </span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
+                      <td className="px-5 py-3.5 hidden sm:table-cell">
                         <StatusBadge
                           status={run.status as StatusType}
                           label={
@@ -233,14 +233,16 @@ export default function DashboardPage() {
                           }
                         />
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
-                        {run.candidate_count ?? "—"}
+                      <td className="px-5 py-3.5 hidden md:table-cell">
+                        <span className="text-sm font-medium text-foreground/70">
+                          {run.candidate_count ?? "—"}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                      <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">
                         {relativeTime(run.created_at)}
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <ArrowRight className="h-4 w-4 text-muted-foreground/50 inline-block" />
+                      <td className="px-5 py-3.5 text-right">
+                        <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30 inline-block transition-all group-hover:text-brand group-hover:translate-x-0.5" />
                       </td>
                     </tr>
                   );
@@ -252,33 +254,54 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Quick actions ────────────────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {canRun && (
+      <div>
+        <SectionHeader title="Quick Actions" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {canRun && (
+            <QuickAction
+              href="/dashboard/runs/new"
+              icon={<Zap className="h-5 w-5" />}
+              title="Start a Payout Run"
+              description="Describe your disbursement in plain English and let FlowPilot handle the rest."
+              accent="brand"
+            />
+          )}
+          {(stats?.pending_approvals ?? 0) > 0 && (
+            <QuickAction
+              href="/dashboard/runs"
+              icon={<ShieldAlert className="h-5 w-5" />}
+              title={`${stats!.pending_approvals} Run${stats!.pending_approvals > 1 ? "s" : ""} Need Approval`}
+              description="Review risk scores and approve or reject pending disbursements."
+              accent="amber"
+            />
+          )}
           <QuickAction
-            href="/dashboard/runs/new"
-            icon={<Zap className="h-5 w-5" />}
-            title="Start a Payout Run"
-            description="Describe your disbursement in plain English and let FlowPilot handle the rest."
-            accent="brand"
+            href="/dashboard/transactions"
+            icon={<CheckCircle2 className="h-5 w-5" />}
+            title="View Transactions"
+            description="See all executed payouts, reconciliation records, and status updates."
+            accent="green"
           />
-        )}
-        {(stats?.pending_approvals ?? 0) > 0 && (
-          <QuickAction
-            href="/dashboard/runs"
-            icon={<ShieldAlert className="h-5 w-5" />}
-            title={`${stats!.pending_approvals} Run${stats!.pending_approvals > 1 ? "s" : ""} Need Approval`}
-            description="Review risk scores and approve or reject pending disbursements."
-            accent="amber"
-          />
-        )}
-        <QuickAction
-          href="/dashboard/transactions"
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          title="View Transactions"
-          description="See all executed payouts, reconciliation records, and status updates."
-          accent="green"
-        />
+        </div>
       </div>
+    </div>
+  );
+}
+
+function SectionHeader({
+  title,
+  children,
+}: {
+  title: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2.5">
+        <span className="h-4 w-1 rounded-full bg-brand" />
+        <h2 className="text-base font-black tracking-tight text-foreground">{title}</h2>
+      </div>
+      {children}
     </div>
   );
 }
@@ -303,24 +326,33 @@ function QuickAction({
   description: string;
   accent: "brand" | "amber" | "green";
 }) {
-  const colors = {
-    brand: "border-brand/20 bg-brand/5 text-brand hover:bg-brand/10",
-    amber: "border-amber-200 bg-amber-50/50 text-amber-600 hover:bg-amber-50",
-    green: "border-green-200 bg-green-50/50 text-green-600 hover:bg-green-50",
+  const accentBar = {
+    brand: "before:bg-brand",
+    amber: "before:bg-amber-500",
+    green: "before:bg-emerald-500",
+  };
+  const iconColors = {
+    brand: "bg-brand/10 text-brand",
+    amber: "bg-amber-500/10 text-amber-600",
+    green: "bg-emerald-500/10 text-emerald-600",
   };
   return (
     <Link
       href={href}
       className={cn(
-        "group flex flex-col gap-3 rounded-2xl border p-5 transition-all",
-        colors[accent]
+        "group relative flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md hover:border-border/80",
+        "before:absolute before:inset-x-0 before:top-0 before:h-0.75 before:rounded-t-2xl before:opacity-0 before:transition-opacity group-hover:before:opacity-100",
+        accentBar[accent]
       )}
     >
       <div className="flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-background/80 shadow-sm">
+        <div className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110",
+          iconColors[accent]
+        )}>
           {icon}
         </div>
-        <ArrowRight className="h-4 w-4 opacity-40 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />
+        <ArrowRight className="h-4 w-4 text-muted-foreground/30 transition-all group-hover:text-brand group-hover:translate-x-0.5" />
       </div>
       <div>
         <p className="font-bold text-sm text-foreground">{title}</p>

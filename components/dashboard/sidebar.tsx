@@ -159,6 +159,7 @@ export function Sidebar() {
   const { collapsed, mobileMenuOpen, toggleMobileMenu } = useDashboardShell();
   const { user, logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const displayName = user?.display_name?.trim() || user?.email || "Account";
   const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
   const userRole = getUserRole(user);
@@ -184,18 +185,51 @@ export function Sidebar() {
     </>
   );
 
-  const logoutButton = (isCollapsed?: boolean) => (
-    <button
-      type="button"
-      onClick={() => setShowLogoutModal(true)}
-      className={cn(
-        "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all text-muted-foreground hover:bg-red-50 hover:text-red-600",
-        isCollapsed && "justify-center"
+  const userSection = (isCollapsed?: boolean) => (
+    <div className="relative">
+      {showUserMenu && (
+        <>
+          {/* click-outside overlay */}
+          <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
+          <div className="absolute bottom-full left-0 right-0 z-20 mb-2 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+            <button
+              type="button"
+              onClick={() => { setShowUserMenu(false); setShowLogoutModal(true); }}
+              className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/20"
+            >
+              <LogOut className="h-4 w-4 shrink-0" />
+              Log out
+            </button>
+          </div>
+        </>
       )}
-    >
-      <LogOut className="h-5 w-5 shrink-0 transition-colors group-hover:text-red-600" />
-      {!isCollapsed && <span className="flex-1 text-left">Log out</span>}
-    </button>
+      <button
+        type="button"
+        onClick={() => setShowUserMenu((v) => !v)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-muted/60",
+          isCollapsed && "justify-center",
+          showUserMenu && "bg-muted/60"
+        )}
+      >
+        <Avatar className="h-7 w-7 shrink-0 border-2 border-background shadow-sm">
+          {user?.avatar_url ? (
+            <AvatarImage src={user.avatar_url} alt="" className="object-cover" />
+          ) : null}
+          <AvatarFallback className="bg-brand text-white font-bold text-xs">
+            {getInitials(displayName)}
+          </AvatarFallback>
+        </Avatar>
+        {!isCollapsed && (
+          <div className="min-w-0 flex-1 text-left">
+            <p className="truncate text-sm font-black text-foreground">{displayName}</p>
+            <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {roleLabel}
+            </p>
+          </div>
+        )}
+      </button>
+    </div>
   );
 
   return (
@@ -226,26 +260,8 @@ export function Sidebar() {
           {renderNav(collapsed)}
         </nav>
 
-        <div className="p-4 border-t border-border/50 bg-muted/30 space-y-3">
-          {logoutButton(collapsed)}
-          <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-            <Avatar className="h-10 w-10 border-2 border-background shadow-sm">
-              {user?.avatar_url ? (
-                <AvatarImage src={user.avatar_url} alt="" className="object-cover" />
-              ) : null}
-              <AvatarFallback className="bg-brand text-white font-bold text-xs">
-                {getInitials(displayName)}
-              </AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black text-foreground">{displayName}</p>
-                <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  {roleLabel}
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
+          {userSection(collapsed)}
         </div>
       </aside>
 
@@ -270,7 +286,7 @@ export function Sidebar() {
               {renderNav(false, toggleMobileMenu)}
             </nav>
             <div className="p-4 border-t border-border/50">
-              {logoutButton(false)}
+              {userSection(false)}
             </div>
           </aside>
         </div>

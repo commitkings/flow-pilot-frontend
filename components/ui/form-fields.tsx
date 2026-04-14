@@ -478,7 +478,7 @@ export function SearchInput({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 h-12 rounded-full border border-border bg-muted/40 px-3 py-2 transition-all",
+        "flex items-center gap-2 h-12 rounded-full border border-border bg-muted/20 px-3 py-2 transition-all",
         "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
         className
       )}

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { AlertCircle, Lock, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type HttpMethod = "GET" | "POST";
@@ -122,8 +121,8 @@ const ENDPOINTS: EndpointDef[] = [
 ];
 
 const METHOD_BADGE: Record<HttpMethod, string> = {
-  GET: "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-300",
-  POST: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300",
+  GET:  "border-border bg-muted text-foreground",
+  POST: "border-brand/30 bg-brand/10 text-brand",
 };
 
 export function ApiPlaygroundSection() {
@@ -209,10 +208,10 @@ export function ApiPlaygroundSection() {
           <Lock className="h-3.5 w-3.5" />
           API Key — used only for this request, never stored
         </label>
-        <Input
+        <input
           type="password"
           placeholder="fp_…"
-          className="h-10 rounded-xl font-mono text-sm"
+          className="h-10 w-full rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           autoComplete="off"
@@ -273,9 +272,9 @@ export function ApiPlaygroundSection() {
             <p className="text-sm text-muted-foreground">{endpoint.description}</p>
             <p className="text-xs text-muted-foreground">
               Required scope:{" "}
-              <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 font-mono text-xs text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300">
+              <code className="rounded-md border border-border/60 bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
                 {endpoint.scope}
-              </span>
+              </code>
             </p>
           </div>
 
@@ -291,9 +290,9 @@ export function ApiPlaygroundSection() {
                     <code className="font-mono">{p}</code>
                     <span className="text-destructive">*</span>
                   </label>
-                  <Input
+                  <input
                     placeholder={`Enter ${p}…`}
-                    className="h-9 rounded-xl font-mono text-sm"
+                    className="h-9 w-full rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
                     value={pathValues[p] ?? ""}
                     onChange={(e) =>
                       setPathValues((prev) => ({ ...prev, [p]: e.target.value }))
@@ -316,9 +315,9 @@ export function ApiPlaygroundSection() {
                     <p className="font-mono text-xs font-medium text-foreground">{p.name}</p>
                     <p className="text-[11px] leading-snug text-muted-foreground">{p.description}</p>
                   </div>
-                  <Input
+                  <input
                     placeholder={p.placeholder ?? `Enter ${p.name}…`}
-                    className="h-9 rounded-xl font-mono text-sm"
+                    className="h-9 w-full rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
                     value={queryValues[p.name] ?? ""}
                     onChange={(e) =>
                       setQueryValues((prev) => ({ ...prev, [p.name]: e.target.value }))
@@ -341,9 +340,9 @@ export function ApiPlaygroundSection() {
                     <p className="font-mono text-xs font-medium text-foreground">{p.name}</p>
                     <p className="text-[11px] leading-snug text-muted-foreground">{p.description}</p>
                   </div>
-                  <Input
+                  <input
                     placeholder={p.placeholder ?? `Enter ${p.name}…`}
-                    className="h-9 rounded-xl font-mono text-sm"
+                    className="h-9 w-full rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
                     value={bodyValues[p.name] ?? ""}
                     onChange={(e) =>
                       setBodyValues((prev) => ({ ...prev, [p.name]: e.target.value }))
@@ -392,17 +391,15 @@ export function ApiPlaygroundSection() {
                   className={cn(
                     "rounded-full border px-2.5 py-0.5 font-mono text-xs font-bold",
                     statusOk
-                      ? "border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-800 dark:bg-teal-950/30 dark:text-teal-300"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
                       : "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400"
                   )}
                 >
                   {response.status}
                 </span>
-                {statusOk ? (
-                  <span className="text-xs text-teal-600 dark:text-teal-400">OK</span>
-                ) : (
-                  <span className="text-xs text-red-600 dark:text-red-400">Error</span>
-                )}
+                <span className={cn("text-xs font-medium", statusOk ? "text-emerald-600" : "text-red-500")}>
+                  {statusOk ? "OK" : "Error"}
+                </span>
               </div>
               <pre className="max-h-[400px] overflow-auto bg-[#0f172a] p-4 font-mono text-xs leading-relaxed text-[#e2e8f0] whitespace-pre-wrap break-words">
                 {JSON.stringify(response.body, null, 2)}

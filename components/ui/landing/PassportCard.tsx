@@ -51,44 +51,37 @@ export function PipelineSection() {
             ${item.zIndex}
           `}
         >
-          <div className="aspect-4/5 rounded-[2rem] bg-[#da6328] p-3 shadow-[0_20px_50px_rgba(218,99,40,0.3)] flex flex-col border border-white/20">
-            
+          <div className="aspect-4/5 rounded-[2rem] bg-[#da6328] p-3 shadow-[0_8px_24px_rgba(218,99,40,0.2)] flex flex-col border border-white/10">
+
             <div className="mx-auto mb-3 flex flex-col items-center">
-              <div className="h-2.5 w-12 rounded-full bg-black/20" />
+              <div className="h-2 w-10 rounded-full bg-black/20" />
             </div>
 
-            <div className="relative flex-1 overflow-hidden rounded-[1.2rem] bg-[#FAF8F4] p-5 flex flex-col border border-black/5">
-              {/* Top Meta-data */}
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-[#da6328] uppercase tracking-tighter">System Flow</span>
+            <div className="relative flex-1 overflow-hidden rounded-[1.2rem] bg-[#FAF8F4] p-5 flex flex-col">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[9px] font-bold text-[#da6328] uppercase tracking-widest">System Flow</span>
+                <span className="text-[9px] font-bold text-black/20 uppercase tracking-widest">{item.step}</span>
               </div>
-
-              <span className="absolute -right-2.5 top-4 text-7xl font-black text-black/3 italic">
-                {item.step}
-              </span>
 
               <div className="mt-auto">
                 <h3 className="text-xl font-black leading-tight text-[#0F0F0F] tracking-tight">
                   {item.title}
                 </h3>
-                
-                <div className="mt-3 space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <div className="h-1 w-1 rounded-full bg-[#da6328]" />
-                    <div className="h-1 w-12 rounded-full bg-black/5" />
-                  </div>
-                  <p className="text-[10px] font-semibold leading-relaxed text-[#6B6B6B]">
+
+                <div className="mt-3">
+                  <div className="mb-2 h-px w-full bg-black/8" />
+                  <p className="text-[10px] font-medium leading-relaxed text-[#888]">
                     {item.description}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="py-3 flex flex-col items-center justify-center gap-1">
-              <span className="text-[10px] font-bold tracking-[0.25em] text-white/60 uppercase">
+            <div className="py-3 flex flex-col items-center justify-center gap-0.5">
+              <span className="text-[9px] font-semibold tracking-[0.2em] text-white/50 uppercase">
                 {item.label}
               </span>
-              <span className="text-sm font-black text-white uppercase tracking-wider">
+              <span className="text-xs font-black text-white uppercase tracking-wide">
                 {item.status}
               </span>
             </div>

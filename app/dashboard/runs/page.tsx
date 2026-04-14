@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
@@ -233,48 +233,19 @@ export default function RunsPage() {
             placeholder="Search by objective or run ID..."
             className="w-full md:w-80"
           />
-          <div className="flex w-full items-center gap-3 md:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 rounded-full h-10 px-4 text-sm font-semibold md:h-12 md:px-5"
-              onClick={() => setTemplatesOpen(true)}
-            >
-              <BookmarkIcon className="h-4 w-4" />
+          <div className="flex w-full items-center gap-2 md:w-auto">
+            <ToolbarButton icon={<BookmarkIcon className="h-3.5 w-3.5" />} onClick={() => setTemplatesOpen(true)}>
               Templates
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 rounded-full h-10 px-4 text-sm font-semibold md:h-12 md:px-5"
-              onClick={() => router.push("/dashboard/runs/scheduled")}
-            >
-              <CalendarClock className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton icon={<CalendarClock className="h-3.5 w-3.5" />} onClick={() => router.push("/dashboard/runs/scheduled")}>
               Scheduled
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFilterOpen(true)}
-              className="relative h-10 flex-1 gap-2 rounded-full px-4 text-sm font-semibold md:h-12 md:flex-none md:px-5"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton icon={<SlidersHorizontal className="h-3.5 w-3.5" />} onClick={() => setFilterOpen(true)} badge={activeFilterCount || undefined}>
               Filter
-              {activeFilterCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-black text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setExportOpen(true)}
-              className="h-10 flex-1 gap-2 rounded-full px-4 text-sm font-semibold md:h-12 md:flex-none md:px-5"
-            >
-              <Download className="h-4 w-4" />
+            </ToolbarButton>
+            <ToolbarButton icon={<Download className="h-3.5 w-3.5" />} onClick={() => setExportOpen(true)}>
               Export
-            </Button>
+            </ToolbarButton>
           </div>
 
           <RunFilterModal
@@ -336,5 +307,33 @@ export default function RunsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function ToolbarButton({
+  icon,
+  onClick,
+  badge,
+  children,
+}: {
+  icon: React.ReactNode;
+  onClick: () => void;
+  badge?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-3.5 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+    >
+      {icon}
+      {children}
+      {badge !== undefined && (
+        <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[10px] font-black text-white">
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Loader2, ShieldCheck, ShieldAlert, SlidersHorizontal, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronDown, Loader2, ShieldCheck, ShieldAlert, Users } from "lucide-react";
 import { SearchInput } from "@/components/ui/form-fields";
 import { StatusBadge } from "@/components/status-badge";
 import { MetricCard } from "@/components/dashboard/MetricCard";
@@ -87,17 +86,20 @@ export default function ApprovalsPage() {
             placeholder="Search by beneficiary or account…"
             className="w-full md:w-80"
           />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {["", "pending", "approved", "rejected"].map((s) => (
-              <Button
+              <button
                 key={s}
-                variant={statusFilter === s ? "default" : "outline"}
-                size="sm"
-                className="rounded-full capitalize"
+                type="button"
                 onClick={() => setStatusFilter(s)}
+                className={`inline-flex items-center rounded-full border px-3.5 py-2 text-xs font-semibold capitalize transition-colors ${
+                  statusFilter === s
+                    ? "border-brand bg-brand text-white"
+                    : "border-border/60 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"
+                }`}
               >
                 {s || "All"}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
