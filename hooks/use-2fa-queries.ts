@@ -45,8 +45,7 @@ export function use2FAEnable() {
 export function use2FADisable() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ password, code }: { password: string; code: string }) =>
-      disable2FA(password, code),
+    mutationFn: (password: string) => disable2FA(password),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["2fa-status"] });
       qc.invalidateQueries({ queryKey: ["auth-user"] });
@@ -73,9 +72,11 @@ export function useRegenerateBackupCodes() {
 }
 
 export function useSetOrgRequire2FA() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (require: boolean) => setOrgRequire2FA(require),
     onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["org-profile"] });
       toast.success(
         data.require_2fa
           ? "2FA enforcement enabled for all team members"

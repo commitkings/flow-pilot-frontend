@@ -9,6 +9,7 @@ import {
   getConnections,
   getOrgProfile,
   removeAvatar,
+  requestDeleteCode,
   updateMe,
   updateOrgConfig,
   updateOrgProfile,
@@ -76,11 +77,21 @@ export function useRemoveAvatar() {
 
 export function useChangePassword() {
   return useMutation({
-    mutationFn: ({ current, next }: { current: string; next: string }) =>
-      changePassword(current, next),
+    mutationFn: ({ current, next, totpCode }: { current: string; next: string; totpCode?: string }) =>
+      changePassword(current, next, totpCode),
     onSuccess: () => toast.success("Password updated successfully"),
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to change password");
+    },
+  });
+}
+
+export function useRequestDeleteCode() {
+  return useMutation({
+    mutationFn: () => requestDeleteCode(),
+    onSuccess: () => toast.success("Verification code sent to your email"),
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to send verification code");
     },
   });
 }
@@ -133,7 +144,7 @@ export function useExportAccountData() {
 
 export function useDeleteAccount(onDeleted: () => void) {
   return useMutation({
-    mutationFn: () => deleteAccount(),
+    mutationFn: (params?: { totp_code?: string; delete_code?: string }) => deleteAccount(params),
     onSuccess: () => {
       toast.success("Account deleted. Signing you out…");
       onDeleted();
