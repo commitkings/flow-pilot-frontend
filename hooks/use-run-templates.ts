@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "fp_run_templates";
 
@@ -26,7 +27,7 @@ function writeStorage(templates: RunTemplate[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
   } catch {
-    // Storage quota exceeded or unavailable — silently ignore.
+    toast.error("Could not save template — browser storage may be full.");
   }
 }
 

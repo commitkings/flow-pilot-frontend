@@ -12,6 +12,7 @@ export interface ScheduledRun {
   frequency_label: string;
   next_run_at: string | null;
   last_run_at: string | null;
+  last_reminded_at: string | null;
   is_active: boolean;
   created_at: string;
 }

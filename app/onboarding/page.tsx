@@ -51,8 +51,8 @@ const STEP_META: StepMeta[] = [
     ],
   },
   {
-    title: "Connect your financial accounts.",
-    subtitle: "Link your primary Interswitch merchant account and set payout guardrails.",
+    title: "Set your payout guardrails.",
+    subtitle: "Configure your registered state and payout limits to control disbursements.",
     asideTitle: "Your guardrails, your rules.",
     asideFeatures: [
       "Daily caps stop runaway batch errors before they drain your account",
@@ -92,7 +92,6 @@ export default function OnboardingPage() {
   const [riskAppetite, setRiskAppetite] = useState<RiskAppetite | "">("");
 
   // Step 3
-  const [merchantAccountId, setMerchantAccountId] = useState("");
   const [merchantState, setMerchantState] = useState("");
   const [dailyPayoutLimit, setDailyPayoutLimit] = useState("");
   const [singlePayoutLimit, setSinglePayoutLimit] = useState("");
@@ -132,7 +131,7 @@ export default function OnboardingPage() {
 
   const step1Valid = !!(businessName.trim() && transactionVolume && monthlyPayouts && primaryBank);
   const step2Valid = !!(selectedUseCases.length > 0 && riskAppetite);
-  const step3Valid = !!(merchantAccountId.trim() && merchantState && dailyPayoutLimit.trim() && singlePayoutLimit.trim() && riskAlertThreshold.trim() && liquidityAlertThreshold.trim());
+  const step3Valid = !!(merchantState && dailyPayoutLimit.trim() && singlePayoutLimit.trim() && riskAlertThreshold.trim() && liquidityAlertThreshold.trim());
   const inviteRowsValid = useMemo(() => invites.every((row) => !row.email || row.email), [invites]);
 
   const canContinue =
@@ -167,7 +166,6 @@ export default function OnboardingPage() {
       primary_bank: primaryBank || undefined,
       primary_use_cases: selectedUseCases.length ? selectedUseCases : undefined,
       risk_appetite: riskAppetite || undefined,
-      interswitch_merchant_id: merchantAccountId.trim() || undefined,
       merchant_state: merchantState || undefined,
       daily_payout_limit: dailyPayoutLimit ? parseFloat(dailyPayoutLimit.replace(/,/g, "")) : undefined,
       single_payout_cap: singlePayoutLimit ? parseFloat(singlePayoutLimit.replace(/,/g, "")) : undefined,
@@ -230,7 +228,6 @@ export default function OnboardingPage() {
             )}
             {step === 3 && (
               <Step2FinancialSetup
-                merchantAccountId={merchantAccountId} setMerchantAccountId={setMerchantAccountId}
                 merchantState={merchantState} setMerchantState={setMerchantState}
                 dailyPayoutLimit={dailyPayoutLimit} setDailyPayoutLimit={setDailyPayoutLimit}
                 singlePayoutLimit={singlePayoutLimit} setSinglePayoutLimit={setSinglePayoutLimit}

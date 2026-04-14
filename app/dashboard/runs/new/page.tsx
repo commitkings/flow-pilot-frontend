@@ -10,6 +10,7 @@ import { useInstitutions } from "@/hooks/use-institutions";
 import type { CreateRunPayload, Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
 import { useCreateRun } from "@/hooks/use-run-mutations";
+import { useTeamMembers } from "@/hooks/use-team-queries";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import Link from "next/link";
 import { ChatContainer, RunConfigPreview, ConversationSidebar } from "@/components/chat";
@@ -135,6 +136,14 @@ export default function NewRunPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([emptyRow()]);
+  const [assignedApproverId, setAssignedApproverId] = useState("");
+
+  // Team members for reviewer selection
+  const { data: teamData } = useTeamMembers();
+  const approvalCapableMembers = (teamData?.members ?? []).filter(
+    (m) => (m.role === "owner" || m.role === "approver") && m.is_active && !m.is_pending
+  );
+  const showReviewerSelect = approvalCapableMembers.length >= 3;
   const [draftRestored, setDraftRestored] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
 
@@ -297,7 +306,17 @@ export default function NewRunPage() {
       try {
         const parsed = parseCsv(evt.target?.result as string);
         if (!parsed.length) throw new Error("No valid recipients found.");
-        setRecipients((prev) => [...prev, ...parsed]);
+        setRecipients((prev) => {
+          // Replace the list entirely if it only contains the blank initial row
+          const isOnlyBlankRow =
+            prev.length === 1 &&
+            !prev[0].beneficiaryName &&
+            !prev[0].institutionCode &&
+            !prev[0].accountNumber &&
+            !prev[0].amount &&
+            !prev[0].purpose;
+          return isOnlyBlankRow ? parsed : [...prev, ...parsed];
+        });
       } catch (err) {
         setCsvError(err instanceof Error ? err.message : "Failed to parse CSV.");
       }
@@ -346,6 +365,7 @@ export default function NewRunPage() {
       date_to: toDate,
       risk_tolerance: riskTolerance,
       budget_cap: budgetCap ? Number(budgetCap.replace(/,/g, "")) : undefined,
+      assigned_approver_id: assignedApproverId || undefined,
       candidates: recipients.map((r) => ({
         institution_code: r.institutionCode,
         beneficiary_name: r.beneficiaryName,
@@ -588,6 +608,26 @@ export default function NewRunPage() {
             placeholder="e.g. 5,000,000"
           />
         </Field>
+
+        {showReviewerSelect && (
+          <Field label="Assign Reviewer">
+            <select
+              value={assignedApproverId}
+              onChange={(e) => setAssignedApproverId(e.target.value)}
+              className="flex h-10 w-full items-center rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+            >
+              <option value="">Auto-assign</option>
+              {approvalCapableMembers.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.user?.display_name || m.user?.email || m.user_id} ({m.role})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground/60">
+              Select who will review this run. Leave blank for automatic assignment.
+            </p>
+          </Field>
+        )}
       </section>
 
       {/* Payout Recipients */}

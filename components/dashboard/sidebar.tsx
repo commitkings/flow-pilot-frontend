@@ -21,6 +21,7 @@ import {
   Code2,
   BarChart2,
   MessageSquare,
+  Wallet,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -62,22 +63,48 @@ type NavItem = {
   roles?: string[];
 };
 
-const navItems: NavItem[] = [
-  { label: "Overview", href: "/dashboard", icon: Home },
-  { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
-  { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
-  { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
-  { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
-  { label: "Analytics", href: "/dashboard/stats", icon: BarChart2 },
-  { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
-  { label: "Blocklist", href: "/dashboard/blocklist", icon: ShieldBan, roles: ["owner"] },
-  { label: "Developer", href: "/dashboard/developer", icon: Code2, roles: ["owner"] },
-  { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
-  { label: "Verification (KYC)", href: "/dashboard/kyc", icon: BadgeCheck, roles: ["owner"] },
-  { label: "Team Members", href: "/dashboard/team", icon: Users, roles: ["owner"] },
-  { label: "Sessions", href: "/dashboard/sessions", icon: Radio, roles: ["owner"] },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
+  {
+    label: "Operations",
+    items: [
+      { label: "Overview", href: "/dashboard", icon: Home },
+      { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
+      { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
+      { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
+      { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
+      { label: "Analytics", href: "/dashboard/stats", icon: BarChart2 },
+    ],
+  },
+  {
+    label: "Compliance & Risk",
+    items: [
+      { label: "Audit Log", href: "/dashboard/audit", icon: ScrollText, roles: ["owner"] },
+      { label: "Blocklist", href: "/dashboard/blocklist", icon: ShieldBan, roles: ["owner"] },
+      { label: "Institutions", href: "/dashboard/institutions", icon: ShieldCheck },
+      { label: "Verification (KYC)", href: "/dashboard/kyc", icon: BadgeCheck, roles: ["owner"] },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { label: "Wallet", href: "/dashboard/wallet", icon: Wallet, roles: ["owner", "approver"] },
+      { label: "Team Members", href: "/dashboard/team", icon: Users, roles: ["owner"] },
+      { label: "Sessions", href: "/dashboard/sessions", icon: Radio, roles: ["owner"] },
+      { label: "Developer", href: "/dashboard/developer", icon: Code2, roles: ["owner"] },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings },
+    ],
+  },
 ];
 
 function NavLink({
@@ -169,20 +196,37 @@ export function Sidebar() {
   const unreadCount = notifData?.unread_count ?? 0;
 
   // Filter nav items by role
-  const visibleNavItems = navItems.filter(
-    (item) => !item.roles || (userRole && item.roles.includes(userRole))
-  );
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.roles || (userRole && item.roles.includes(userRole))
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const renderNav = (isCollapsed?: boolean, onClose?: () => void) => (
     <>
-      {visibleNavItems.map((item) => {
-        const badge = item.href === "/dashboard/notifications" && unreadCount > 0
-          ? String(unreadCount)
-          : item.badge;
-        return (
-          <NavLink key={item.href} item={{ ...item, badge }} collapsed={isCollapsed} onClick={() => { onClose?.(); }} />
-        );
-      })}
+      {visibleGroups.map((group, gi) => (
+        <div key={group.label} className={gi > 0 ? "mt-4" : ""}>
+          {!isCollapsed && (
+            <p className="mb-1 px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+              {group.label}
+            </p>
+          )}
+          {isCollapsed && gi > 0 && (
+            <div className="my-2 mx-3 border-t border-border/40" />
+          )}
+          {group.items.map((item) => {
+            const badge = item.href === "/dashboard/notifications" && unreadCount > 0
+              ? String(unreadCount)
+              : item.badge;
+            return (
+              <NavLink key={item.href} item={{ ...item, badge }} collapsed={isCollapsed} onClick={() => { onClose?.(); }} />
+            );
+          })}
+        </div>
+      ))}
     </>
   );
 

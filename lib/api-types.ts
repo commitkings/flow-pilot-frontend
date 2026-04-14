@@ -212,6 +212,7 @@ export interface CreateRunPayload {
   budget_cap?: number;
   merchant_id?: string;
   candidates?: CandidateInput[];
+  assigned_approver_id?: string;
 }
 
 // ── Candidates ───────────────────────────────────────────────
