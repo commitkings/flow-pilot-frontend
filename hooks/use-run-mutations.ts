@@ -12,6 +12,7 @@ export function useCreateRun(onSuccess: (runId: string) => void) {
     mutationFn: (payload: CreateRunPayload) => createRun(payload),
     onSuccess: (run) => {
       queryClient.invalidateQueries({ queryKey: ["runs"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       onSuccess(run.run_id);
     },
     onError: (err) => {

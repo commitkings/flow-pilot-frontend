@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ArrowLeft, Download, MessageSquare, Plus, Rocket, Settings2, Trash2, Upload, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Field, TextInput, TextareaInput, DateRangeInput, SelectInput, NumericInput, AmountInput } from "@/components/ui/form-fields";
+import { Field, TextInput, TextareaInput, DateRangeInput, BankSelectInput, NumericInput, AmountInput } from "@/components/ui/form-fields";
 import { naira } from "@/lib/mock-data";
 import { useInstitutions } from "@/hooks/use-institutions";
 import type { CreateRunPayload, Institution } from "@/lib/api-types";
@@ -94,6 +94,8 @@ export default function NewRunPage() {
   );
   const institutionsError = institutionsIsError ? "Unable to load institutions." : null;
 
+  const DRAFT_KEY = `run-form-draft-${businessId ?? "default"}`;
+
   const [objective, setObjective] = useState(() => searchParams.get("objective") ?? "");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -103,9 +105,52 @@ export default function NewRunPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([emptyRow()]);
+  const [draftRestored, setDraftRestored] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
 
-  const createRun = useCreateRun((runId) => router.push(`/dashboard/runs/${runId}`));
+  // Restore draft on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      if (draft.objective) setObjective(draft.objective);
+      if (draft.fromDate) setFromDate(draft.fromDate);
+      if (draft.toDate) setToDate(draft.toDate);
+      if (typeof draft.riskTolerance === "number") setRiskTolerance(draft.riskTolerance);
+      if (draft.budgetCap) setBudgetCap(draft.budgetCap);
+      if (Array.isArray(draft.recipients) && draft.recipients.length > 0) setRecipients(draft.recipients);
+      setDraftRestored(true);
+    } catch { /* ignore malformed */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save draft whenever form changes
+  useEffect(() => {
+    const hasMeaningfulData =
+      objective || fromDate || toDate || budgetCap ||
+      recipients.some((r) => r.beneficiaryName || r.institutionCode || r.accountNumber || r.amount);
+    if (hasMeaningfulData) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ objective, fromDate, toDate, riskTolerance, budgetCap, recipients }));
+    }
+  }, [objective, fromDate, toDate, riskTolerance, budgetCap, recipients, DRAFT_KEY]);
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftRestored(false);
+    setObjective("");
+    setFromDate("");
+    setToDate("");
+    setRiskTolerance(0.35);
+    setBudgetCap("");
+    setRecipients([emptyRow()]);
+    setSubmitted(false);
+  };
+
+  const createRun = useCreateRun((runId) => {
+    localStorage.removeItem(DRAFT_KEY);
+    router.push(`/dashboard/runs/${runId}`);
+  });
   const confirmRun = useConfirmRun();
   const abandonConversation = useAbandonConversation();
 
@@ -458,6 +503,16 @@ export default function NewRunPage() {
         </div>
       </div>
 
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <div className="flex items-center justify-between rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3">
+          <p className="text-sm text-brand font-medium">Draft restored — continue from where you left off.</p>
+          <button type="button" onClick={clearDraft} className="text-xs font-semibold text-brand/70 hover:text-destructive transition-colors">
+            Clear draft
+          </button>
+        </div>
+      )}
+
       {/* Run Configuration */}
       <section className="space-y-5">
         <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Run Configuration</h2>
@@ -576,10 +631,10 @@ export default function NewRunPage() {
                   </Field>
 
                   <Field label="Bank / Institution" className="sm:col-span-2">
-                    <SelectInput
+                    <BankSelectInput
                       value={row.institutionCode}
                       onChange={(v) => updateRow(row.id, { institutionCode: v })}
-                      placeholder={loadingInstitutions ? "Loading banks…" : "Select bank"}
+                      placeholder={loadingInstitutions ? "Loading banks…" : "Search bank…"}
                       options={institutionOptions}
                     />
                   </Field>

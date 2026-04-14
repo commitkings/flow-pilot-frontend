@@ -475,6 +475,7 @@ export interface OrgConfig {
   risk_alert_threshold: number | null;
   liquidity_alert_buffer: number | null;
   preferences: Record<string, unknown> | null;
+  require_2fa: boolean;
 }
 
 // ── Connections ──────────────────────────────────────────────

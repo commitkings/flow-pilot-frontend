@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Calendar, Eye, EyeOff, Search } from "lucide-react";
+import { ArrowRight, Calendar, ChevronDown, Eye, EyeOff, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -109,6 +109,133 @@ export function SelectInput({
           <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
         </svg>
       </div>
+    </div>
+  );
+}
+
+/**
+ * BankSelectInput: Searchable combobox for institution/bank selection
+ */
+export function BankSelectInput({
+  value,
+  onChange,
+  placeholder = "Search bank…",
+  options,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  options: SelectOption[];
+  className?: string;
+}) {
+  const normalized = options.map((o) =>
+    typeof o === "string" ? { label: o, value: o } : o
+  );
+
+  const selectedLabel = normalized.find((o) => o.value === value)?.label ?? "";
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = query.trim()
+    ? normalized.filter(
+        (o) =>
+          o.label.toLowerCase().includes(query.toLowerCase()) ||
+          o.value.toLowerCase().includes(query.toLowerCase())
+      )
+    : normalized;
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleInputFocus = () => {
+    setOpen(true);
+    setQuery("");
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setOpen(true);
+    if (!e.target.value) onChange("");
+  };
+
+  const handleSelect = (val: string) => {
+    onChange(val);
+    setOpen(false);
+    setQuery("");
+    inputRef.current?.blur();
+  };
+
+  const handleClear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange("");
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={cn("relative", className)}>
+      <div
+        className={cn(
+          "flex h-12 items-center gap-2 rounded-full border border-border bg-background px-4 transition-all",
+          "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
+          open && "border-brand ring-1 ring-brand/10"
+        )}
+        onClick={() => inputRef.current?.focus()}
+      >
+        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          value={open ? query : selectedLabel}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          placeholder={value ? selectedLabel : placeholder}
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        {value ? (
+          <button type="button" onClick={handleClear} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-56 overflow-y-auto rounded-2xl border border-border bg-card shadow-lg">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-muted-foreground">
+              No banks found{query ? ` for "${query}"` : ""}
+            </div>
+          ) : (
+            filtered.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+                onClick={() => handleSelect(o.value)}
+                className={cn(
+                  "w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted/60",
+                  value === o.value && "bg-brand/10 font-semibold text-brand"
+                )}
+              >
+                {o.label}
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1086,10 +1086,13 @@ async def handle_webhook(request: Request):
               <p className="text-xs text-[#64748b] font-mono">
                 FlowPilot API v1.0 — Last updated April 2026
               </p>
-              <p className="text-xs text-[#64748b] mt-1">
-                Questions?{" "}
-                <a href="mailto:dev@flowpilot.ng" className="text-[#64748b] hover:text-[#e86727] transition-colors">
-                  dev@flowpilot.ng
+              <p className="text-xs text-[#4a5568] mt-1">
+                Questions? Email{" "}
+                <a
+                  href="mailto:dev@flowpilot.club"
+                  className="text-[#64748b] hover:text-[#e86727] transition-colors"
+                >
+                  dev@flowpilot.club
                 </a>
               </p>
             </div>
