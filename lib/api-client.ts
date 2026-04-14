@@ -376,6 +376,26 @@ export function getActiveSessions(): Promise<ActiveSessionsResponse> {
   return apiClient.get<ActiveSessionsResponse>("/org/sessions").then((r) => r.data);
 }
 
+export function uploadOrgLogo(file: File): Promise<{ logo_url: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return apiClient
+    .post<{ logo_url: string }>("/org/logo", fd, { headers: { "Content-Type": "multipart/form-data" } })
+    .then((r) => r.data);
+}
+
+// ── KYC ──────────────────────────────────────────────────────────────────────
+
+export function getKycStatus(): Promise<import("./api-types").KycStatusResponse> {
+  return apiClient.get("/kyc/status").then((r) => r.data);
+}
+
+export function submitKyc(formData: FormData): Promise<{ status: string; message: string; submitted_docs: string[] }> {
+  return apiClient
+    .post("/kyc/submit", formData, { headers: { "Content-Type": "multipart/form-data" } })
+    .then((r) => r.data);
+}
+
 // ── 14. Auth (Extended) ──────────────────────────────────────────────────────
 
 export function forgotPassword(email: string): Promise<{ message: string }> {

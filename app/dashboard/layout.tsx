@@ -11,6 +11,8 @@ import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { fetchHealth, updateMe } from "@/lib/api-client";
 import { getUserRole } from "@/lib/api-types";
+import { useKycStatus } from "@/hooks/use-kyc-queries";
+import Link from "next/link";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
@@ -21,6 +23,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [inviteOpen, setInviteOpen] = useState(false);
   const [payoutMode, setPayoutMode] = useState<string | null>(null);
   const [showTour, setShowTour] = useState(false);
+
+  const { data: kycData } = useKycStatus();
+  const kycStatus = kycData?.kyc_status ?? null;
 
   useEffect(() => {
     if (isLoading) return;
@@ -112,6 +117,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center justify-center gap-2 bg-black/90 px-4 py-2 text-xs font-medium text-white/70">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#e86727] animate-pulse" />
               Demo Mode — Payouts are simulated. No real funds will move.
+            </div>
+          )}
+          {kycStatus && kycStatus !== "verified" && (
+            <div className={`flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium ${kycStatus === "pending" ? "bg-amber-500/10 text-amber-800" : "bg-[#e86727]/10 text-[#e86727]"}`}>
+              <span className={`inline-block h-1.5 w-1.5 rounded-full animate-pulse ${kycStatus === "pending" ? "bg-amber-500" : "bg-[#e86727]"}`} />
+              {kycStatus === "pending"
+                ? "Your documents are under review — you'll be notified within 10 minutes."
+                : "Complete your business verification (KYC) to unlock payout runs."}
+              <Link href="/dashboard/kyc" className="underline font-semibold ml-1">
+                {kycStatus === "pending" ? "View status" : "Verify now"}
+              </Link>
             </div>
           )}
           <Navbar />

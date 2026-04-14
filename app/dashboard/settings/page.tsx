@@ -44,6 +44,7 @@ import {
   useDeleteAccount,
   useRequestDeleteCode,
 } from "@/hooks/use-settings-queries";
+import { useUploadOrgLogo } from "@/hooks/use-kyc-queries";
 import { CardSelect, PillSelect, type CardSelectOption } from "@/components/ui/select-fields";
 import {
   use2FAStatus,
@@ -76,6 +77,8 @@ export default function SettingsPage() {
   const deleteAccount = useDeleteAccount(() => logout());
   const requestDeleteCode = useRequestDeleteCode();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const uploadOrgLogoMut = useUploadOrgLogo();
 
   // Business configuration constants
   type RiskAppetite = "conservative" | "moderate" | "aggressive";
@@ -419,12 +422,49 @@ export default function SettingsPage() {
         {/* ════════════════ WORKSPACE ════════════════ */}
         {activeTab === "workspace" && (
           <>
+            {isOwner && (
+              <Section title="Company Logo" description="Upload your company logo. Shown on reports and documents.">
+                <div className="flex items-center gap-6">
+                  <span className="relative inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-muted overflow-hidden shadow-sm">
+                    {orgQuery.data?.logo_url ? (
+                      <img src={orgQuery.data.logo_url} alt="Company logo" className="h-full w-full object-contain p-1" />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-muted-foreground/40" />
+                    )}
+                  </span>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadOrgLogoMut.mutate(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <div className="space-y-1.5">
+                    <p className="text-sm text-muted-foreground">PNG, JPG or SVG. Max 5 MB. Square format recommended.</p>
+                    <Button
+                      variant="outline"
+                      className="rounded-full shadow-sm"
+                      onClick={() => logoInputRef.current?.click()}
+                      disabled={uploadOrgLogoMut.isPending}
+                    >
+                      {uploadOrgLogoMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      {orgQuery.data?.logo_url ? "Change Logo" : "Upload Logo"}
+                    </Button>
+                  </div>
+                </div>
+              </Section>
+            )}
+
             <Section title="Business Information" description="Official company details and registration.">
               {orgQuery.isLoading ? (
                 <div className="py-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : orgEditing ? (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {["business_name", "business_type", "rc_number", "tax_id", "city", "state", "country", "phone"].map((field) => (
+                  {["business_name", "business_type", "rc_number", "tax_id", "website", "city", "state", "country", "phone"].map((field) => (
                     <div key={field} className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground capitalize">{field.replace(/_/g, " ")}</label>
                       <Input className="h-10 rounded-xl" defaultValue={(org as any)?.[field] ?? ""} onChange={(e) => setOrgForm((prev) => ({ ...prev, [field]: e.target.value }))} />
@@ -446,6 +486,7 @@ export default function SettingsPage() {
                       ["Business Type", org?.business_type],
                       ["RC Number", org?.rc_number],
                       ["Tax ID", org?.tax_id],
+                      ["Website", org?.website],
                       ["City", org?.city],
                       ["State", org?.state],
                       ["Country", org?.country],
