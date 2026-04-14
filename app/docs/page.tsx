@@ -479,7 +479,7 @@ export default function DocsPage() {
             Base URL
           </p>
           <p className="text-[10px] font-mono text-[#64748b] break-all mt-1">
-            https://api.flowpilot.ng
+            https://api.flowpilot.club/api/v1
             <br />
             /api/v1
           </p>
@@ -569,7 +569,7 @@ export default function DocsPage() {
               <div className="flex items-center gap-2 mt-4">
                 <span className="text-xs text-[#4a5568] font-mono">Base URL:</span>
                 <code className="text-xs font-mono text-[#93c5fd] bg-white/5 px-2 py-1 rounded border border-white/10">
-                  https://api.flowpilot.ng/api/v1
+                  https://api.flowpilot.club/api/v1
                 </code>
               </div>
             </div>
@@ -1057,7 +1057,7 @@ async def handle_webhook(request: Request):
               <p className="text-xs text-[#4a5568] mt-1">
                 Questions? Email{" "}
                 <a
-                  href="mailto:dev@flowpilot.ng"
+                  href="mailto:dev@flowpilot.club"
                   className="text-[#64748b] hover:text-[#e86727] transition-colors"
                 >
                   dev@flowpilot.ng
