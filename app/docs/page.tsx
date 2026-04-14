@@ -1060,7 +1060,7 @@ async def handle_webhook(request: Request):
                   href="mailto:dev@flowpilot.club"
                   className="text-[#64748b] hover:text-[#e86727] transition-colors"
                 >
-                  dev@flowpilot.ng
+                  dev@flowpilot.club
                 </a>
               </p>
             </div>
