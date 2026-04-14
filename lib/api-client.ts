@@ -410,11 +410,12 @@ export function acceptInviteToken(
     .then((r) => r.data);
 }
 
-export function changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+export function changePassword(currentPassword: string, newPassword: string, totpCode?: string): Promise<{ message: string }> {
   return apiClient
     .post<{ message: string }>("/auth/me/password", {
       current_password: currentPassword,
       new_password: newPassword,
+      ...(totpCode ? { totp_code: totpCode } : {}),
     })
     .then((r) => r.data);
 }
@@ -443,9 +444,13 @@ export function exportAccountData(): Promise<Blob> {
     .then((r) => r.data as Blob);
 }
 
-export function deleteAccount(): Promise<{ status: string; message: string }> {
+export function requestDeleteCode(): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/account/request-delete-code").then((r) => r.data);
+}
+
+export function deleteAccount(params?: { totp_code?: string; delete_code?: string }): Promise<{ status: string; message: string }> {
   return apiClient
-    .delete<{ status: string; message: string }>("/account/delete")
+    .delete<{ status: string; message: string }>("/account/delete", { data: params ?? {} })
     .then((r) => r.data);
 }
 
@@ -464,8 +469,8 @@ export function enable2FA(code: string): Promise<{ backup_codes: string[] }> {
   return apiClient.post<{ backup_codes: string[] }>("/auth/2fa/enable", { code }).then((r) => r.data);
 }
 
-export function disable2FA(password: string, code: string): Promise<{ message: string }> {
-  return apiClient.post<{ message: string }>("/auth/2fa/disable", { password, code }).then((r) => r.data);
+export function disable2FA(password: string): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/2fa/disable", { password }).then((r) => r.data);
 }
 
 export function verifyMfa(mfa_token: string, code: string): Promise<AuthResponse> {

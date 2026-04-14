@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Download,
   KeyRound,
   Loader2,
   LogOut,
@@ -41,6 +42,7 @@ import {
   useUpdateOrgConfig,
   useExportAccountData,
   useDeleteAccount,
+  useRequestDeleteCode,
 } from "@/hooks/use-settings-queries";
 import { CardSelect, PillSelect, type CardSelectOption } from "@/components/ui/select-fields";
 import {
@@ -72,6 +74,7 @@ export default function SettingsPage() {
   const updateOrgConfigMut = useUpdateOrgConfig();
   const exportData = useExportAccountData();
   const deleteAccount = useDeleteAccount(() => logout());
+  const requestDeleteCode = useRequestDeleteCode();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Business configuration constants
@@ -121,7 +124,7 @@ export default function SettingsPage() {
   };
 
   const handleDisable2FA = async () => {
-    await twoFADisable.mutateAsync({ password: disablePw, code: disableCode });
+    await twoFADisable.mutateAsync(disablePw);
     setTwoFAStep("idle");
     setDisablePw("");
     setDisableCode("");
@@ -137,6 +140,21 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(backupCodes.join("\n"));
     setBackupCopied(true);
     setTimeout(() => setBackupCopied(false), 2000);
+  };
+
+  const downloadBackupCodes = () => {
+    const content = [
+      "FlowPilot — 2FA Backup Codes",
+      "Keep these codes somewhere safe. Each code can only be used once.",
+      "",
+      ...backupCodes,
+    ].join("\n");
+    const url = URL.createObjectURL(new Blob([content], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "flowpilot-backup-codes.txt";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const is2FAEnabled = twoFAStatus.data?.totp_enabled ?? false;
@@ -157,6 +175,12 @@ export default function SettingsPage() {
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
+  const [changePwOtp, setChangePwOtp] = useState("");
+
+  // Delete account verification state
+  const [deleteOtp, setDeleteOtp] = useState("");
+  const [deleteEmailCode, setDeleteEmailCode] = useState("");
+  const [deleteCodeSent, setDeleteCodeSent] = useState(false);
 
   // Org edit state
   const [orgEditing, setOrgEditing] = useState(false);
@@ -178,6 +202,9 @@ export default function SettingsPage() {
 
   const org = orgQuery.data;
   const connections = connectionsQuery.data?.connections ?? [];
+
+  // org enforcement: use mutation result (most recent) or fall back to org profile data
+  const isOrgEnforced: boolean = orgRequire2FA.data?.require_2fa ?? (org?.config?.require_2fa ?? false);
 
   const initials = [user?.first_name?.[0], user?.last_name?.[0]]
     .filter(Boolean)
@@ -208,12 +235,13 @@ export default function SettingsPage() {
   const handlePasswordChange = () => {
     if (newPw !== confirmPw) return;
     changePasswordMut.mutate(
-      { current: currentPw, next: newPw },
+      { current: currentPw, next: newPw, totpCode: is2FAEnabled ? changePwOtp : undefined },
       {
         onSuccess: () => {
           setCurrentPw("");
           setNewPw("");
           setConfirmPw("");
+          setChangePwOtp("");
         },
       }
     );
@@ -593,8 +621,17 @@ export default function SettingsPage() {
                   {newPw && confirmPw && newPw !== confirmPw && (
                     <p className="text-xs text-destructive">Passwords do not match</p>
                   )}
+                  {is2FAEnabled && (
+                    <div className="space-y-1.5 rounded-xl border border-border/60 bg-muted/40 p-3">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-brand" />
+                        Enter your authenticator code to confirm
+                      </p>
+                      <OtpInput length={6} value={changePwOtp} onChange={setChangePwOtp} />
+                    </div>
+                  )}
                   <div>
-                    <Button className="mt-2 rounded-full px-6 shadow-sm" onClick={handlePasswordChange} disabled={changePasswordMut.isPending || !currentPw || !newPw || newPw !== confirmPw}>
+                    <Button className="mt-2 rounded-full px-6 shadow-sm" onClick={handlePasswordChange} disabled={changePasswordMut.isPending || !currentPw || !newPw || newPw !== confirmPw || (is2FAEnabled && changePwOtp.length < 6)}>
                       {changePasswordMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Update Password
                     </Button>
@@ -672,6 +709,9 @@ export default function SettingsPage() {
                       <Button variant="outline" className="rounded-full shadow-sm" onClick={copyBackupCodes}>
                         {backupCopied ? <><CheckCircle2 className="mr-2 h-4 w-4 text-brand" />Copied!</> : <><Copy className="mr-2 h-4 w-4" />Copy All</>}
                       </Button>
+                      <Button variant="outline" className="rounded-full shadow-sm" onClick={downloadBackupCodes}>
+                        <Download className="mr-2 h-4 w-4" />Download
+                      </Button>
                       <Button className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90" onClick={() => setTwoFAStep("idle")}>Done</Button>
                     </div>
                   </div>
@@ -698,17 +738,13 @@ export default function SettingsPage() {
                   <div className="space-y-4 rounded-2xl border border-destructive/20 bg-destructive/5 p-5 shadow-sm">
                     <div className="flex items-center gap-2">
                       <KeyRound className="h-4 w-4 text-destructive" />
-                      <p className="text-sm font-semibold text-foreground">Confirm your identity to disable 2FA</p>
+                      <p className="text-sm font-semibold text-foreground">Enter your password to disable 2FA</p>
                     </div>
-                    <div className="grid gap-3 sm:max-w-sm">
+                    <div className="sm:max-w-sm">
                       <Input type="password" placeholder="Your account password" className="h-10 rounded-xl" value={disablePw} onChange={(e) => setDisablePw(e.target.value)} />
-                      <div className="space-y-1.5">
-                        <p className="text-xs text-muted-foreground">Current authenticator code</p>
-                        <OtpInput length={6} value={disableCode} onChange={setDisableCode} />
-                      </div>
                     </div>
                     <div className="flex gap-3">
-                      <Button variant="destructive" className="rounded-full shadow-sm" onClick={handleDisable2FA} disabled={twoFADisable.isPending || !disablePw || disableCode.length < 6}>
+                      <Button variant="destructive" className="rounded-full shadow-sm" onClick={handleDisable2FA} disabled={twoFADisable.isPending || !disablePw}>
                         {twoFADisable.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Disable 2FA
                       </Button>
@@ -720,23 +756,34 @@ export default function SettingsPage() {
                 {isOwner && (
                   <div className="border-t border-border/50 pt-4 space-y-3">
                     <button type="button" className="flex w-full items-center justify-between text-sm font-semibold text-foreground" onClick={() => setShowOrgEnforce((p) => !p)}>
-                      <span>Organisation-wide 2FA Enforcement</span>
+                      <div className="flex items-center gap-2">
+                        <span>Organisation-wide 2FA Enforcement</span>
+                        {isOrgEnforced && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                            <CheckCircle2 className="h-3 w-3" />Enforced
+                          </span>
+                        )}
+                      </div>
                       {showOrgEnforce ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                     </button>
                     {showOrgEnforce && (
                       <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3 shadow-sm">
                         <p className="text-sm text-muted-foreground">
-                          Require all team members to enable 2FA. Members without 2FA will have a 24-hour grace period before access is restricted.
+                          {isOrgEnforced
+                            ? "2FA is currently enforced for all team members. Members without 2FA are given a 24-hour grace period before access is restricted."
+                            : "Require all team members to enable 2FA. Members without 2FA will have a 24-hour grace period before access is restricted."}
                         </p>
-                        <div className="flex gap-3">
-                          <Button className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90" onClick={() => orgRequire2FA.mutate(true)} disabled={orgRequire2FA.isPending}>
-                            {orgRequire2FA.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Enforce 2FA for Team
-                          </Button>
-                          <Button variant="outline" className="rounded-full shadow-sm" onClick={() => orgRequire2FA.mutate(false)} disabled={orgRequire2FA.isPending}>
+                        {isOrgEnforced ? (
+                          <Button variant="outline" className="rounded-full shadow-sm border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => orgRequire2FA.mutate(false)} disabled={orgRequire2FA.isPending}>
+                            {orgRequire2FA.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldOff className="mr-2 h-4 w-4" />}
                             Remove Enforcement
                           </Button>
-                        </div>
+                        ) : (
+                          <Button className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90" onClick={() => orgRequire2FA.mutate(true)} disabled={orgRequire2FA.isPending}>
+                            {orgRequire2FA.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                            Enforce 2FA for Team
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -779,7 +826,7 @@ export default function SettingsPage() {
                     <p className="font-bold text-destructive">Delete Account</p>
                     <p className="mt-0.5 text-sm text-destructive/80">Permanently deactivates your account and entire workspace. This cannot be undone.</p>
                   </div>
-                  <Button variant="destructive" className="shrink-0 rounded-full shadow-sm" onClick={() => { setDeleteOpen(true); setDeleteConfirmText(""); }}>
+                  <Button variant="destructive" className="shrink-0 rounded-full shadow-sm" onClick={() => { setDeleteOpen(true); setDeleteConfirmText(""); setDeleteOtp(""); setDeleteEmailCode(""); setDeleteCodeSent(false); }}>
                     <Trash2 className="mr-2 h-4 w-4" /> Delete Account
                   </Button>
                 </div>
@@ -817,10 +864,53 @@ export default function SettingsPage() {
                 </label>
                 <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)} placeholder="DELETE" className="h-10 rounded-xl font-mono" autoComplete="off" />
               </div>
+
+              {/* ── Verification ── */}
+              {is2FAEnabled ? (
+                <div className="space-y-1.5 rounded-xl border border-border/60 bg-muted/40 p-3">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5 text-brand" />
+                    Enter your authenticator code
+                  </p>
+                  <OtpInput length={6} value={deleteOtp} onChange={setDeleteOtp} />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Verify your identity via email code
+                  </p>
+                  {!deleteCodeSent ? (
+                    <Button variant="outline" className="rounded-full shadow-sm w-full" onClick={() => requestDeleteCode.mutate(undefined, { onSuccess: () => setDeleteCodeSent(true) })} disabled={requestDeleteCode.isPending}>
+                      {requestDeleteCode.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Send Verification Code
+                    </Button>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Enter the 6-digit code sent to your email</p>
+                      <OtpInput length={6} value={deleteEmailCode} onChange={setDeleteEmailCode} />
+                      <button type="button" className="text-xs text-brand underline-offset-2 hover:underline" onClick={() => requestDeleteCode.mutate(undefined, { onSuccess: () => setDeleteCodeSent(true) })} disabled={requestDeleteCode.isPending}>
+                        Resend code
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
               <Button variant="ghost" className="rounded-full px-6" onClick={() => setDeleteOpen(false)} disabled={deleteAccount.isPending}>Cancel</Button>
-              <Button variant="destructive" className="rounded-full px-6 shadow-sm" disabled={deleteConfirmText !== "DELETE" || deleteAccount.isPending} onClick={() => deleteAccount.mutate()}>
+              <Button
+                variant="destructive"
+                className="rounded-full px-6 shadow-sm"
+                disabled={
+                  deleteConfirmText !== "DELETE" ||
+                  deleteAccount.isPending ||
+                  (is2FAEnabled ? deleteOtp.length < 6 : !deleteCodeSent || deleteEmailCode.length < 6)
+                }
+                onClick={() => deleteAccount.mutate(
+                  is2FAEnabled ? { totp_code: deleteOtp } : { delete_code: deleteEmailCode }
+                )}
+              >
                 {deleteAccount.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</> : <><Trash2 className="mr-2 h-4 w-4" />Delete Everything</>}
               </Button>
             </div>
