@@ -25,7 +25,7 @@ export function LandingHero() {
 
         <p className="mx-auto mt-6 max-w-120 text-center text-[12px] leading-relaxed text-[#6B6B6B] md:text-[16px]">
           FlowPilot turns operator goals into supervised runs. Agents reconcile,
-          score risk, verify recipients, and execute approved payouts — with
+          score risk, verify recipients, and execute approved payouts with
           full traceability.
         </p>
 
