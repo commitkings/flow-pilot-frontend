@@ -14,7 +14,7 @@ export interface Webhook {
   url: string;
   events: string[];
   is_active: boolean;
-  secret: string;
+  secret: string | null;   // only present on creation, null when listing
   created_at: string;
   last_triggered_at: string | null;
   failure_count: number;
