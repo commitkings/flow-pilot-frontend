@@ -264,8 +264,8 @@ export default function RunsPage() {
           <RunTemplatesPicker
             open={templatesOpen}
             onClose={() => setTemplatesOpen(false)}
-            onSelect={() => {
-              router.push("/dashboard/runs/new");
+            onSelect={(objective) => {
+              router.push(`/dashboard/runs/new?objective=${encodeURIComponent(objective)}`);
             }}
           />
         </div>

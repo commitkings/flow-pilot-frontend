@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { ArrowLeft, Download, MessageSquare, Plus, Rocket, Settings2, Trash2, Upload, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, TextareaInput, DateRangeInput, SelectInput, NumericInput, AmountInput } from "@/components/ui/form-fields";
 import { naira } from "@/lib/mock-data";
@@ -64,6 +64,7 @@ function emptyRow(values: Partial<Recipient> = {}): Recipient {
 
 export default function NewRunPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const businessId = user?.memberships?.[0]?.business_id;
   const role = user?.memberships?.[0]?.role;
@@ -93,7 +94,7 @@ export default function NewRunPage() {
   );
   const institutionsError = institutionsIsError ? "Unable to load institutions." : null;
 
-  const [objective, setObjective] = useState("");
+  const [objective, setObjective] = useState(() => searchParams.get("objective") ?? "");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [riskTolerance, setRiskTolerance] = useState(0.35);

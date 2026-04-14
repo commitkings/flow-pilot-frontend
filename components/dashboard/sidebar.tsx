@@ -159,7 +159,6 @@ export function Sidebar() {
   const { collapsed, mobileMenuOpen, toggleMobileMenu } = useDashboardShell();
   const { user, logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const displayName = user?.display_name?.trim() || user?.email || "Account";
   const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
   const userRole = getUserRole(user);
@@ -186,48 +185,32 @@ export function Sidebar() {
   );
 
   const userSection = (isCollapsed?: boolean) => (
-    <div className="relative">
-      {showUserMenu && (
-        <>
-          {/* click-outside overlay */}
-          <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
-          <div className="absolute bottom-full left-0 right-0 z-20 mb-2 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-            <button
-              type="button"
-              onClick={() => { setShowUserMenu(false); setShowLogoutModal(true); }}
-              className="flex w-full items-center gap-2.5 px-4 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/20"
-            >
-              <LogOut className="h-4 w-4 shrink-0" />
-              Log out
-            </button>
-          </div>
-        </>
+    <div className={cn("flex items-center gap-2.5", isCollapsed && "flex-col")}>
+      <Avatar className="h-8 w-8 shrink-0 border-2 border-background shadow-sm">
+        {user?.avatar_url ? (
+          <AvatarImage src={user.avatar_url} alt="" className="object-cover" />
+        ) : null}
+        <AvatarFallback className="bg-brand text-white font-bold text-xs">
+          {getInitials(displayName)}
+        </AvatarFallback>
+      </Avatar>
+
+      {!isCollapsed && (
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
+          <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            {roleLabel}
+          </p>
+        </div>
       )}
+
       <button
         type="button"
-        onClick={() => setShowUserMenu((v) => !v)}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-muted/60",
-          isCollapsed && "justify-center",
-          showUserMenu && "bg-muted/60"
-        )}
+        title="Log out"
+        onClick={() => setShowLogoutModal(true)}
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
       >
-        <Avatar className="h-7 w-7 shrink-0 border-2 border-background shadow-sm">
-          {user?.avatar_url ? (
-            <AvatarImage src={user.avatar_url} alt="" className="object-cover" />
-          ) : null}
-          <AvatarFallback className="bg-brand text-white font-bold text-xs">
-            {getInitials(displayName)}
-          </AvatarFallback>
-        </Avatar>
-        {!isCollapsed && (
-          <div className="min-w-0 flex-1 text-left">
-            <p className="truncate text-sm font-black text-foreground">{displayName}</p>
-            <p className="truncate text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {roleLabel}
-            </p>
-          </div>
-        )}
+        <LogOut className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -260,7 +243,7 @@ export function Sidebar() {
           {renderNav(collapsed)}
         </nav>
 
-        <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
+        <div className="px-4 py-3 border-t border-border/50 bg-muted/30">
           {userSection(collapsed)}
         </div>
       </aside>
