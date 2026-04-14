@@ -7,7 +7,7 @@ import { AccountStep } from "@/components/auth/AccountStep";
 import { useAuth } from "@/context/auth-context";
 
 export default function SignupPage() {
-  const { registerUser } = useAuth();
+  const { registerUser, loginWithGoogle } = useAuth();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -95,6 +95,7 @@ export default function SignupPage() {
             showConfirm={showConfirm} onToggleConfirm={() => setShowConfirm((p) => !p)}
             passwordMismatch={submitted && confirmPassword.length > 0 && password !== confirmPassword}
             onSubmit={onSubmit}
+            onGoogle={loginWithGoogle}
             loading={loading}
           />
         </div>

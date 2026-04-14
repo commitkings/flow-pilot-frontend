@@ -1,4 +1,4 @@
-import { Field, SelectInput, TextInput, AmountInput, NumericInput } from "@/components/ui/form-fields";
+import { Field, SelectInput, AmountInput, NumericInput } from "@/components/ui/form-fields";
 
 const states = [
   "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
@@ -10,8 +10,6 @@ const states = [
 ];
 
 interface Step2Props {
-  merchantAccountId: string;
-  setMerchantAccountId: (v: string) => void;
   merchantState: string;
   setMerchantState: (v: string) => void;
   dailyPayoutLimit: string;
@@ -25,7 +23,6 @@ interface Step2Props {
 }
 
 export function Step2FinancialSetup({
-  merchantAccountId, setMerchantAccountId,
   merchantState, setMerchantState,
   dailyPayoutLimit, setDailyPayoutLimit,
   singlePayoutLimit, setSinglePayoutLimit,
@@ -34,10 +31,6 @@ export function Step2FinancialSetup({
 }: Step2Props) {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <Field label="Interswitch Merchant Account ID" className="md:col-span-2">
-        <TextInput value={merchantAccountId} onChange={setMerchantAccountId} placeholder="Enter merchant account ID" />
-      </Field>
-
       <Field label="Registered State">
         <SelectInput value={merchantState} onChange={setMerchantState} placeholder="Select state" options={states} />
       </Field>

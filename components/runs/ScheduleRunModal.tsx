@@ -22,10 +22,16 @@ function nextMonday(): Date {
   return d;
 }
 
-function nextBiweeklyMonday(): Date {
-  const first = nextMonday();
-  first.setDate(first.getDate() + 14);
-  return first;
+function nextBiMonthly(): Date {
+  // Returns the next occurrence of the 1st or 15th of the month at 9am
+  const now = new Date();
+  const targets = [1, 15];
+  for (const day of targets) {
+    const candidate = new Date(now.getFullYear(), now.getMonth(), day, 9, 0, 0);
+    if (candidate > now) return candidate;
+  }
+  // Both are past this month — return the 1st of next month
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1, 9, 0, 0);
 }
 
 function nextMonthDay(day: number): Date {
@@ -59,10 +65,10 @@ const FREQUENCY_OPTIONS: FrequencyOption[] = [
     nextRunFn: nextMonday,
   },
   {
-    label: "Bi-weekly (every 2 weeks)",
+    label: "Bi-monthly (1st & 15th)",
     value: "biweekly",
-    cron: "0 9 */14 * *",
-    nextRunFn: nextBiweeklyMonday,
+    cron: "0 9 1,15 * *",
+    nextRunFn: nextBiMonthly,
   },
   {
     label: "Monthly on the 1st",
@@ -84,10 +90,20 @@ const FREQUENCY_OPTIONS: FrequencyOption[] = [
   },
 ];
 
-const SELECT_OPTIONS = FREQUENCY_OPTIONS.map((o) => ({
-  label: o.label,
-  value: o.value,
-}));
+const SELECT_OPTIONS = [
+  ...FREQUENCY_OPTIONS.map((o) => ({ label: o.label, value: o.value })),
+  { label: "Custom (cron expression)", value: "custom" },
+];
+
+/** Very basic 5-field cron validator — catches obviously malformed input. */
+function isValidCron(expr: string): boolean {
+  const trimmed = expr.trim();
+  if (!trimmed) return false;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length !== 5) return false;
+  // Each field: digits, *, , - /  only
+  return parts.every((p) => /^[0-9*,\-/]+$/.test(p));
+}
 
 function formatNextRun(date: Date): string {
   return date.toLocaleString("en-NG", {
@@ -115,32 +131,42 @@ export function ScheduleRunModal({
   const [name, setName] = useState("");
   const [objective, setObjective] = useState(objectivePreset);
   const [frequency, setFrequency] = useState("");
+  const [customCron, setCustomCron] = useState("");
 
   const { mutate: createScheduledRun, isPending } = useCreateScheduledRun();
 
+  const isCustom = frequency === "custom";
   const selectedOption = FREQUENCY_OPTIONS.find((o) => o.value === frequency);
   const nextRun = selectedOption ? formatNextRun(selectedOption.nextRunFn()) : null;
+  const customCronValid = isCustom ? isValidCron(customCron) : true;
 
   const canSubmit =
     name.trim().length > 0 &&
     objective.trim().length > 0 &&
     frequency.length > 0 &&
+    (!isCustom || customCronValid) &&
     !isPending;
 
   const handleSubmit = () => {
-    if (!canSubmit || !selectedOption) return;
+    if (!canSubmit) return;
+    const cron_expression = isCustom ? customCron.trim() : selectedOption!.cron;
+    const frequency_label = isCustom
+      ? `Custom: ${customCron.trim()}`
+      : selectedOption!.label;
+
     createScheduledRun(
       {
         name: name.trim(),
         objective: objective.trim(),
-        cron_expression: selectedOption.cron,
-        frequency_label: selectedOption.label,
+        cron_expression,
+        frequency_label,
       },
       {
         onSuccess: () => {
           setName("");
           setObjective(objectivePreset);
           setFrequency("");
+          setCustomCron("");
           onClose();
         },
       },
@@ -199,11 +225,39 @@ export function ScheduleRunModal({
             <Field label="Frequency">
               <SelectInput
                 value={frequency}
-                onChange={setFrequency}
+                onChange={(val) => {
+                  setFrequency(val);
+                  if (val !== "custom") setCustomCron("");
+                }}
                 placeholder="Select frequency..."
                 options={SELECT_OPTIONS}
               />
             </Field>
+
+            {isCustom && (
+              <Field label="Cron Expression">
+                <div className="space-y-1.5">
+                  <TextInput
+                    value={customCron}
+                    onChange={setCustomCron}
+                    placeholder="e.g. 0 9 * * * (daily at 9am)"
+                  />
+                  <p className="px-1 text-[11px] text-muted-foreground">
+                    5 fields: minute hour day month weekday.{" "}
+                    {customCron.trim() && !customCronValid && (
+                      <span className="font-semibold text-destructive">
+                        Invalid expression.
+                      </span>
+                    )}
+                    {customCronValid && customCron.trim() && (
+                      <span className="font-semibold text-green-500">
+                        Looks valid.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </Field>
+            )}
 
             {nextRun && (
               <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/40 px-4 py-3">

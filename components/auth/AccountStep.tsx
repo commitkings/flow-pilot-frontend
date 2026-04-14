@@ -25,6 +25,7 @@ interface AccountStepProps {
   onToggleConfirm: () => void;
   passwordMismatch: boolean;
   onSubmit: (e: { preventDefault(): void }) => void;
+  onGoogle?: () => void;
   loading?: boolean;
 }
 
@@ -44,6 +45,7 @@ export function AccountStep({
   showConfirm,
   onToggleConfirm,
   onSubmit,
+  onGoogle,
   loading = false,
 }: AccountStepProps) {
   return (
@@ -62,6 +64,7 @@ export function AccountStep({
         <Button
           type="button"
           variant="outline"
+          onClick={onGoogle}
           className="group relative h-12 w-full rounded-full border-border-strong bg-background px-8 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.98]"
         >
           <div className="flex items-center justify-center gap-3">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  Bell,
   CalendarClock,
   CalendarX2,
   Loader2,
@@ -71,7 +72,17 @@ function ScheduledRunRow({ run }: { run: ScheduledRun }) {
         <span className="text-sm text-foreground">{run.frequency_label}</span>
       </td>
       <td className="hidden px-6 py-4 text-sm text-muted-foreground lg:table-cell">
-        {formatDatetime(run.next_run_at)}
+        <div className="flex flex-col gap-1">
+          <span>{formatDatetime(run.next_run_at)}</span>
+          {/* Show badge if reminder was sent for this exact upcoming occurrence */}
+          {run.last_reminded_at && run.next_run_at &&
+            run.last_reminded_at === run.next_run_at && (
+            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
+              <Bell className="h-2.5 w-2.5" />
+              Reminder sent
+            </span>
+          )}
+        </div>
       </td>
       <td className="hidden px-6 py-4 text-sm text-muted-foreground xl:table-cell">
         {formatDatetime(run.last_run_at)}

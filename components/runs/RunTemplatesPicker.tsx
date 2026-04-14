@@ -19,14 +19,16 @@ export function RunTemplatesPicker({
 }: RunTemplatesPickerProps) {
   const { templates, saveTemplate, deleteTemplate } = useRunTemplates();
   const [templateName, setTemplateName] = useState("");
+  const [templateObjective, setTemplateObjective] = useState("");
 
   if (!open) return null;
 
   const handleSave = () => {
-    const trimmed = templateName.trim();
-    if (!trimmed) return;
-    saveTemplate(trimmed, "");
+    const trimmedName = templateName.trim();
+    if (!trimmedName) return;
+    saveTemplate(trimmedName, templateObjective.trim());
     setTemplateName("");
+    setTemplateObjective("");
     toast.success("Template saved.");
   };
 
@@ -136,24 +138,28 @@ export function RunTemplatesPicker({
         </div>
 
         {/* Footer: save new template */}
-        <div className="sticky bottom-0 border-t border-border bg-card px-6 py-4">
-          <p className="mb-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground/70">
+        <div className="sticky bottom-0 border-t border-border bg-card px-6 py-4 space-y-3">
+          <p className="text-[11px] font-black uppercase tracking-wider text-muted-foreground/70">
             Save new template
           </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSave();
-              }}
-              placeholder="Template name..."
-              className="h-10 flex-1 rounded-full border border-border bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
+          <input
+            type="text"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            placeholder="Template name..."
+            className="h-10 w-full rounded-full border border-border bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
+          />
+          <div className="flex gap-2 items-end">
+            <textarea
+              value={templateObjective}
+              onChange={(e) => setTemplateObjective(e.target.value)}
+              placeholder="Objective (optional) — e.g. Reconcile February payroll..."
+              rows={2}
+              className="flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
             />
             <Button
               size="sm"
-              className="h-10 rounded-full bg-brand px-4 text-white hover:opacity-90"
+              className="h-10 shrink-0 rounded-full bg-brand px-4 text-white hover:opacity-90"
               disabled={!templateName.trim()}
               onClick={handleSave}
             >
