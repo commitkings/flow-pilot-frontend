@@ -22,9 +22,15 @@ function CallbackHandler() {
       return;
     }
 
+    const requires2fa = searchParams.get("requires_2fa_setup") === "true";
+
     loginWithToken(token)
       .then(() => {
-        router.replace("/dashboard/runs");
+        if (requires2fa) {
+          router.replace("/dashboard/settings?tab=security&setup2fa=1");
+        } else {
+          router.replace("/dashboard/runs");
+        }
       })
       .catch(() => {
         router.replace("/login");

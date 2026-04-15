@@ -47,9 +47,14 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await loginWithCredentials(email.trim(), password);
-      if (result && result.mfa_required) {
+      if (result && "mfa_required" in result && result.mfa_required) {
         // Show the TOTP code step instead of redirecting
         setMfaToken(result.mfa_token);
+        return;
+      }
+      if (result && "requires_2fa_setup" in result && result.requires_2fa_setup) {
+        // Org requires 2FA — redirect straight to the security settings setup flow
+        router.push("/dashboard/settings?tab=security&setup2fa=1");
         return;
       }
       setSuccess(true);

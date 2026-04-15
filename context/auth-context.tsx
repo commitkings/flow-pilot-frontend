@@ -19,6 +19,10 @@ export interface MfaChallenge {
   mfa_token: string;
 }
 
+export interface Requires2FASetup {
+  requires_2fa_setup: true;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -30,8 +34,9 @@ interface AuthContextType {
   /**
    * Sign in with email + password.
    * Returns `MfaChallenge` when 2FA is required — caller must present TOTP code.
+   * Returns `Requires2FASetup` when org enforces 2FA and user hasn't configured it.
    */
-  loginWithCredentials: (email: string, password: string) => Promise<MfaChallenge | void>;
+  loginWithCredentials: (email: string, password: string) => Promise<MfaChallenge | Requires2FASetup | void>;
   /** Register new account, store token, hydrate user */
   registerUser: (name: string, email: string, password: string) => Promise<void>;
   /** Redirect browser to backend Google OAuth */
@@ -94,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const loginWithCredentials = useCallback(async (email: string, password: string): Promise<MfaChallenge | void> => {
+  const loginWithCredentials = useCallback(async (email: string, password: string): Promise<MfaChallenge | Requires2FASetup | void> => {
     setIsLoading(true);
     try {
       const response = await apiLogin(email, password);
@@ -103,10 +108,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
         return response as MfaChallenge;
       }
-      const { token } = response as { token: string };
+      const { token, requires_2fa_setup } = response as { token: string; requires_2fa_setup?: boolean };
       setToken(token);
       const me = await fetchMe();
       setUser(me);
+      // Org enforces 2FA and user hasn't set it up — signal the caller to redirect
+      if (requires_2fa_setup) {
+        setIsLoading(false);
+        return { requires_2fa_setup: true } as Requires2FASetup;
+      }
     } catch (err) {
       clearToken();
       const message = err instanceof Error ? err.message : "Invalid email or password";
