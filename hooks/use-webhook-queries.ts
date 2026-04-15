@@ -7,6 +7,8 @@ import {
   createWebhook,
   deleteWebhook,
   toggleWebhook,
+  listWebhookDeliveries,
+  updateWebhook,
 } from "@/lib/api-developer";
 import type { CreateWebhookPayload, CreateWebhookResponse } from "@/lib/api-developer";
 
@@ -58,6 +60,30 @@ export function useToggleWebhook() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["webhooks"] });
       toast.success(data.is_active ? "Webhook enabled" : "Webhook disabled");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to update webhook");
+    },
+  });
+}
+
+export function useWebhookDeliveries(webhookId: string | null) {
+  return useQuery({
+    queryKey: ["webhook-deliveries", webhookId],
+    queryFn: () => listWebhookDeliveries(webhookId!),
+    enabled: !!webhookId,
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateWebhook() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: string; url?: string; events?: string[]; is_active?: boolean }) =>
+      updateWebhook(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+      toast.success("Webhook updated");
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to update webhook");

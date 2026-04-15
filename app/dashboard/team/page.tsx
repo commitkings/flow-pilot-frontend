@@ -79,6 +79,7 @@ function PendingInviteActions({ member }: { member: TeamMember }) {
   const revokeInvite = useRevokeInvitation();
   const resendInvite = useResendInvitation();
   const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [revoked, setRevoked] = useState(false);
 
   const busy = revokeInvite.isPending || resendInvite.isPending;
 
@@ -88,9 +89,22 @@ function PendingInviteActions({ member }: { member: TeamMember }) {
       setTimeout(() => setConfirmRevoke(false), 3000);
       return;
     }
-    revokeInvite.mutate(member.id);
+    revokeInvite.mutate(member.id, {
+      onSuccess: () => {
+        setRevoked(true);
+      },
+    });
     setConfirmRevoke(false);
   };
+
+  // Show a brief "Revoked" badge for visual feedback before the row disappears
+  if (revoked) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-[10px] font-semibold text-red-700">
+        Revoked
+      </span>
+    );
+  }
 
   return (
     <DropdownMenu>

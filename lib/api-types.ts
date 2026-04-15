@@ -606,6 +606,11 @@ export interface RegisterViaInvitePayload {
   password: string;
 }
 
+export interface RegisterViaInviteResponse extends AuthResponse {
+  /** When true, the user must complete 2FA setup before using the app. */
+  requires_2fa_setup: boolean;
+}
+
 export interface InviteResult {
   status: "added" | "invited";
   /** Present when status === "added" */

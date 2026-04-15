@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Loader2,
+  Pencil,
   Plus,
   Trash2,
-  AlertTriangle,
   Webhook,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +21,8 @@ import {
   useCreateWebhook,
   useDeleteWebhook,
   useToggleWebhook,
+  useWebhookDeliveries,
+  useUpdateWebhook,
 } from "@/hooks/use-webhook-queries";
 import type { Webhook as WebhookType } from "@/lib/api-developer";
 
@@ -30,6 +36,223 @@ const WEBHOOK_EVENTS = [
   { value: "candidate.flagged", label: "Candidate Flagged" },
 ] as const;
 
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+// ── Inline detail panel shown when a webhook card is expanded ─────────────────
+
+function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
+  const deliveriesQuery = useWebhookDeliveries(hook.id);
+  const updateWebhookMut = useUpdateWebhook();
+
+  const [editMode, setEditMode] = useState(false);
+  const [editUrl, setEditUrl] = useState(hook.url);
+  const [editEvents, setEditEvents] = useState<string[]>(hook.events);
+
+  const toggleEditEvent = (event: string) => {
+    setEditEvents((prev) =>
+      prev.includes(event) ? prev.filter((e) => e !== event) : [...prev, event]
+    );
+  };
+
+  const handleSave = () => {
+    updateWebhookMut.mutate(
+      { id: hook.id, url: editUrl, events: editEvents },
+      {
+        onSuccess: () => setEditMode(false),
+      }
+    );
+  };
+
+  const deliveries = deliveriesQuery.data?.deliveries ?? [];
+
+  return (
+    <div className="mt-3 border-t border-border/40 pt-4 space-y-5">
+      {/* ── Edit section ──────────────────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Configuration
+          </p>
+          {!editMode && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full text-xs gap-1.5"
+              onClick={() => {
+                setEditUrl(hook.url);
+                setEditEvents([...hook.events]);
+                setEditMode(true);
+              }}
+            >
+              <Pencil className="h-3 w-3" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {editMode ? (
+          <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Endpoint URL</label>
+              <Input
+                type="url"
+                className="h-9 rounded-xl font-mono text-sm"
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Events</label>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                {WEBHOOK_EVENTS.map(({ value, label }) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm transition-colors hover:bg-muted/40 has-[:checked]:border-brand/40 has-[:checked]:bg-brand/5"
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 accent-brand"
+                      checked={editEvents.includes(value)}
+                      onChange={() => toggleEditEvent(value)}
+                    />
+                    <span className="font-mono text-xs text-foreground">{value}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="rounded-full bg-brand px-5 text-xs text-white shadow-sm hover:opacity-90"
+                onClick={handleSave}
+                disabled={
+                  updateWebhookMut.isPending ||
+                  !editUrl ||
+                  editEvents.length === 0
+                }
+              >
+                {updateWebhookMut.isPending ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full text-xs"
+                onClick={() => setEditMode(false)}
+                disabled={updateWebhookMut.isPending}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <p className="font-mono text-xs text-muted-foreground break-all">{hook.url}</p>
+            <div className="flex flex-wrap gap-1">
+              {hook.events.map((ev) => (
+                <span
+                  key={ev}
+                  className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[11px] text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                >
+                  {ev}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Delivery history ───────────────────────────────────────────────── */}
+      <div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Recent Deliveries
+        </p>
+
+        {deliveriesQuery.isLoading ? (
+          <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Loading delivery history…
+          </div>
+        ) : deliveries.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            No deliveries recorded yet.
+          </p>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-border/60">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                    Event
+                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground hidden sm:table-cell">
+                    Code
+                  </th>
+                  <th className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider text-muted-foreground hidden md:table-cell">
+                    Delivered
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {deliveries.map((d) => (
+                  <tr key={d.id} className="hover:bg-muted/20">
+                    <td className="px-3 py-2">
+                      {d.success ? (
+                        <CheckCircle2 className="h-4 w-4 text-teal-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-foreground">
+                      {d.event_name}
+                    </td>
+                    <td className="px-3 py-2 hidden sm:table-cell">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          d.success
+                            ? "bg-teal-50 text-teal-700"
+                            : "bg-red-50 text-red-700"
+                        }`}
+                      >
+                        {d.status_code ?? "—"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-[11px] text-muted-foreground hidden md:table-cell">
+                      {formatDate(d.delivered_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function WebhooksSection() {
   const webhooksQuery = useWebhooks();
   const createWebhook = useCreateWebhook();
@@ -42,6 +265,7 @@ export function WebhooksSection() {
   const [newSecret, setNewSecret] = useState<string | null>(null);
   const [secretCopied, setSecretCopied] = useState(false);
   const [verificationFailed, setVerificationFailed] = useState(false);
+  const [selectedWebhookId, setSelectedWebhookId] = useState<string | null>(null);
 
   const webhooks: WebhookType[] = webhooksQuery.data?.webhooks ?? [];
 
@@ -80,6 +304,10 @@ export function WebhooksSection() {
     setNewSecret(null);
     setSecretCopied(false);
     setVerificationFailed(false);
+  };
+
+  const toggleExpand = (id: string) => {
+    setSelectedWebhookId((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -157,66 +385,96 @@ export function WebhooksSection() {
         </div>
       ) : (
         <div className="space-y-3">
-          {webhooks.map((hook) => (
-            <div
-              key={hook.id}
-              className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-brand/30 sm:flex-row sm:items-start sm:justify-between"
-            >
-              <div className="min-w-0 flex-1 space-y-2">
-                <p className="break-all font-mono text-sm font-semibold text-foreground">
-                  {hook.url}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {hook.events.map((ev) => (
-                    <span
-                      key={ev}
-                      className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 font-mono text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+          {webhooks.map((hook) => {
+            const isExpanded = selectedWebhookId === hook.id;
+            return (
+              <div
+                key={hook.id}
+                className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all hover:border-brand/30"
+              >
+                {/* Card header row — clickable to expand */}
+                <div
+                  className="flex flex-col gap-3 cursor-pointer sm:flex-row sm:items-start sm:justify-between"
+                  onClick={() => toggleExpand(hook.id)}
+                >
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <p className="break-all font-mono text-sm font-semibold text-foreground">
+                      {hook.url}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {hook.events.map((ev) => (
+                        <span
+                          key={ev}
+                          className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 font-mono text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                        >
+                          {ev}
+                        </span>
+                      ))}
+                    </div>
+                    {hook.failure_count > 0 && (
+                      <p className="flex items-center gap-1 text-xs font-medium text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        {hook.failure_count} delivery failure{hook.failure_count !== 1 ? "s" : ""} — auto-disabled after 5
+                      </p>
+                    )}
+                    {!hook.is_active && hook.failure_count === 0 && (
+                      <p className="flex items-center gap-1 text-xs font-medium text-amber-600">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Inactive — endpoint did not pass the verification ping. Enable once your URL is ready.
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className="flex shrink-0 items-center gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={`rounded-full text-xs shadow-sm ${
+                        hook.is_active
+                          ? "border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-300"
+                          : "border-border/60 text-muted-foreground"
+                      }`}
+                      onClick={() =>
+                        toggleWebhookMut.mutate({ id: hook.id, is_active: !hook.is_active })
+                      }
+                      disabled={toggleWebhookMut.isPending}
                     >
-                      {ev}
-                    </span>
-                  ))}
+                      {hook.is_active ? "Active" : "Inactive"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        deleteWebhookMut.mutate(hook.id);
+                        if (selectedWebhookId === hook.id) setSelectedWebhookId(null);
+                      }}
+                      disabled={deleteWebhookMut.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full text-muted-foreground hover:text-foreground"
+                      onClick={() => toggleExpand(hook.id)}
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
-                {hook.failure_count > 0 && (
-                  <p className="flex items-center gap-1 text-xs font-medium text-destructive">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    {hook.failure_count} delivery failure{hook.failure_count !== 1 ? "s" : ""} — auto-disabled after 5
-                  </p>
-                )}
-                {!hook.is_active && hook.failure_count === 0 && (
-                  <p className="flex items-center gap-1 text-xs font-medium text-amber-600">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Inactive — endpoint did not pass the verification ping. Enable once your URL is ready.
-                  </p>
-                )}
+
+                {/* Expanded detail panel */}
+                {isExpanded && <WebhookDetailPanel hook={hook} />}
               </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`rounded-full text-xs shadow-sm ${
-                    hook.is_active
-                      ? "border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-300"
-                      : "border-border/60 text-muted-foreground"
-                  }`}
-                  onClick={() =>
-                    toggleWebhookMut.mutate({ id: hook.id, is_active: !hook.is_active })
-                  }
-                  disabled={toggleWebhookMut.isPending}
-                >
-                  {hook.is_active ? "Active" : "Inactive"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => deleteWebhookMut.mutate(hook.id)}
-                  disabled={deleteWebhookMut.isPending}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

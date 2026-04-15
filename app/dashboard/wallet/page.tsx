@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Plus, RefreshCw } from "lucide-react";
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Plus, RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWallet, useWalletTransactions, useTopUpWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/context/auth-context";
@@ -154,7 +154,7 @@ export default function WalletPage() {
 
   if (!user || role === "analyst") return null;
 
-  const { data: wallet, isLoading: walletLoading, refetch: refetchWallet } = useWallet();
+  const { data: wallet, isLoading: walletLoading, isError: walletError, error: walletErrorObj, refetch: refetchWallet } = useWallet();
   const [page, setPage] = useState(0);
   const offset = page * PAGE_SIZE;
   const { data: txData, isLoading: txLoading } = useWalletTransactions(PAGE_SIZE, offset);
@@ -162,6 +162,41 @@ export default function WalletPage() {
   const [showTopUp, setShowTopUp] = useState(false);
 
   const totalPages = txData ? Math.ceil(txData.total / PAGE_SIZE) : 0;
+
+  // ── KYC error gate ─────────────────────────────────────────────────────────
+  const walletErrorMessage = walletError && walletErrorObj instanceof Error ? walletErrorObj.message : "";
+  const isKycError = walletError && walletErrorMessage.toUpperCase().includes("KYC");
+
+  if (isKycError) {
+    const isPending = walletErrorMessage.toLowerCase().includes("pending");
+    const isRejected = walletErrorMessage.toLowerCase().includes("rejected");
+
+    return (
+      <div className="mx-auto max-w-3xl space-y-8 px-4 py-8 md:px-6">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-foreground">Wallet</h1>
+        </div>
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center">
+          <ShieldAlert className="h-10 w-10 text-amber-500" />
+          <h2 className="text-xl font-bold text-amber-900">
+            {isRejected ? "KYC Verification Rejected" : "KYC Verification Required"}
+          </h2>
+          <p className="max-w-md text-sm text-amber-700">
+            {isRejected
+              ? "Your identity verification was rejected. Please resubmit your documents to access your wallet."
+              : isPending
+              ? "Your identity verification is under review. Wallet access will be enabled once your KYC is approved."
+              : "Complete identity verification to access your wallet. This helps us keep your funds safe and comply with financial regulations."}
+          </p>
+          {!isPending && (
+            <Button onClick={() => router.push("/dashboard/settings?tab=workspace")}>
+              {isRejected ? "Resubmit Verification" : "Complete Verification"}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-4 py-8 md:px-6">

@@ -48,6 +48,30 @@ export function toggleWebhook(id: string, is_active: boolean): Promise<Webhook> 
   return apiClient.patch<Webhook>(`/developer/webhooks/${id}`, { is_active }).then((r) => r.data);
 }
 
+export interface WebhookDelivery {
+  id: string;
+  webhook_id: string;
+  event_name: string;
+  delivery_id: string;
+  status_code: number | null;
+  success: boolean;
+  error_message: string | null;
+  delivered_at: string;
+}
+
+export interface WebhookDeliveriesResponse {
+  deliveries: WebhookDelivery[];
+  total: number;
+}
+
+export function listWebhookDeliveries(webhookId: string): Promise<WebhookDeliveriesResponse> {
+  return apiClient.get<WebhookDeliveriesResponse>(`/developer/webhooks/${webhookId}/deliveries`).then((r) => r.data);
+}
+
+export function updateWebhook(id: string, payload: { url?: string; events?: string[]; is_active?: boolean }): Promise<Webhook> {
+  return apiClient.patch<Webhook>(`/developer/webhooks/${id}`, payload).then((r) => r.data);
+}
+
 // ── API Keys ──────────────────────────────────────────────────────────────────
 
 export interface ApiKey {

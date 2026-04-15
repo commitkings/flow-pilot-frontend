@@ -441,9 +441,9 @@ export function getInviteDetails(
 
 export function registerViaInvite(
   payload: import("./api-types").RegisterViaInvitePayload,
-): Promise<AuthResponse> {
+): Promise<import("./api-types").RegisterViaInviteResponse> {
   return apiClient
-    .post<AuthResponse>("/auth/register-via-invite", payload)
+    .post<import("./api-types").RegisterViaInviteResponse>("/auth/register-via-invite", payload)
     .then((r) => r.data);
 }
 

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, PasswordInput, TextInput } from "@/components/ui/form-fields";
 import { AuthAside } from "@/components/auth/AuthAside";
 import { getInviteDetails, registerViaInvite } from "@/lib/api-client";
+import { setToken } from "@/lib/token-storage";
 import type { InviteDetails } from "@/lib/api-types";
 
 function RoleBadge({ role }: { role: string }) {
@@ -59,12 +60,19 @@ function AcceptInviteForm() {
     if (!canSubmit) return;
     setLoading(true);
     try {
-      await registerViaInvite({
+      const data = await registerViaInvite({
         token,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         password,
       });
+      if (data.requires_2fa_setup && data.token) {
+        // Store the token so the auth context picks it up on the next page load,
+        // then send the user straight to the 2FA setup flow.
+        setToken(data.token);
+        router.push("/dashboard/settings?tab=security&setup2fa=1");
+        return;
+      }
       // Don't auto-login — require the user to log in manually so they
       // go through the normal auth flow into the correct business dashboard.
       setDone(true);
