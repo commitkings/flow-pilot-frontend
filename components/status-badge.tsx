@@ -21,24 +21,24 @@ export type StatusType =
   | "active";
 
 const styles: Record<StatusType, string> = {
-  pending: "border border-slate-200 bg-slate-100 text-slate-500",
-  planning: "border border-blue-300 bg-blue-50 text-blue-700",
-  running: "bg-blue-600 text-white",
-  awaiting_approval: "bg-amber-500/15 text-amber-800 border border-amber-300",
-  executing: "bg-indigo-600 text-white",
-  completed: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
-  completed_with_errors: "bg-orange-500/15 text-orange-800 border border-orange-300",
-  failed: "bg-red-500/15 text-red-800 border border-red-300",
-  allow: "border border-emerald-300 bg-emerald-50 text-emerald-700",
-  review: "border border-amber-300 bg-amber-50 text-amber-700",
-  block: "bg-red-600 text-white",
-  verified: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
-  mismatch: "bg-amber-500/15 text-amber-800 border border-amber-300",
-  successful: "border border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950/30 dark:text-teal-200",
-  requires_followup: "bg-amber-500/15 text-amber-800 border border-amber-300",
-  invited: "bg-amber-500/15 text-amber-800 border border-amber-300",
-  suspended: "border border-red-300 bg-red-50 text-red-700",
-  active: "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300",
+  pending:               "border border-slate-300 text-slate-500",
+  planning:              "border border-blue-300 text-blue-600",
+  running:               "border border-blue-400 text-blue-600",
+  awaiting_approval:     "border border-amber-300 text-amber-700",
+  executing:             "border border-indigo-300 text-indigo-600",
+  completed:             "border border-emerald-300 text-emerald-600",
+  completed_with_errors: "border border-orange-300 text-orange-600",
+  failed:                "border border-red-300 text-red-600",
+  allow:                 "border border-emerald-300 text-emerald-600",
+  review:                "border border-amber-300 text-amber-700",
+  block:                 "border border-red-400 text-red-600",
+  verified:              "border border-emerald-300 text-emerald-600",
+  mismatch:              "border border-amber-300 text-amber-700",
+  successful:            "border border-emerald-300 text-emerald-600",
+  requires_followup:     "border border-amber-300 text-amber-700",
+  invited:               "border border-amber-300 text-amber-700",
+  suspended:             "border border-red-300 text-red-600",
+  active:                "border border-emerald-300 text-emerald-600",
 };
 
 const pulseStatuses: StatusType[] = ["running", "awaiting_approval", "executing"];
@@ -49,7 +49,7 @@ export function StatusBadge({ status, label }: { status: StatusType; label?: str
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium capitalize",
+        "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-0.5 text-xs font-medium capitalize",
         styles[status]
       )}
     >
