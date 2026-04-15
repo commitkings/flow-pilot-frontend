@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { getUserRole } from "@/lib/api-types";
 import {
   AlertTriangle,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -383,12 +384,20 @@ export default function SettingsPage() {
           <>
             <Section title="Profile Photo" description="Update your avatar.">
               <div className="flex items-center gap-6">
-                <span className="inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm overflow-hidden">
-                  {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    initials
-                  )}
+                <span className="relative inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm">
+                  <span className="h-full w-full overflow-hidden rounded-full">
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center">{initials}</span>
+                    )}
+                  </span>
+                  <span
+                    className="absolute -bottom-1 -right-1 z-10 inline-flex h-8 w-8 cursor-pointer flex-col items-center justify-center rounded-full bg-brand p-1.5 text-white shadow-md transition-transform hover:scale-105"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Camera className="h-4 w-4" />
+                  </span>
                 </span>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                 <div className="space-y-1.5">
