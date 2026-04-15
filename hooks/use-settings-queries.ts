@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useAuth } from "@/context/auth-context";
 import {
   changePassword,
   deleteAccount,
@@ -49,10 +50,12 @@ export function useUpdateProfile() {
 
 export function useUploadAvatar() {
   const qc = useQueryClient();
+  const { refreshUser } = useAuth();
   return useMutation({
     mutationFn: (file: File) => uploadAvatar(file),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["auth-user"] });
+      refreshUser();
       toast.success("Avatar uploaded");
     },
     onError: (err) => {
@@ -63,10 +66,12 @@ export function useUploadAvatar() {
 
 export function useRemoveAvatar() {
   const qc = useQueryClient();
+  const { refreshUser } = useAuth();
   return useMutation({
     mutationFn: () => removeAvatar(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["auth-user"] });
+      refreshUser();
       toast.success("Avatar removed");
     },
     onError: (err) => {
