@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   AlertTriangle,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -10,12 +11,12 @@ import {
   Loader2,
   Pencil,
   Plus,
+  ShieldAlert,
   Trash2,
   Webhook,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   useWebhooks,
   useCreateWebhook,
@@ -83,19 +84,18 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
             Configuration
           </p>
           {!editMode && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 rounded-full text-xs gap-1.5"
+            <button
+              type="button"
               onClick={() => {
                 setEditUrl(hook.url);
                 setEditEvents([...hook.events]);
                 setEditMode(true);
               }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-3 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               <Pencil className="h-3 w-3" />
               Edit
-            </Button>
+            </button>
           )}
         </div>
 
@@ -103,9 +103,9 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
           <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Endpoint URL</label>
-              <Input
+              <input
                 type="url"
-                className="h-9 rounded-xl font-mono text-sm"
+                className="h-9 w-full rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
                 value={editUrl}
                 onChange={(e) => setEditUrl(e.target.value)}
               />
@@ -117,7 +117,7 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
                 {WEBHOOK_EVENTS.map(({ value, label }) => (
                   <label
                     key={value}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm transition-colors hover:bg-muted/40 has-[:checked]:border-brand/40 has-[:checked]:bg-brand/5"
+                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-border/60 px-3 py-2 text-sm transition-colors hover:bg-muted/40 has-checked:border-brand/40 has-checked:bg-brand/5"
                   >
                     <input
                       type="checkbox"
@@ -151,15 +151,14 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
                   "Save Changes"
                 )}
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full text-xs"
+              <button
+                type="button"
                 onClick={() => setEditMode(false)}
                 disabled={updateWebhookMut.isPending}
+                className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               >
                 Cancel
-              </Button>
+              </button>
             </div>
           </div>
         ) : (
@@ -169,7 +168,7 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
               {hook.events.map((ev) => (
                 <span
                   key={ev}
-                  className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[11px] text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                  className="inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 font-mono text-[11px] text-muted-foreground"
                 >
                   {ev}
                 </span>
@@ -218,7 +217,7 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
                   <tr key={d.id} className="hover:bg-muted/20">
                     <td className="px-3 py-2">
                       {d.success ? (
-                        <CheckCircle2 className="h-4 w-4 text-teal-600" />
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                       ) : (
                         <XCircle className="h-4 w-4 text-destructive" />
                       )}
@@ -230,8 +229,8 @@ function WebhookDetailPanel({ hook }: { hook: WebhookType }) {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                           d.success
-                            ? "bg-teal-50 text-teal-700"
-                            : "bg-red-50 text-red-700"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : "bg-destructive/10 text-destructive"
                         }`}
                       >
                         {d.status_code ?? "—"}
@@ -314,59 +313,65 @@ export function WebhooksSection() {
     <div className="space-y-5">
       {/* ── New secret reveal panel ─────────────────────────────────────── */}
       {newSecret && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 space-y-3 shadow-sm dark:border-amber-700 dark:bg-amber-950/20">
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <ShieldAlert className="h-4 w-4 text-brand" />
+            </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-amber-900 dark:text-amber-200">
+              <p className="font-semibold text-foreground">
                 This secret is shown only once. Save it now.
               </p>
-              <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-300">
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 Use this secret to verify webhook signatures from FlowPilot.
               </p>
             </div>
           </div>
-          <code className="block break-all rounded-xl border border-amber-200 bg-white px-4 py-3 font-mono text-sm text-foreground dark:border-amber-800 dark:bg-amber-950/40">
-            {newSecret}
-          </code>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="rounded-full shadow-sm"
+          <div className="relative rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+            <code className="block break-all font-mono text-sm text-foreground">
+              {newSecret}
+            </code>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
               onClick={handleCopySecret}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               {secretCopied ? (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4 text-teal-600" />
-                  Copied!
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-emerald-600">Copied!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="mr-2 h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" />
                   Copy Secret
                 </>
               )}
-            </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full"
+            </button>
+            <button
+              type="button"
               onClick={handleDismissSecret}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               Dismiss
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* ── Verification failure notice ─────────────────────────────────── */}
       {verificationFailed && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+        <div className="rounded-2xl border border-border/60 bg-card p-4 flex items-start gap-3 shadow-sm">
+          <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <AlertTriangle className="h-3 w-3 text-destructive" />
+          </div>
           <div className="text-sm">
-            <p className="font-semibold text-red-800">Endpoint not reachable</p>
-            <p className="mt-0.5 text-red-700">
+            <p className="font-semibold text-foreground">Endpoint not reachable</p>
+            <p className="mt-0.5 text-muted-foreground">
               FlowPilot sent a test ping to your URL but did not receive a 2xx response.
-              The webhook was saved as <strong>inactive</strong>. Fix your endpoint and
+              The webhook was saved as <strong className="text-foreground">inactive</strong>. Fix your endpoint and
               enable it using the toggle on the webhook card below.
             </p>
           </div>
@@ -405,7 +410,7 @@ export function WebhooksSection() {
                       {hook.events.map((ev) => (
                         <span
                           key={ev}
-                          className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 font-mono text-xs text-blue-700 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300"
+                          className="inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-2.5 py-0.5 font-mono text-xs text-muted-foreground"
                         >
                           {ev}
                         </span>
@@ -418,9 +423,9 @@ export function WebhooksSection() {
                       </p>
                     )}
                     {!hook.is_active && hook.failure_count === 0 && (
-                      <p className="flex items-center gap-1 text-xs font-medium text-amber-600">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        Inactive — endpoint did not pass the verification ping. Enable once your URL is ready.
+                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+                        Endpoint did not pass the verification ping. Enable once your URL is ready.
                       </p>
                     )}
                   </div>
@@ -428,45 +433,42 @@ export function WebhooksSection() {
                     className="flex shrink-0 items-center gap-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={`rounded-full text-xs shadow-sm ${
-                        hook.is_active
-                          ? "border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-300"
-                          : "border-border/60 text-muted-foreground"
-                      }`}
+                    <button
+                      type="button"
                       onClick={() =>
                         toggleWebhookMut.mutate({ id: hook.id, is_active: !hook.is_active })
                       }
                       disabled={toggleWebhookMut.isPending}
+                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40 ${
+                        hook.is_active
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700/60 dark:bg-emerald-950/20 dark:text-emerald-400"
+                          : "border-border/60 bg-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                      }`}
                     >
                       {hook.is_active ? "Active" : "Inactive"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => {
                         deleteWebhookMut.mutate(hook.id);
                         if (selectedWebhookId === hook.id) setSelectedWebhookId(null);
                       }}
                       disabled={deleteWebhookMut.isPending}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:border-destructive/20 hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
                     >
                       <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full text-muted-foreground hover:text-foreground"
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => toggleExpand(hook.id)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-transparent text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted/40 hover:text-foreground"
                     >
                       {isExpanded ? (
                         <ChevronUp className="h-4 w-4" />
                       ) : (
                         <ChevronDown className="h-4 w-4" />
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
 
@@ -485,10 +487,10 @@ export function WebhooksSection() {
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Endpoint URL</label>
-            <Input
+            <input
               type="url"
               placeholder="https://your-service.com/webhooks/flowpilot"
-              className="h-10 rounded-xl font-mono text-sm"
+              className="h-10 w-full rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
@@ -500,7 +502,7 @@ export function WebhooksSection() {
               {WEBHOOK_EVENTS.map(({ value, label }) => (
                 <label
                   key={value}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border/60 px-3 py-2.5 text-sm transition-colors hover:bg-muted/40 has-[:checked]:border-brand/40 has-[:checked]:bg-brand/5"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border/60 px-3 py-2.5 text-sm transition-colors hover:bg-muted/40 has-checked:border-brand/40 has-checked:bg-brand/5"
                 >
                   <input
                     type="checkbox"
@@ -534,31 +536,31 @@ export function WebhooksSection() {
                 "Create Webhook"
               )}
             </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full"
+            <button
+              type="button"
               onClick={() => {
                 setAddOpen(false);
                 setUrl("");
                 setSelectedEvents([]);
               }}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               Cancel
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* ── Add button ─────────────────────────────────────────────────── */}
       {!addOpen && (
-        <Button
-          variant="outline"
-          className="rounded-full shadow-sm"
+        <button
+          type="button"
           onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
         >
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="h-4 w-4" />
           Add Webhook
-        </Button>
+        </button>
       )}
     </div>
   );
