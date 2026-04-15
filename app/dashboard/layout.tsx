@@ -13,6 +13,8 @@ import { fetchHealth, updateMe } from "@/lib/api-client";
 import { getUserRole } from "@/lib/api-types";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import Link from "next/link";
+import { ShieldCheck, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
@@ -23,6 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [inviteOpen, setInviteOpen] = useState(false);
   const [payoutMode, setPayoutMode] = useState<string | null>(null);
   const [showTour, setShowTour] = useState(false);
+  const [show2FAPrompt, setShow2FAPrompt] = useState(false);
 
   const { data: kycData } = useKycStatus();
   const kycStatus = kycData?.kyc_status ?? null;
@@ -75,6 +78,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch {
       // best-effort — tour still closes
     }
+    // Prompt 2FA setup for users who haven't enabled it yet
+    if (user && !user.totp_enabled) {
+      setShow2FAPrompt(true);
+    }
   };
 
   if (isLoading) {
@@ -93,6 +100,46 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onComplete={handleTourDone}
         onSkip={handleTourDone}
       />
+    )}
+
+    {/* 2FA encouragement popup — shown after tour completion for users without 2FA */}
+    {show2FAPrompt && (
+      <div className="fixed inset-0 z-[300] flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
+        <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-2xl p-6">
+          <button
+            onClick={() => setShow2FAPrompt(false)}
+            className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand/10 mb-4">
+            <ShieldCheck className="h-6 w-6 text-brand" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground leading-snug">Secure your account</h3>
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+            Enable two-factor authentication to protect your account and your team's payouts.
+          </p>
+          <div className="mt-5 flex gap-3">
+            <Button
+              className="flex-1 rounded-full bg-brand text-white hover:opacity-90"
+              onClick={() => {
+                setShow2FAPrompt(false);
+                router.push("/dashboard/settings?tab=security");
+              }}
+            >
+              Set up 2FA
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex-1 rounded-full text-muted-foreground"
+              onClick={() => setShow2FAPrompt(false)}
+            >
+              Maybe later
+            </Button>
+          </div>
+        </div>
+      </div>
     )}
     <DashboardShellProvider
       value={{

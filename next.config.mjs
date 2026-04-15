@@ -19,6 +19,12 @@ const nextConfig = {
         source: "/api/proxy/:path*",
         destination: `${backendOrigin}/api/v1/:path*`,
       },
+      // Proxy backend-served static uploads (avatars, logos, etc.) so
+      // relative /uploads/... URLs resolve correctly from the browser.
+      {
+        source: "/uploads/:path*",
+        destination: `${backendOrigin}/uploads/:path*`,
+      },
     ];
   },
 };

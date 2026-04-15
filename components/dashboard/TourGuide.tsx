@@ -18,78 +18,39 @@ type TourStep = {
 const ALL_STEPS: TourStep[] = [
   {
     title: "Welcome to FlowPilot 👋",
-    description:
-      "You're all set up. Let us walk you through the key features in about 2 minutes so you hit the ground running.",
+    description: "Quick tour — 30 seconds to learn the key features.",
   },
   {
     tourId: "runs",
-    title: "AI-Powered Payout Runs",
-    description:
-      'Create payout runs by chatting with our AI. Describe who to pay and how much — FlowPilot extracts every detail and builds the candidate list for you. Click "New Run" to start.',
-  },
-  {
-    tourId: "conversations",
-    title: "Conversation History",
-    description:
-      "Every AI chat session is saved here. Browse past conversations, read the full message thread, resume active ones, or jump straight to the run that was created.",
+    title: "Payout Runs",
+    description: "Chat with AI to create payout runs. Describe who to pay — FlowPilot builds the candidate list.",
   },
   {
     tourId: "approvals",
-    title: "Approval Workflow",
-    description:
-      "Before any money moves, approvers review each candidate. FlowPilot auto-flags risky or anomalous transactions so your team can focus on the edge cases that matter.",
+    title: "Approvals",
+    description: "Review candidates before money moves. Risky transactions are auto-flagged.",
     roles: ["owner", "approver"],
   },
   {
     tourId: "transactions",
     title: "Transactions",
-    description:
-      "Every disbursement is tracked here in real-time. Filter by date, export to CSV or PDF, or email the report directly to your inbox.",
-  },
-  {
-    tourId: "stats",
-    title: "Analytics",
-    description:
-      "Your workspace at a glance — volume trends, run outcomes, top transactions, and success rates. All updated in real time so you always know where things stand.",
+    description: "Every disbursement tracked in real-time. Filter, export to CSV/PDF, or email reports.",
   },
   {
     tourId: "team",
-    title: "Team Management",
-    description:
-      "Invite colleagues as Analysts (view-only) or Approvers (full payout access). You can disable or remove members at any time from this page.",
-    roles: ["owner"],
-  },
-  {
-    tourId: "audit",
-    title: "Audit Log",
-    description:
-      "Every action across your workspace is logged — who did what and when. Export the full trail for compliance, external audits, or peace of mind.",
-    roles: ["owner"],
-  },
-  {
-    tourId: "blocklist",
-    title: "Blocklist",
-    description:
-      "Block specific account numbers, beneficiary names, or bank codes from ever receiving payouts. FlowPilot checks every candidate against this list before executing.",
+    title: "Team",
+    description: "Invite teammates as Analysts or Approvers. Manage or remove them anytime.",
     roles: ["owner"],
   },
   {
     tourId: "developer",
     title: "Developer Tools",
-    description:
-      "Generate API keys to integrate FlowPilot into your own systems, and configure webhooks to receive real-time event notifications when runs complete or transactions change state.",
+    description: "Generate API keys and webhooks to integrate FlowPilot with your systems.",
     roles: ["owner"],
   },
   {
-    tourId: "notifications",
-    title: "Notifications",
-    description:
-      "Stay in the loop. You'll be notified when runs start, complete, fail, or need your approval — so nothing slips through.",
-  },
-  {
     title: "You're all set! 🎉",
-    description:
-      "You now know the essentials. Head to Runs and create your first payout run to get started. You can retake this tour anytime from the navbar.",
+    description: "Head to Runs and create your first payout run. Retake this tour anytime from the navbar.",
   },
 ];
 

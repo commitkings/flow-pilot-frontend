@@ -133,9 +133,7 @@ export function uploadCandidates(runId: string, file: File): Promise<UploadCandi
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    .post<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd)
     .then((r) => r.data);
 }
 
@@ -337,7 +335,7 @@ export function importTeamMembers(file: File): Promise<BulkImportResult> {
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<BulkImportResult>("/team/import", fd, { headers: { "Content-Type": "multipart/form-data" } })
+    .post<BulkImportResult>("/team/import", fd)
     .then((r) => r.data);
 }
 
@@ -380,7 +378,7 @@ export function uploadOrgLogo(file: File): Promise<{ logo_url: string }> {
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<{ logo_url: string }>("/org/logo", fd, { headers: { "Content-Type": "multipart/form-data" } })
+    .post<{ logo_url: string }>("/org/logo", fd)
     .then((r) => r.data);
 }
 
@@ -392,7 +390,7 @@ export function getKycStatus(): Promise<import("./api-types").KycStatusResponse>
 
 export function submitKyc(formData: FormData): Promise<{ status: string; message: string; submitted_docs: string[] }> {
   return apiClient
-    .post("/kyc/submit", formData, { headers: { "Content-Type": "multipart/form-data" } })
+    .post("/kyc/submit", formData)
     .then((r) => r.data);
 }
 
@@ -454,9 +452,7 @@ export function uploadAvatar(file: File): Promise<{ avatar_url: string }> {
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<{ avatar_url: string }>("/auth/me/avatar", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
-    })
+    .post<{ avatar_url: string }>("/auth/me/avatar", fd)
     .then((r) => r.data);
 }
 

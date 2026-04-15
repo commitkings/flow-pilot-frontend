@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { getUserRole } from "@/lib/api-types";
 import {
@@ -64,6 +64,13 @@ export default function SettingsPage() {
   const isOwner = getUserRole(user) === "owner";
 
   const [activeTab, setActiveTab] = useState<Tab>("profile");
+
+  // Open the correct tab when navigated with ?tab=security etc.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    if (t === "security" || t === "workspace" || t === "account") setActiveTab(t);
+  }, []);
 
   const orgQuery = useOrgProfile();
   const connectionsQuery = useConnections();
@@ -217,7 +224,7 @@ export default function SettingsPage() {
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      uploadAvatarMut.mutate(file, { onSuccess: () => refreshUser() });
+      uploadAvatarMut.mutate(file);
     }
   };
 
@@ -356,7 +363,7 @@ export default function SettingsPage() {
                       {uploadAvatarMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Upload New Photo
                     </Button>
-                    <Button variant="ghost" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => removeAvatarMut.mutate(undefined, { onSuccess: () => refreshUser() })} disabled={removeAvatarMut.isPending}>
+                    <Button variant="ghost" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => removeAvatarMut.mutate(undefined)} disabled={removeAvatarMut.isPending}>
                       Remove
                     </Button>
                   </div>
