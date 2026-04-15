@@ -6,14 +6,14 @@ import { TourGuide } from "@/components/dashboard/TourGuide";
 import { DashboardShellProvider } from "@/components/dashboard-shell-context";
 import { LoadingLogo } from "@/components/brand/LoadingLogo";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { fetchHealth, updateMe } from "@/lib/api-client";
 import { getUserRole } from "@/lib/api-types";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import Link from "next/link";
-import { ShieldCheck, X } from "lucide-react";
+import { ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [payoutMode, setPayoutMode] = useState<string | null>(null);
   const [showTour, setShowTour] = useState(false);
   const [show2FAPrompt, setShow2FAPrompt] = useState(false);
+  const [graceTimeLeft, setGraceTimeLeft] = useState<string | null>(null);
 
   const { data: kycData } = useKycStatus();
   const kycStatus = kycData?.kyc_status ?? null;
@@ -44,11 +45,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace("/onboarding");
       return;
     }
-    // 2FA enforcement gate: if the org requires 2FA and this user hasn't set it up yet,
-    // send them to the forced setup page regardless of whether the grace period is still active.
+    // 2FA enforcement gate: only hard-redirect if the grace period has already expired.
+    // Members still within their grace window are allowed in — they see a countdown banner instead.
     if (user && !user.totp_enabled && user.totp_grace_until) {
-      router.replace("/setup-2fa");
-      return;
+      const graceDue = new Date(user.totp_grace_until).getTime();
+      if (Date.now() >= graceDue) {
+        router.replace("/setup-2fa");
+        return;
+      }
     }
     // Auto-show tour for users who haven't taken it yet, or if retake was requested
     if (user) {
@@ -60,6 +64,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
   }, [isLoading, isAuthenticated, user, router]);
+
+  // Live countdown for 2FA grace period banner
+  const formatGraceLeft = useCallback((graceUntil: string): string | null => {
+    const msLeft = new Date(graceUntil).getTime() - Date.now();
+    if (msLeft <= 0) return null;
+    const h = Math.floor(msLeft / 3_600_000);
+    const m = Math.floor((msLeft % 3_600_000) / 60_000);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }, []);
+
+  useEffect(() => {
+    if (!user || user.totp_enabled || !user.totp_grace_until) {
+      setGraceTimeLeft(null);
+      return;
+    }
+    const update = () => setGraceTimeLeft(formatGraceLeft(user.totp_grace_until!));
+    update();
+    const id = setInterval(update, 60_000);
+    return () => clearInterval(id);
+  }, [user, formatGraceLeft]);
 
   // Fetch payout mode for simulated banner
   useEffect(() => {
@@ -88,7 +113,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <LoadingLogo />;
   }
 
-  if (!isAuthenticated || (user && (!user.email_verified || !user.has_completed_onboarding || (!user.totp_enabled && !!user.totp_grace_until)))) {
+  // Block render if not authed, not verified, or not onboarded.
+  // For 2FA grace period: only block if grace has actually expired (active grace = show banner, not block).
+  const graceExpired =
+    user && !user.totp_enabled && !!user.totp_grace_until &&
+    Date.now() >= new Date(user.totp_grace_until).getTime();
+
+  if (!isAuthenticated || (user && (!user.email_verified || !user.has_completed_onboarding || graceExpired))) {
     return null;
   }
 
@@ -176,6 +207,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 : "Complete your business verification (KYC) to unlock payout runs."}
               <Link href="/dashboard/kyc" className="underline font-semibold ml-1">
                 {kycStatus === "pending" ? "View status" : "Verify now"}
+              </Link>
+            </div>
+          )}
+          {graceTimeLeft && (
+            <div className="flex items-center justify-center gap-2 bg-red-600/10 px-4 py-2 text-xs font-medium text-red-700 dark:text-red-400">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+              Your organisation requires two-factor authentication.
+              <span className="font-bold">{graceTimeLeft} remaining</span> to set it up before your access is restricted.
+              <Link
+                href="/dashboard/settings?tab=security"
+                className="ml-1 underline font-semibold hover:opacity-80"
+              >
+                Set up 2FA now
               </Link>
             </div>
           )}
