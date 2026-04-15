@@ -377,13 +377,13 @@ export default function SettingsPage() {
                     Upload a square image, minimum 200×200px. JPG or PNG only.
                   </p>
                   <div className="flex flex-wrap items-center gap-3 pt-1">
-                    <Button variant="outline" className="rounded-full shadow-sm" onClick={() => fileInputRef.current?.click()} disabled={uploadAvatarMut.isPending}>
-                      {uploadAvatarMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadAvatarMut.isPending} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">
+                      {uploadAvatarMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       Upload New Photo
-                    </Button>
-                    <Button variant="ghost" className="rounded-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => removeAvatarMut.mutate(undefined)} disabled={removeAvatarMut.isPending}>
+                    </button>
+                    <button type="button" onClick={() => removeAvatarMut.mutate(undefined)} disabled={removeAvatarMut.isPending} className="inline-flex items-center rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-40">
                       Remove
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -393,11 +393,11 @@ export default function SettingsPage() {
               <div className="grid gap-5 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">First Name</label>
-                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-10 rounded-xl" />
+                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="h-10 rounded-full" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Last Name</label>
-                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-10 rounded-xl" />
+                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="h-10 rounded-full" />
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
@@ -412,21 +412,21 @@ export default function SettingsPage() {
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Job Title</label>
-                  <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className="h-10 rounded-xl" />
+                  <Input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className="h-10 rounded-full" />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Department</label>
-                  <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-10 rounded-xl" />
+                  <Input value={department} onChange={(e) => setDepartment(e.target.value)} className="h-10 rounded-full" />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10 rounded-xl" />
+                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10 rounded-full" />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Timezone</label>
-                  <select value={tz} onChange={(e) => setTz(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                  <select value={tz} onChange={(e) => setTz(e.target.value)} className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10">
                     <option value="Africa/Lagos">Africa/Lagos (WAT, UTC+1)</option>
                     <option value="Africa/Accra">Africa/Accra (GMT, UTC+0)</option>
                     <option value="Europe/London">Europe/London (GMT/BST)</option>
@@ -470,15 +470,10 @@ export default function SettingsPage() {
                   />
                   <div className="space-y-1.5">
                     <p className="text-sm text-muted-foreground">PNG, JPG or SVG. Max 5 MB. Square format recommended.</p>
-                    <Button
-                      variant="outline"
-                      className="rounded-full shadow-sm"
-                      onClick={() => logoInputRef.current?.click()}
-                      disabled={uploadOrgLogoMut.isPending}
-                    >
-                      {uploadOrgLogoMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    <button type="button" onClick={() => logoInputRef.current?.click()} disabled={uploadOrgLogoMut.isPending} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">
+                      {uploadOrgLogoMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                       {orgQuery.data?.logo_url ? "Change Logo" : "Upload Logo"}
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </Section>
@@ -492,11 +487,11 @@ export default function SettingsPage() {
                   {["business_name", "business_type", "rc_number", "tax_id", "website", "city", "state", "country", "phone"].map((field) => (
                     <div key={field} className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground capitalize">{field.replace(/_/g, " ")}</label>
-                      <Input className="h-10 rounded-xl" defaultValue={(org as any)?.[field] ?? ""} onChange={(e) => setOrgForm((prev) => ({ ...prev, [field]: e.target.value }))} />
+                      <Input className="h-10 rounded-full" defaultValue={(org as any)?.[field] ?? ""} onChange={(e) => setOrgForm((prev) => ({ ...prev, [field]: e.target.value }))} />
                     </div>
                   ))}
                   <div className="md:col-span-2 mt-2 flex gap-3 justify-end">
-                    <Button variant="ghost" className="rounded-full" onClick={() => setOrgEditing(false)}>Cancel</Button>
+                    <button type="button" onClick={() => setOrgEditing(false)} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">Cancel</button>
                     <Button className="rounded-full bg-brand text-white" onClick={handleOrgSave} disabled={updateOrg.isPending}>
                       {updateOrg.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Save
@@ -524,9 +519,9 @@ export default function SettingsPage() {
                     ))}
                   </div>
                   <div className="mt-5">
-                    <Button variant="outline" className="rounded-full shadow-sm" onClick={() => setOrgEditing(true)}>
+                    <button type="button" onClick={() => setOrgEditing(true)} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
                       Edit Business Information
-                    </Button>
+                    </button>
                   </div>
                 </>
               )}
@@ -540,51 +535,51 @@ export default function SettingsPage() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Monthly Transaction Volume</label>
-                      <select value={configVolume} onChange={(e) => setConfigVolume(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                      <select value={configVolume} onChange={(e) => setConfigVolume(e.target.value)} className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10">
                         <option value="">Select volume range</option>
                         {MONTHLY_VOLUMES.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Average Monthly Payouts</label>
-                      <select value={configPayouts} onChange={(e) => setConfigPayouts(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                      <select value={configPayouts} onChange={(e) => setConfigPayouts(e.target.value)} className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10">
                         <option value="">Select payout range</option>
                         {MONTHLY_PAYOUTS.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Primary Bank</label>
-                      <select value={configBank} onChange={(e) => setConfigBank(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                      <select value={configBank} onChange={(e) => setConfigBank(e.target.value)} className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10">
                         <option value="">Select primary bank</option>
                         {NIGERIAN_BANKS.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Interswitch Merchant ID</label>
-                      <Input value={configMerchantId} onChange={(e) => setConfigMerchantId(e.target.value)} className="h-10 rounded-xl" placeholder="Enter merchant account ID" />
+                      <Input value={configMerchantId} onChange={(e) => setConfigMerchantId(e.target.value)} className="h-10 rounded-full" placeholder="Enter merchant account ID" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Registered State</label>
-                      <select value={configMerchantState} onChange={(e) => setConfigMerchantState(e.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                      <select value={configMerchantState} onChange={(e) => setConfigMerchantState(e.target.value)} className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10">
                         <option value="">Select state</option>
                         {NIGERIAN_STATES.map((v) => <option key={v} value={v}>{v}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Default Daily Payout Limit (₦)</label>
-                      <Input inputMode="decimal" value={configDailyLimit} onChange={(e) => setConfigDailyLimit(e.target.value.replace(/[^0-9,.]/g, ""))} className="h-10 rounded-xl" placeholder="e.g. 5,000,000" />
+                      <Input inputMode="decimal" value={configDailyLimit} onChange={(e) => setConfigDailyLimit(e.target.value.replace(/[^0-9,.]/g, ""))} className="h-10 rounded-full" placeholder="e.g. 5,000,000" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Single Payout Cap (₦)</label>
-                      <Input inputMode="decimal" value={configSingleCap} onChange={(e) => setConfigSingleCap(e.target.value.replace(/[^0-9,.]/g, ""))} className="h-10 rounded-xl" placeholder="e.g. 250,000" />
+                      <Input inputMode="decimal" value={configSingleCap} onChange={(e) => setConfigSingleCap(e.target.value.replace(/[^0-9,.]/g, ""))} className="h-10 rounded-full" placeholder="e.g. 250,000" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Risk Alert Threshold</label>
-                      <Input inputMode="decimal" value={configRiskThreshold} onChange={(e) => setConfigRiskThreshold(e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1"))} className="h-10 rounded-xl" placeholder="e.g. 0.35" />
+                      <Input inputMode="decimal" value={configRiskThreshold} onChange={(e) => setConfigRiskThreshold(e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*?)\./g, "$1"))} className="h-10 rounded-full" placeholder="e.g. 0.35" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground">Liquidity Alert Buffer (%)</label>
-                      <Input inputMode="numeric" value={configLiquidityBuffer} onChange={(e) => setConfigLiquidityBuffer(e.target.value.replace(/\D/g, ""))} className="h-10 rounded-xl" placeholder="e.g. 15" />
+                      <Input inputMode="numeric" value={configLiquidityBuffer} onChange={(e) => setConfigLiquidityBuffer(e.target.value.replace(/\D/g, ""))} className="h-10 rounded-full" placeholder="e.g. 15" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -600,7 +595,7 @@ export default function SettingsPage() {
                     <CardSelect options={RISK_OPTIONS} selected={configRisk} onChange={setConfigRisk} />
                   </div>
                   <div className="flex gap-3 justify-end">
-                    <Button variant="ghost" className="rounded-full" onClick={() => setConfigEditing(false)}>Cancel</Button>
+                    <button type="button" onClick={() => setConfigEditing(false)} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">Cancel</button>
                     <Button className="rounded-full bg-brand text-white" onClick={handleConfigSave} disabled={updateOrgConfigMut.isPending || updateOrg.isPending}>
                       {(updateOrgConfigMut.isPending || updateOrg.isPending) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                       Save
@@ -639,9 +634,9 @@ export default function SettingsPage() {
                     </div>
                   )}
                   <div className="mt-5">
-                    <Button variant="outline" className="rounded-full shadow-sm" onClick={handleEditConfig}>
+                    <button type="button" onClick={handleEditConfig} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
                       Edit Business Configuration
-                    </Button>
+                    </button>
                   </div>
                 </>
               )}
@@ -681,9 +676,9 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-foreground">Change Password</h3>
                 <div className="grid gap-3 sm:max-w-md">
-                  <Input type="password" placeholder="Current Password" className="h-10 rounded-xl" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
-                  <Input type="password" placeholder="New Password" className="h-10 rounded-xl" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-                  <Input type="password" placeholder="Confirm New Password" className="h-10 rounded-xl" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+                  <Input type="password" placeholder="Current Password" className="h-10 rounded-full" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} />
+                  <Input type="password" placeholder="New Password" className="h-10 rounded-full" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+                  <Input type="password" placeholder="Confirm New Password" className="h-10 rounded-full" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
                   {newPw && confirmPw && newPw !== confirmPw && (
                     <p className="text-xs text-destructive">Passwords do not match</p>
                   )}
@@ -724,10 +719,10 @@ export default function SettingsPage() {
                 </div>
 
                 {!is2FAEnabled && twoFAStep === "idle" && (
-                  <Button variant="outline" className="rounded-full shadow-sm" onClick={handleStartSetup} disabled={twoFASetup.isPending}>
-                    {twoFASetup.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                  <button type="button" onClick={handleStartSetup} disabled={twoFASetup.isPending} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">
+                    {twoFASetup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     Enable 2FA
-                  </Button>
+                  </button>
                 )}
 
                 {twoFAStep === "scanning" && twoFASetupData && (
@@ -750,9 +745,9 @@ export default function SettingsPage() {
                         {twoFAEnable.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Confirm & Enable
                       </Button>
-                      <Button variant="ghost" className="rounded-full" onClick={() => { setTwoFAStep("idle"); setTwoFASetupData(null); setTwoFACode(""); }}>
+                      <button type="button" onClick={() => { setTwoFAStep("idle"); setTwoFASetupData(null); setTwoFACode(""); }} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
                         Cancel
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -772,12 +767,12 @@ export default function SettingsPage() {
                       ))}
                     </div>
                     <div className="flex flex-wrap gap-3">
-                      <Button variant="outline" className="rounded-full shadow-sm" onClick={copyBackupCodes}>
-                        {backupCopied ? <><CheckCircle2 className="mr-2 h-4 w-4 text-brand" />Copied!</> : <><Copy className="mr-2 h-4 w-4" />Copy All</>}
-                      </Button>
-                      <Button variant="outline" className="rounded-full shadow-sm" onClick={downloadBackupCodes}>
-                        <Download className="mr-2 h-4 w-4" />Download
-                      </Button>
+                      <button type="button" onClick={copyBackupCodes} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                        {backupCopied ? <><CheckCircle2 className="h-4 w-4 text-brand" />Copied!</> : <><Copy className="h-4 w-4" />Copy All</>}
+                      </button>
+                      <button type="button" onClick={downloadBackupCodes} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                        <Download className="h-4 w-4" />Download
+                      </button>
                       <Button className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90" onClick={() => setTwoFAStep("idle")}>Done</Button>
                     </div>
                   </div>
@@ -786,13 +781,13 @@ export default function SettingsPage() {
                 {is2FAEnabled && twoFAStep === "idle" && (
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <Button variant="outline" className="rounded-full shadow-sm" onClick={handleRegenBackup} disabled={regenBackup.isPending}>
-                        {regenBackup.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                      <button type="button" onClick={handleRegenBackup} disabled={regenBackup.isPending} className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">
+                        {regenBackup.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         Regenerate Backup Codes
-                      </Button>
-                      <Button variant="outline" className="rounded-full border-destructive/30 text-destructive shadow-sm hover:bg-destructive/10" onClick={() => { setTwoFAStep("disabling"); setDisablePw(""); setDisableCode(""); }}>
-                        <ShieldOff className="mr-2 h-4 w-4" />Disable 2FA
-                      </Button>
+                      </button>
+                      <button type="button" onClick={() => { setTwoFAStep("disabling"); setDisablePw(""); }} className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10">
+                        <ShieldOff className="h-4 w-4" />Disable 2FA
+                      </button>
                     </div>
                     {twoFAStatus.data && (
                       <p className="text-xs text-muted-foreground">{twoFAStatus.data.backup_codes_remaining} backup code{twoFAStatus.data.backup_codes_remaining !== 1 ? "s" : ""} remaining</p>
@@ -807,14 +802,14 @@ export default function SettingsPage() {
                       <p className="text-sm font-semibold text-foreground">Enter your password to disable 2FA</p>
                     </div>
                     <div className="sm:max-w-sm">
-                      <Input type="password" placeholder="Your account password" className="h-10 rounded-xl" value={disablePw} onChange={(e) => setDisablePw(e.target.value)} />
+                      <Input type="password" placeholder="Your account password" className="h-10 rounded-full" value={disablePw} onChange={(e) => setDisablePw(e.target.value)} />
                     </div>
                     <div className="flex gap-3">
                       <Button variant="destructive" className="rounded-full shadow-sm" onClick={handleDisable2FA} disabled={twoFADisable.isPending || !disablePw}>
                         {twoFADisable.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Disable 2FA
                       </Button>
-                      <Button variant="ghost" className="rounded-full" onClick={() => setTwoFAStep("idle")}>Cancel</Button>
+                      <button type="button" onClick={() => setTwoFAStep("idle")} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">Cancel</button>
                     </div>
                   </div>
                 )}
@@ -840,10 +835,10 @@ export default function SettingsPage() {
                             : "Require all team members to enable 2FA. Members without 2FA will have a 24-hour grace period before access is restricted."}
                         </p>
                         {isOrgEnforced ? (
-                          <Button variant="outline" className="rounded-full shadow-sm border-destructive/30 text-destructive hover:bg-destructive/10" onClick={() => orgRequire2FA.mutate(false)} disabled={orgRequire2FA.isPending}>
-                            {orgRequire2FA.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldOff className="mr-2 h-4 w-4" />}
+                          <button type="button" onClick={() => orgRequire2FA.mutate(false)} disabled={orgRequire2FA.isPending} className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-40">
+                            {orgRequire2FA.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldOff className="h-4 w-4" />}
                             Remove Enforcement
-                          </Button>
+                          </button>
                         ) : (
                           <Button className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90" onClick={() => orgRequire2FA.mutate(true)} disabled={orgRequire2FA.isPending}>
                             {orgRequire2FA.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
@@ -870,10 +865,10 @@ export default function SettingsPage() {
                       <p className="font-bold text-foreground">Export All Data</p>
                       <p className="mt-0.5 text-sm text-muted-foreground">Download your full workspace data (runs, transactions, team, audit logs) as JSON.</p>
                     </div>
-                    <Button variant="outline" className="shrink-0 rounded-full" onClick={() => exportData.mutate()} disabled={exportData.isPending}>
-                      {exportData.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    <button type="button" onClick={() => exportData.mutate()} disabled={exportData.isPending} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">
+                      {exportData.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                       Export Data
-                    </Button>
+                    </button>
                   </div>
 
                   <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
@@ -881,10 +876,10 @@ export default function SettingsPage() {
                       <p className="font-bold text-foreground">Import Data</p>
                       <p className="mt-0.5 text-sm text-muted-foreground">Restore your business profile, owner profile, and team from a previously exported JSON file.</p>
                     </div>
-                    <Button variant="outline" className="shrink-0 rounded-full" onClick={() => setImportOpen(true)}>
-                      <Upload className="mr-2 h-4 w-4" />
+                    <button type="button" onClick={() => setImportOpen(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                      <Upload className="h-4 w-4" />
                       Import Data
-                    </Button>
+                    </button>
                   </div>
                 </>
               )}
@@ -894,9 +889,9 @@ export default function SettingsPage() {
                   <p className="font-bold text-foreground">Sign Out</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">Sign out of your current session on this device.</p>
                 </div>
-                <Button variant="outline" className="shrink-0 rounded-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => logout()}>
-                  <LogOut className="mr-2 h-4 w-4" /> Sign Out
-                </Button>
+                <button type="button" onClick={() => logout()} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10">
+                  <LogOut className="h-4 w-4" /> Sign Out
+                </button>
               </div>
 
               {isOwner ? (
