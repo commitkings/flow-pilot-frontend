@@ -6,6 +6,8 @@
 
 export interface AuthResponse {
   token: string;
+  /** When true, the user's org requires 2FA but they haven't set it up yet. */
+  requires_2fa_setup?: boolean;
   user: {
     id: string;
     email: string;
