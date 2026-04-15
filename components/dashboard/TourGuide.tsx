@@ -103,9 +103,11 @@ interface TourGuideProps {
   userRole?: string | null;
   onComplete: () => void;
   onSkip: () => void;
+  openMobileMenu?: () => void;
+  closeMobileMenu?: () => void;
 }
 
-export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
+export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeMobileMenu }: TourGuideProps) {
   const steps = ALL_STEPS.filter(
     (s) => !s.roles || (userRole && s.roles.includes(userRole))
   );
@@ -113,6 +115,7 @@ export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [tooltipPos, setTooltipPos] = useState<React.CSSProperties>({});
+  const [isMobile, setIsMobile] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const step = steps[index];
@@ -120,13 +123,34 @@ export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
   const isLast = index === steps.length - 1;
   const progress = ((index + 1) / steps.length) * 100;
 
+  // Is this a step that points to a sidebar nav item?
+  const isSidebarStep = !!step.tourId;
+
   const positionTooltip = useCallback(() => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const isMobile = vw < 768;
+    const mobile = vw < 768;
+    setIsMobile(mobile);
 
-    // ── Mobile: always a bottom sheet, no spotlight ──────────────────────────
-    if (isMobile) {
+    // ── Mobile sidebar step: top strip so the open sidebar is visible ────────
+    if (mobile && isSidebarStep) {
+      setRect(null);
+      setTooltipPos({
+        position: "fixed",
+        top: "0",
+        left: "0",
+        right: "0",
+        width: "100%",
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+        borderBottomLeftRadius: "1rem",
+        borderBottomRightRadius: "1rem",
+      });
+      return;
+    }
+
+    // ── Mobile non-sidebar step: bottom sheet ────────────────────────────────
+    if (mobile) {
       setRect(null);
       setTooltipPos({
         position: "fixed",
@@ -196,7 +220,19 @@ export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
       left: `${left}px`,
       width: `${TOOLTIP_WIDTH}px`,
     });
-  }, [step]);
+  }, [step, isSidebarStep]);
+
+  // Open/close the mobile sidebar based on step type
+  useEffect(() => {
+    const vw = window.innerWidth;
+    if (vw >= 768) return; // desktop — do nothing
+
+    if (isSidebarStep) {
+      openMobileMenu?.();
+    } else {
+      closeMobileMenu?.();
+    }
+  }, [index, isSidebarStep, openMobileMenu, closeMobileMenu]);
 
   useEffect(() => {
     positionTooltip();
@@ -204,22 +240,33 @@ export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
     return () => window.removeEventListener("resize", positionTooltip);
   }, [positionTooltip]);
 
+  const handleDone = (action: () => void) => {
+    closeMobileMenu?.();
+    action();
+  };
+
   const goNext = () => {
-    if (isLast) onComplete();
+    if (isLast) handleDone(onComplete);
     else setIndex((i) => i + 1);
   };
 
   const goPrev = () => setIndex((i) => Math.max(0, i - 1));
 
+  // On mobile sidebar steps we skip the dark overlay — the sidebar already dims the content
+  const showOverlay = !(isMobile && isSidebarStep);
+
   return (
     <>
-      <SpotlightOverlay rect={rect} />
+      {showOverlay && <SpotlightOverlay rect={rect} />}
 
-      {/* Tooltip / bottom-sheet card */}
+      {/* Tooltip / bottom-sheet / top-strip card */}
       <div
         ref={tooltipRef}
-        className="fixed z-[201] rounded-2xl bg-card border border-border shadow-2xl overflow-hidden"
-        style={tooltipPos}
+        className="fixed z-[300] bg-card border border-border shadow-2xl overflow-hidden"
+        style={{
+          borderRadius: "1rem",
+          ...tooltipPos,
+        }}
       >
         {/* Progress bar */}
         <div className="h-1 bg-muted/60">
@@ -230,13 +277,20 @@ export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
         </div>
 
         <div className="p-5">
+          {/* Mobile sidebar-step hint */}
+          {isMobile && isSidebarStep && (
+            <p className="mb-3 text-xs font-semibold text-brand flex items-center gap-1">
+              <span>👈</span> See it highlighted in the menu
+            </p>
+          )}
+
           {/* Header */}
           <div className="flex items-start justify-between gap-2 mb-3">
             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 pt-0.5">
               {index + 1} / {steps.length}
             </span>
             <button
-              onClick={onSkip}
+              onClick={() => handleDone(onSkip)}
               className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               aria-label="Close tour"
             >
@@ -284,7 +338,7 @@ export function TourGuide({ userRole, onComplete, onSkip }: TourGuideProps) {
                 variant="ghost"
                 size="sm"
                 className="rounded-full px-4 text-muted-foreground"
-                onClick={onSkip}
+                onClick={() => handleDone(onSkip)}
               >
                 Skip
               </Button>

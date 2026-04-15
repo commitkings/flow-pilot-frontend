@@ -3,9 +3,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  deleteMemberUser,
   inviteTeamMember,
   listTeamMembers,
   removeTeamMember,
+  resendInvitation,
+  revokeInvitation,
   toggleMemberStatus,
   updateTeamMemberRole,
 } from "@/lib/api-client";
@@ -80,6 +83,48 @@ export function useToggleMemberStatus() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to update member status");
+    },
+  });
+}
+
+export function useDeleteMemberUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) => deleteMemberUser(memberId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success("User account deleted");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    },
+  });
+}
+
+export function useRevokeInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) => revokeInvitation(inviteId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success("Invitation revoked");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to revoke invitation");
+    },
+  });
+}
+
+export function useResendInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteId: string) => resendInvitation(inviteId),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["team-members"] });
+      toast.success(`Invitation resent to ${result.invited_email}`);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to resend invitation");
     },
   });
 }

@@ -99,6 +99,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         userRole={getUserRole(user)}
         onComplete={handleTourDone}
         onSkip={handleTourDone}
+        openMobileMenu={() => { if (!mobileMenuOpen) setMobileMenuOpen(true); }}
+        closeMobileMenu={() => { if (mobileMenuOpen) setMobileMenuOpen(false); }}
       />
     )}
 

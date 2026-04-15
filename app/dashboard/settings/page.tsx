@@ -11,6 +11,7 @@ import {
   ChevronUp,
   Copy,
   Download,
+  FileUp,
   KeyRound,
   Loader2,
   LogOut,
@@ -20,6 +21,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
+  Upload,
   User,
   Building2,
   Lock,
@@ -42,6 +44,8 @@ import {
   useUpdateOrgConfig,
   useExportAccountData,
   useDeleteAccount,
+  useDeleteSelfAccount,
+  useImportAccountData,
   useRequestDeleteCode,
 } from "@/hooks/use-settings-queries";
 import { useUploadOrgLogo } from "@/hooks/use-kyc-queries";
@@ -82,8 +86,11 @@ export default function SettingsPage() {
   const updateOrgConfigMut = useUpdateOrgConfig();
   const exportData = useExportAccountData();
   const deleteAccount = useDeleteAccount(() => logout());
+  const deleteSelf = useDeleteSelfAccount(() => logout());
+  const importData = useImportAccountData();
   const requestDeleteCode = useRequestDeleteCode();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const uploadOrgLogoMut = useUploadOrgLogo();
 
@@ -191,6 +198,17 @@ export default function SettingsPage() {
   const [deleteOtp, setDeleteOtp] = useState("");
   const [deleteEmailCode, setDeleteEmailCode] = useState("");
   const [deleteCodeSent, setDeleteCodeSent] = useState(false);
+
+  // Self-delete state (non-owners)
+  const [selfDeleteOpen, setSelfDeleteOpen] = useState(false);
+  const [selfDeleteConfirmText, setSelfDeleteConfirmText] = useState("");
+  const [selfDeleteOtp, setSelfDeleteOtp] = useState("");
+  const [selfDeleteEmailCode, setSelfDeleteEmailCode] = useState("");
+  const [selfDeleteCodeSent, setSelfDeleteCodeSent] = useState(false);
+
+  // Import state (owners)
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   // Org edit state
   const [orgEditing, setOrgEditing] = useState(false);
@@ -846,16 +864,29 @@ export default function SettingsPage() {
           <Section title="Account" description="Data export, session management, and destructive actions." variant="danger">
             <div className="space-y-4">
               {isOwner && (
-                <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
-                  <div>
-                    <p className="font-bold text-foreground">Export All Data</p>
-                    <p className="mt-0.5 text-sm text-muted-foreground">Download your full workspace data (runs, transactions, team, audit logs) as JSON.</p>
+                <>
+                  <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="font-bold text-foreground">Export All Data</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">Download your full workspace data (runs, transactions, team, audit logs) as JSON.</p>
+                    </div>
+                    <Button variant="outline" className="shrink-0 rounded-full" onClick={() => exportData.mutate()} disabled={exportData.isPending}>
+                      {exportData.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                      Export Data
+                    </Button>
                   </div>
-                  <Button variant="outline" className="shrink-0 rounded-full" onClick={() => exportData.mutate()} disabled={exportData.isPending}>
-                    {exportData.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Export Data
-                  </Button>
-                </div>
+
+                  <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="font-bold text-foreground">Import Data</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">Restore your business profile, owner profile, and team from a previously exported JSON file.</p>
+                    </div>
+                    <Button variant="outline" className="shrink-0 rounded-full" onClick={() => setImportOpen(true)}>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Import Data
+                    </Button>
+                  </div>
+                </>
               )}
 
               <div className="flex flex-col justify-between gap-4 border-b border-destructive/20 pb-4 sm:flex-row sm:items-center">
@@ -868,13 +899,23 @@ export default function SettingsPage() {
                 </Button>
               </div>
 
-              {isOwner && (
+              {isOwner ? (
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="font-bold text-destructive">Delete Organisation</p>
+                    <p className="mt-0.5 text-sm text-destructive/80">Permanently deactivates your workspace and removes access for all team members. Export your data first.</p>
+                  </div>
+                  <Button variant="destructive" className="shrink-0 rounded-full shadow-sm" onClick={() => { setDeleteOpen(true); setDeleteConfirmText(""); setDeleteOtp(""); setDeleteEmailCode(""); setDeleteCodeSent(false); }}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Organisation
+                  </Button>
+                </div>
+              ) : (
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <p className="font-bold text-destructive">Delete Account</p>
-                    <p className="mt-0.5 text-sm text-destructive/80">Permanently deactivates your account and entire workspace. This cannot be undone.</p>
+                    <p className="mt-0.5 text-sm text-destructive/80">Permanently deactivates your account and removes you from the workspace. This cannot be undone.</p>
                   </div>
-                  <Button variant="destructive" className="shrink-0 rounded-full shadow-sm" onClick={() => { setDeleteOpen(true); setDeleteConfirmText(""); setDeleteOtp(""); setDeleteEmailCode(""); setDeleteCodeSent(false); }}>
+                  <Button variant="destructive" className="shrink-0 rounded-full shadow-sm" onClick={() => { setSelfDeleteOpen(true); setSelfDeleteConfirmText(""); setSelfDeleteOtp(""); setSelfDeleteEmailCode(""); setSelfDeleteCodeSent(false); }}>
                     <Trash2 className="mr-2 h-4 w-4" /> Delete Account
                   </Button>
                 </div>
@@ -884,7 +925,7 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* ── Delete Account Confirmation Modal ── */}
+      {/* ── Delete Organisation Confirmation Modal (owners) ── */}
       {deleteOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-2xl bg-card shadow-2xl border border-border animate-in zoom-in-95 duration-200 overflow-hidden">
@@ -892,18 +933,37 @@ export default function SettingsPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 mb-3">
                 <AlertTriangle className="h-5 w-5 text-destructive" />
               </div>
-              <h3 className="text-lg font-bold text-foreground">Delete Account &amp; Workspace</h3>
+              <h3 className="text-lg font-bold text-foreground">Delete Organisation</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                This will permanently deactivate your account, your business workspace, and remove dashboard access for all team members. This action <strong>cannot be undone</strong>.
+                This will permanently deactivate your entire workspace and remove access for all team members. This action <strong>cannot be undone</strong>.
               </p>
             </div>
             <div className="px-6 py-5 space-y-4">
+              {/* Export advisory */}
+              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
+                <p className="font-semibold text-amber-800 flex items-center gap-2">
+                  <Download className="h-4 w-4 shrink-0" />
+                  Export your data first
+                </p>
+                <p className="mt-1 text-amber-700/90">
+                  We strongly recommend exporting your workspace data before deleting. You can restore it later if needed.
+                </p>
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-semibold text-amber-800 underline underline-offset-2 hover:opacity-80"
+                  onClick={() => { exportData.mutate(); }}
+                  disabled={exportData.isPending}
+                >
+                  {exportData.isPending ? "Exporting…" : "Export data now →"}
+                </button>
+              </div>
+
               <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                 <p className="font-semibold">What gets deleted:</p>
                 <ul className="mt-1 list-disc pl-4 space-y-0.5 text-destructive/80">
-                  <li>Your account and login access</li>
                   <li>Your business workspace</li>
                   <li>All team members lose access</li>
+                  <li>Your account is deactivated</li>
                 </ul>
               </div>
               <div className="space-y-1.5">
@@ -959,7 +1019,177 @@ export default function SettingsPage() {
                   is2FAEnabled ? { totp_code: deleteOtp } : { delete_code: deleteEmailCode }
                 )}
               >
-                {deleteAccount.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</> : <><Trash2 className="mr-2 h-4 w-4" />Delete Everything</>}
+                {deleteAccount.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</> : <><Trash2 className="mr-2 h-4 w-4" />Delete Organisation</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Account Modal (non-owners) ── */}
+      {selfDeleteOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-card shadow-2xl border border-border animate-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-border">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10 mb-3">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Delete Account</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This will permanently deactivate your account and remove you from the workspace. You will lose all access. This action <strong>cannot be undone</strong>.
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">
+                  Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm
+                </label>
+                <Input
+                  value={selfDeleteConfirmText}
+                  onChange={(e) => setSelfDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="h-10 rounded-xl font-mono"
+                  autoComplete="off"
+                />
+              </div>
+
+              {/* ── Identity verification ── */}
+              {is2FAEnabled ? (
+                <div className="space-y-1.5 rounded-xl border border-border/60 bg-muted/40 p-3">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5 text-brand" />
+                    Enter your authenticator code
+                  </p>
+                  <OtpInput length={6} value={selfDeleteOtp} onChange={setSelfDeleteOtp} />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5" />
+                    Verify your identity via email code
+                  </p>
+                  {!selfDeleteCodeSent ? (
+                    <Button
+                      variant="outline"
+                      className="rounded-full shadow-sm w-full"
+                      onClick={() => requestDeleteCode.mutate(undefined, { onSuccess: () => setSelfDeleteCodeSent(true) })}
+                      disabled={requestDeleteCode.isPending}
+                    >
+                      {requestDeleteCode.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Send Verification Code
+                    </Button>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Enter the 6-digit code sent to your email</p>
+                      <OtpInput length={6} value={selfDeleteEmailCode} onChange={setSelfDeleteEmailCode} />
+                      <button
+                        type="button"
+                        className="text-xs text-brand underline-offset-2 hover:underline"
+                        onClick={() => requestDeleteCode.mutate(undefined, { onSuccess: () => setSelfDeleteCodeSent(true) })}
+                        disabled={requestDeleteCode.isPending}
+                      >
+                        Resend code
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <Button
+                variant="ghost"
+                className="rounded-full px-6"
+                onClick={() => { setSelfDeleteOpen(false); setSelfDeleteOtp(""); setSelfDeleteEmailCode(""); setSelfDeleteCodeSent(false); }}
+                disabled={deleteSelf.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-full px-6 shadow-sm"
+                disabled={
+                  selfDeleteConfirmText !== "DELETE" ||
+                  deleteSelf.isPending ||
+                  (is2FAEnabled ? selfDeleteOtp.length < 6 : !selfDeleteCodeSent || selfDeleteEmailCode.length < 6)
+                }
+                onClick={() => deleteSelf.mutate(
+                  is2FAEnabled ? { totp_code: selfDeleteOtp } : { delete_code: selfDeleteEmailCode }
+                )}
+              >
+                {deleteSelf.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting…</> : <><Trash2 className="mr-2 h-4 w-4" />Delete Account</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Import Data Modal (owners) ── */}
+      {importOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl bg-card shadow-2xl border border-border animate-in zoom-in-95 duration-200 overflow-hidden">
+            <div className="px-6 py-5 border-b border-border">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 mb-3">
+                <FileUp className="h-5 w-5 text-brand" />
+              </div>
+              <h3 className="text-lg font-bold text-foreground">Import Workspace Data</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Upload a FlowPilot export JSON file to restore your business profile, personal profile, and team members.
+              </p>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 text-sm text-blue-800">
+                <p className="font-semibold">What gets restored:</p>
+                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-blue-700">
+                  <li>Business profile fields (name, location, contact)</li>
+                  <li>Your personal profile fields</li>
+                  <li>Team members (re-invited or added directly)</li>
+                </ul>
+                <p className="mt-2 text-blue-600 text-xs">Existing data is never overwritten — only empty fields are filled in.</p>
+              </div>
+
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+
+              <div
+                onClick={() => importFileRef.current?.click()}
+                className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-8 transition-all ${
+                  importFile
+                    ? "border-brand/50 bg-brand/5"
+                    : "border-border bg-muted/20 hover:border-brand/40 hover:bg-muted/40"
+                }`}
+              >
+                <Upload className={`h-7 w-7 ${importFile ? "text-brand" : "text-muted-foreground"}`} />
+                {importFile ? (
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">{importFile.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{(importFile.size / 1024).toFixed(1)} KB · Click to change</p>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">Click to select your export file</p>
+                    <p className="text-xs text-muted-foreground mt-1">flowpilot-export-*.json</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <Button variant="ghost" className="rounded-full px-6" onClick={() => { setImportOpen(false); setImportFile(null); }}>Cancel</Button>
+              <Button
+                className="rounded-full bg-brand px-6 text-white hover:opacity-90 shadow-sm"
+                disabled={!importFile || importData.isPending}
+                onClick={() => {
+                  if (!importFile) return;
+                  importData.mutate(importFile, {
+                    onSuccess: () => { setImportOpen(false); setImportFile(null); },
+                  });
+                }}
+              >
+                {importData.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing…</> : <><Upload className="mr-2 h-4 w-4" />Import</>}
               </Button>
             </div>
           </div>

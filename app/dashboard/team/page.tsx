@@ -36,8 +36,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  useDeleteMemberUser,
   useInviteMember,
   useRemoveMember,
+  useResendInvitation,
+  useRevokeInvitation,
   useTeamMembers,
   useToggleMemberStatus,
   useUpdateMemberRole,
@@ -71,47 +74,23 @@ function RoleChip({ role }: { role: string }) {
   );
 }
 
-/** Inline role-change + disable/enable + remove dropdown, shown only to the business owner. */
-function MemberActions({
-  member,
-  currentUserId,
-}: {
-  member: TeamMember;
-  currentUserId: string;
-}) {
-  const updateRole = useUpdateMemberRole();
-  const removeMember = useRemoveMember();
-  const toggleStatus = useToggleMemberStatus();
-  const [confirmRemove, setConfirmRemove] = useState(false);
+/** Actions for pending (not yet joined) invitations. */
+function PendingInviteActions({ member }: { member: TeamMember }) {
+  const revokeInvite = useRevokeInvitation();
+  const resendInvite = useResendInvitation();
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
 
-  const isSelf = member.user_id === currentUserId;
-  const isOwner = member.role === "owner";
+  const busy = revokeInvite.isPending || resendInvite.isPending;
 
-  // Owners, self, and pending invites cannot be acted on
-  if (isSelf || isOwner || member.is_pending) return null;
-
-  const otherRole = member.role === "approver" ? "analyst" : "approver";
-  const otherLabel = otherRole === "approver" ? "Approver" : "Analyst";
-
-  const handleRoleChange = () => {
-    updateRole.mutate({ memberId: member.id, role: otherRole });
-  };
-
-  const handleToggleStatus = () => {
-    toggleStatus.mutate({ memberId: member.id, isActive: !member.is_active });
-  };
-
-  const handleRemove = () => {
-    if (!confirmRemove) {
-      setConfirmRemove(true);
-      setTimeout(() => setConfirmRemove(false), 3000);
+  const handleRevoke = () => {
+    if (!confirmRevoke) {
+      setConfirmRevoke(true);
+      setTimeout(() => setConfirmRevoke(false), 3000);
       return;
     }
-    removeMember.mutate(member.id);
-    setConfirmRemove(false);
+    revokeInvite.mutate(member.id);
+    setConfirmRevoke(false);
   };
-
-  const busy = updateRole.isPending || removeMember.isPending || toggleStatus.isPending;
 
   return (
     <DropdownMenu>
@@ -122,26 +101,102 @@ function MemberActions({
           disabled={busy}
           className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground data-[state=open]:bg-muted"
         >
-          {busy ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          )}
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem
+          onClick={() => resendInvite.mutate(member.id)}
+          className="cursor-pointer gap-2"
+        >
+          <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+          <span>Resend invitation</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleRevoke}
+          className={`cursor-pointer gap-2 focus:bg-destructive/10 ${
+            confirmRevoke ? "text-destructive focus:text-destructive" : "text-muted-foreground"
+          }`}
+        >
+          <XCircle className="h-3.5 w-3.5" />
+          <span>{confirmRevoke ? "Tap again to confirm" : "Revoke invitation"}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Inline role-change + disable/enable + remove + delete dropdown, shown only to the business owner. */
+function MemberActions({
+  member,
+  currentUserId,
+}: {
+  member: TeamMember;
+  currentUserId: string;
+}) {
+  const updateRole = useUpdateMemberRole();
+  const removeMember = useRemoveMember();
+  const deleteUser = useDeleteMemberUser();
+  const toggleStatus = useToggleMemberStatus();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const isSelf = member.user_id === currentUserId;
+  const isOwner = member.role === "owner";
+
+  // Owners and self cannot be acted on via this menu; pending invites use PendingInviteActions
+  if (isSelf || isOwner || member.is_pending) return null;
+
+  const otherRole = member.role === "approver" ? "analyst" : "approver";
+  const otherLabel = otherRole === "approver" ? "Approver" : "Analyst";
+
+  const handleRoleChange = () => updateRole.mutate({ memberId: member.id, role: otherRole });
+  const handleToggleStatus = () => toggleStatus.mutate({ memberId: member.id, isActive: !member.is_active });
+
+  const handleRemove = () => {
+    if (!confirmRemove) {
+      setConfirmRemove(true);
+      setConfirmDelete(false);
+      setTimeout(() => setConfirmRemove(false), 3000);
+      return;
+    }
+    removeMember.mutate(member.id);
+    setConfirmRemove(false);
+  };
+
+  const handleDeleteUser = () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      setConfirmRemove(false);
+      setTimeout(() => setConfirmDelete(false), 3000);
+      return;
+    }
+    deleteUser.mutate(member.id);
+    setConfirmDelete(false);
+  };
+
+  const busy = updateRole.isPending || removeMember.isPending || toggleStatus.isPending || deleteUser.isPending;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          disabled={busy}
+          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground data-[state=open]:bg-muted"
+        >
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreHorizontal className="h-3.5 w-3.5" />}
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-56">
         {/* Role toggle — only available when member is active */}
         {member.is_active && (
-          <DropdownMenuItem
-            onClick={handleRoleChange}
-            className="cursor-pointer gap-2"
-          >
+          <DropdownMenuItem onClick={handleRoleChange} className="cursor-pointer gap-2">
             <Shield className="h-3.5 w-3.5 text-muted-foreground" />
-            <span>
-              Change to{" "}
-              <span className="font-semibold">{otherLabel}</span>
-            </span>
+            <span>Change to <span className="font-semibold">{otherLabel}</span></span>
           </DropdownMenuItem>
         )}
 
@@ -155,31 +210,34 @@ function MemberActions({
           }`}
         >
           {member.is_active ? (
-            <>
-              <UserMinus className="h-3.5 w-3.5" />
-              <span>Disable access</span>
-            </>
+            <><UserMinus className="h-3.5 w-3.5" /><span>Disable access</span></>
           ) : (
-            <>
-              <UserPlus className="h-3.5 w-3.5" />
-              <span>Re-enable access</span>
-            </>
+            <><UserPlus className="h-3.5 w-3.5" /><span>Re-enable access</span></>
           )}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
-        {/* Remove — two-tap confirm pattern */}
+        {/* Remove from org — two-tap confirm */}
         <DropdownMenuItem
           onClick={handleRemove}
           className={`cursor-pointer gap-2 focus:bg-destructive/10 ${
-            confirmRemove
-              ? "text-destructive focus:text-destructive"
-              : "text-muted-foreground"
+            confirmRemove ? "text-destructive focus:text-destructive" : "text-muted-foreground"
+          }`}
+        >
+          <UserX className="h-3.5 w-3.5" />
+          <span>{confirmRemove ? "Tap again to confirm" : "Remove from org"}</span>
+        </DropdownMenuItem>
+
+        {/* Delete user account — two-tap confirm */}
+        <DropdownMenuItem
+          onClick={handleDeleteUser}
+          className={`cursor-pointer gap-2 focus:bg-destructive/10 ${
+            confirmDelete ? "text-destructive focus:text-destructive font-semibold" : "text-destructive/70"
           }`}
         >
           <Trash2 className="h-3.5 w-3.5" />
-          <span>{confirmRemove ? "Tap again to confirm" : "Remove member"}</span>
+          <span>{confirmDelete ? "Tap again — cannot undo" : "Delete user account"}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -327,7 +385,11 @@ export default function TeamPage() {
         header: "",
         cell: (member) => (
           <div className="flex justify-end">
-            <MemberActions member={member} currentUserId={user?.id ?? ""} />
+            {member.is_pending ? (
+              <PendingInviteActions member={member} />
+            ) : (
+              <MemberActions member={member} currentUserId={user?.id ?? ""} />
+            )}
           </div>
         ),
       });

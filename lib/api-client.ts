@@ -133,7 +133,9 @@ export function uploadCandidates(runId: string, file: File): Promise<UploadCandi
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd)
+    .post<UploadCandidatesResponse>(`/runs/${runId}/candidates/upload`, fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     .then((r) => r.data);
 }
 
@@ -322,8 +324,20 @@ export function removeTeamMember(memberId: string): Promise<{ status: string }> 
   return apiClient.delete<{ status: string }>(`/team/members/${memberId}`).then((r) => r.data);
 }
 
+export function deleteMemberUser(memberId: string): Promise<{ status: string; message: string }> {
+  return apiClient.delete<{ status: string; message: string }>(`/team/members/${memberId}/delete-user`).then((r) => r.data);
+}
+
 export function toggleMemberStatus(memberId: string, isActive: boolean): Promise<{ status: string; member: import("./api-types").TeamMember }> {
   return apiClient.patch(`/team/members/${memberId}/status`, { is_active: isActive }).then((r) => r.data);
+}
+
+export function revokeInvitation(inviteId: string): Promise<{ status: string }> {
+  return apiClient.delete<{ status: string }>(`/team/invitations/${inviteId}`).then((r) => r.data);
+}
+
+export function resendInvitation(inviteId: string): Promise<{ status: string; invited_email: string }> {
+  return apiClient.post<{ status: string; invited_email: string }>(`/team/invitations/${inviteId}/resend`, {}).then((r) => r.data);
 }
 
 export interface BulkImportResult {
@@ -335,7 +349,9 @@ export function importTeamMembers(file: File): Promise<BulkImportResult> {
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<BulkImportResult>("/team/import", fd)
+    .post<BulkImportResult>("/team/import", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     .then((r) => r.data);
 }
 
@@ -378,7 +394,9 @@ export function uploadOrgLogo(file: File): Promise<{ logo_url: string }> {
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<{ logo_url: string }>("/org/logo", fd)
+    .post<{ logo_url: string }>("/org/logo", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     .then((r) => r.data);
 }
 
@@ -390,7 +408,9 @@ export function getKycStatus(): Promise<import("./api-types").KycStatusResponse>
 
 export function submitKyc(formData: FormData): Promise<{ status: string; message: string; submitted_docs: string[] }> {
   return apiClient
-    .post("/kyc/submit", formData)
+    .post("/kyc/submit", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     .then((r) => r.data);
 }
 
@@ -452,7 +472,9 @@ export function uploadAvatar(file: File): Promise<{ avatar_url: string }> {
   const fd = new FormData();
   fd.append("file", file);
   return apiClient
-    .post<{ avatar_url: string }>("/auth/me/avatar", fd)
+    .post<{ avatar_url: string }>("/auth/me/avatar", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     .then((r) => r.data);
 }
 
@@ -477,6 +499,22 @@ export function requestDeleteCode(): Promise<{ message: string }> {
 export function deleteAccount(params?: { totp_code?: string; delete_code?: string }): Promise<{ status: string; message: string }> {
   return apiClient
     .delete<{ status: string; message: string }>("/account/delete", { data: params ?? {} })
+    .then((r) => r.data);
+}
+
+export function deleteSelfAccount(params?: { totp_code?: string; delete_code?: string }): Promise<{ status: string; message: string }> {
+  return apiClient
+    .delete<{ status: string; message: string }>("/account/delete-self", { data: params ?? {} })
+    .then((r) => r.data);
+}
+
+export function importAccountData(file: File): Promise<{ status: string; restored: string[]; exported_at: string }> {
+  const fd = new FormData();
+  fd.append("file", file);
+  return apiClient
+    .post<{ status: string; restored: string[]; exported_at: string }>("/account/import", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
     .then((r) => r.data);
 }
 

@@ -6,9 +6,11 @@ import { useAuth } from "@/context/auth-context";
 import {
   changePassword,
   deleteAccount,
+  deleteSelfAccount,
   exportAccountData,
   getConnections,
   getOrgProfile,
+  importAccountData,
   removeAvatar,
   requestDeleteCode,
   updateMe,
@@ -151,11 +153,41 @@ export function useDeleteAccount(onDeleted: () => void) {
   return useMutation({
     mutationFn: (params?: { totp_code?: string; delete_code?: string }) => deleteAccount(params),
     onSuccess: () => {
+      toast.success("Organisation deleted. Signing you out…");
+      onDeleted();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete organisation");
+    },
+  });
+}
+
+export function useDeleteSelfAccount(onDeleted: () => void) {
+  return useMutation({
+    mutationFn: (params?: { totp_code?: string; delete_code?: string }) => deleteSelfAccount(params),
+    onSuccess: () => {
       toast.success("Account deleted. Signing you out…");
       onDeleted();
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to delete account");
+    },
+  });
+}
+
+export function useImportAccountData() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => importAccountData(file),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["org-profile"] });
+      qc.invalidateQueries({ queryKey: ["auth-user"] });
+      qc.invalidateQueries({ queryKey: ["team-members"] });
+      const restored = result.restored.join(", ");
+      toast.success(`Data imported successfully — restored: ${restored}`);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to import data");
     },
   });
 }
