@@ -13,7 +13,11 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+<<<<<<< HEAD
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRequestApiKeyReveal, useVerifyApiKeyRevealOtp } from "@/hooks/use-api-key-queries";
+=======
+import { useApiKeys, useCreateApiKey, useRevokeApiKey } from "@/hooks/use-api-key-queries";
+>>>>>>> b1676b8 (refactor: enhance wallet and API keys UI components)
 import type { ApiKey } from "@/lib/api-developer";
 
 const SCOPES = [
@@ -110,6 +114,7 @@ export function ApiKeysSection() {
 
   return (
     <div className="space-y-5">
+<<<<<<< HEAD
       {/* ── Re-reveal OTP panel (for existing keys) ─────────────────────── */}
       {revealTarget && (
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
@@ -200,6 +205,24 @@ export function ApiKeysSection() {
               </p>
             </div>
           </div>
+=======
+      {/* ── Revealed key panel ──────────────────────────────────────────── */}
+      {revealedKey && (
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <ShieldAlert className="h-4 w-4 text-brand" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-foreground">
+                This key is shown only once.
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Copy and store it securely. You won&apos;t be able to see it again.
+              </p>
+            </div>
+          </div>
+>>>>>>> b1676b8 (refactor: enhance wallet and API keys UI components)
           <div className="relative rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
             <code className="block break-all font-mono text-sm text-foreground pr-10">
               {revealedKey}
