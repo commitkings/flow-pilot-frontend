@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import {
-  AlertTriangle,
-  CheckCircle2,
+  Check,
   Copy,
   KeyRound,
   Loader2,
   Plus,
+  ShieldAlert,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from "@/hooks/use-api-key-queries";
 import type { ApiKey } from "@/lib/api-developer";
 
@@ -92,49 +91,50 @@ export function ApiKeysSection() {
     <div className="space-y-5">
       {/* ── Revealed key panel ──────────────────────────────────────────── */}
       {revealedKey && (
-        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 space-y-3 shadow-sm dark:border-amber-700 dark:bg-amber-950/20">
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <ShieldAlert className="h-4 w-4 text-brand" />
+            </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-amber-900 dark:text-amber-200">
+              <p className="font-semibold text-foreground">
                 This key is shown only once.
               </p>
-              <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-300">
+              <p className="mt-0.5 text-sm text-muted-foreground">
                 Copy and store it securely. You won&apos;t be able to see it again.
               </p>
             </div>
           </div>
-          <code className="block break-all rounded-xl border border-amber-200 bg-white px-4 py-3 font-mono text-sm text-foreground dark:border-amber-800 dark:bg-amber-950/40">
-            {revealedKey}
-          </code>
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              className="rounded-full shadow-sm"
+          <div className="relative rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+            <code className="block break-all font-mono text-sm text-foreground pr-10">
+              {revealedKey}
+            </code>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
               onClick={handleCopyKey}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               {keyCopied ? (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4 text-teal-600" />
-                  Copied!
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="text-emerald-600">Copied!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="mr-2 h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" />
                   Copy Key
                 </>
               )}
-            </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full"
-              onClick={() => {
-                setRevealedKey(null);
-                setKeyCopied(false);
-              }}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setRevealedKey(null); setKeyCopied(false); }}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               Dismiss
-            </Button>
+            </button>
           </div>
         </div>
       )}
@@ -169,7 +169,7 @@ export function ApiKeysSection() {
                   {key.scopes.map((scope) => (
                     <span
                       key={scope}
-                      className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 font-mono text-xs text-violet-700 dark:border-violet-800 dark:bg-violet-950/30 dark:text-violet-300"
+                      className="inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-2.5 py-0.5 font-mono text-xs text-muted-foreground"
                     >
                       {scope}
                     </span>
@@ -220,9 +220,9 @@ export function ApiKeysSection() {
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Key Name</label>
-            <Input
+            <input
               placeholder='e.g. "Production Integration"'
-              className="h-10 rounded-xl"
+              className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -254,7 +254,7 @@ export function ApiKeysSection() {
             <select
               value={expiryDays}
               onChange={(e) => setExpiryDays(Number(e.target.value))}
-              className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand sm:max-w-xs"
+              className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm text-foreground outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10 sm:max-w-xs"
             >
               {EXPIRY_OPTIONS.map(({ label, value }) => (
                 <option key={value} value={value}>
@@ -275,32 +275,27 @@ export function ApiKeysSection() {
               ) : null}
               Generate Key
             </Button>
-            <Button
-              variant="ghost"
-              className="rounded-full"
-              onClick={() => {
-                setAddOpen(false);
-                setName("");
-                setSelectedScopes([]);
-                setExpiryDays(90);
-              }}
+            <button
+              type="button"
+              onClick={() => { setAddOpen(false); setName(""); setSelectedScopes([]); setExpiryDays(90); }}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
             >
               Cancel
-            </Button>
+            </button>
           </div>
         </div>
       )}
 
       {/* ── Create button ───────────────────────────────────────────────── */}
       {!addOpen && (
-        <Button
-          variant="outline"
-          className="rounded-full shadow-sm"
+        <button
+          type="button"
           onClick={() => setAddOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
         >
-          <Plus className="mr-2 h-4 w-4" />
+          <Plus className="h-4 w-4" />
           Create API Key
-        </Button>
+        </button>
       )}
     </div>
   );
