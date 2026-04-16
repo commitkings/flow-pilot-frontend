@@ -1,14 +1,14 @@
-# FlowPilot → Monnify by Moniepoint: Post-Hackathon Migration Plan
+# FlowPilot → Monnify by Moniepoint: Migration Plan
 
-> **Scope:** Replace Interswitch-backed wallet infrastructure with Monnify's Reserved Account API, transfer/disbursement endpoints, and identity verification APIs. Payments (payout runs) will flow through Moniepoint.
+> **Scope:** Replace simulated wallet infrastructure with Monnify's Reserved Account API, transfer/disbursement endpoints, and identity verification APIs. Every user — individual or business — gets their own dedicated virtual account in their name.
 
 ---
 
 ## 1. What We Are Replacing
 
-| Current (Interswitch / Simulated) | Monnify Replacement |
+| Current (Simulated) | Monnify Replacement |
 |---|---|
-| Virtual account generation (fake numbers) | Monnify Reserved Account (real NUBAN) |
+| Virtual account generation (fake numbers) | Monnify Reserved Account (real NUBAN, per user) |
 | Wallet top-up detection | Monnify webhook — `SUCCESSFUL_TRANSACTION` on reserved account |
 | BVN/NIN lookup (stub/auto-verify) | Monnify BVN/NIN Match API |
 | Payout disbursements (simulated) | Monnify Single & Bulk Transfer API |
@@ -19,14 +19,12 @@
 
 ## 2. Monnify API Credentials
 
-Monnify provides two environments:
-
 | Environment | Base URL |
 |---|---|
 | Sandbox | `https://sandbox.monnify.com` |
 | Production | `https://api.monnify.com` |
 
-**Auth:** All calls require a Bearer token obtained via:
+**Auth:** All calls require a Bearer token:
 
 ```
 POST /api/v1/auth/login
@@ -35,38 +33,45 @@ Authorization: Basic base64(apiKey:secretKey)
 
 Response includes `accessToken` (valid ~60 min). Cache it and refresh on 401.
 
-**Env vars to add:**
+**Env vars:**
 ```env
 MONNIFY_API_KEY=
 MONNIFY_SECRET_KEY=
-MONNIFY_CONTRACT_CODE=      # your merchant contract code
+MONNIFY_CONTRACT_CODE=
 MONNIFY_BASE_URL=https://sandbox.monnify.com
 ```
 
 ---
 
-## 3. Wallet System — Reserved Accounts
+## 3. Virtual Accounts — One Per User
 
-### 3.1 Create a Reserved Account (on user onboarding)
+Every user gets their own dedicated reserved account at the end of onboarding. The account name reflects who they are:
 
-Replace `_generate_virtual_account_number()` in `business_repository.py`.
+- **Individual** → account name = user's full name (e.g. `"Chidera Ozigbo"`)
+- **Business** → account name = business name (e.g. `"Acme Corp"`)
+
+### 3.1 Create Reserved Account (on onboarding complete)
+
+Call this immediately after `POST /onboarding/complete` succeeds.
 
 ```
 POST /api/v2/bank-transfer/reserved-accounts
 Authorization: Bearer {token}
 
 {
-  "accountReference": "fp-{business_id}",   // unique, immutable
-  "accountName": "Business Name",
+  "accountReference": "fp-{business_id}",
+  "accountName": "{user full name OR business name}",
   "currencyCode": "NGN",
   "contractCode": "{MONNIFY_CONTRACT_CODE}",
-  "customerEmail": "user@email.com",
-  "customerName": "Full Name",
-  "bvn": "12345678901",                      // optional but improves limits
+  "customerEmail": "{user email}",
+  "customerName": "{user full name OR business name}",
   "getAllAvailableBanks": false,
-  "preferredBanks": ["035"]                  // Wema Bank (035) for ALAT virtual accounts
+  "preferredBanks": ["035"]
 }
 ```
+
+> `accountReference` must be unique and immutable — use `business_id` (UUID).  
+> Do **not** include `bvn` here — it is attached later when the user completes KYC Level 1.
 
 **Response fields to store:**
 
@@ -77,9 +82,22 @@ Authorization: Bearer {token}
 | `accounts[0].bankCode` | `virtual_account_bank_code` (add column) |
 | `reservedAccountCode` | `virtual_account_reference` (add column) |
 
-### 3.2 Detect Top-ups (Webhook)
+### 3.2 Update Reserved Account with BVN After KYC Level 1
 
-Monnify sends `SUCCESSFUL_TRANSACTION` to your webhook URL when someone pays into a reserved account.
+Once an individual user verifies their BVN/NIN (KYC Level 1), attach it to their reserved account to increase transaction limits:
+
+```
+PUT /api/v2/bank-transfer/reserved-accounts/update-payment-source-filter/{accountReference}
+Authorization: Bearer {token}
+
+{
+  "bvn": "{verified bvn}"
+}
+```
+
+### 3.3 Detect Top-ups (Webhook)
+
+Monnify sends `SUCCESSFUL_TRANSACTION` when someone pays into a reserved account.
 
 **Webhook payload (simplified):**
 ```json
@@ -94,11 +112,11 @@ Monnify sends `SUCCESSFUL_TRANSACTION` to your webhook URL when someone pays int
 }
 ```
 
-**What to implement:**
-- New route: `POST /api/v1/webhooks/monnify` (unauthenticated, validates Monnify HMAC signature)
+**Implement:**
+- Route: `POST /api/v1/webhooks/monnify` (unauthenticated, validates Monnify HMAC signature)
 - Look up business by `product.reference` → increment `wallet_balance`
 - Create `wallet_transaction` record
-- Send top-up notification email + in-app notification
+- Send top-up notification (email + in-app)
 
 **Signature verification:**
 ```python
@@ -107,17 +125,11 @@ computed = hmac.new(secret.encode(), raw_body, hashlib.sha512).hexdigest()
 assert computed == request.headers["monnify-signature"]
 ```
 
-### 3.3 Check Wallet Balance
-
-No dedicated Monnify call needed — maintain balance in your DB (increment on webhook, decrement on payout). Use Monnify only as the source of truth for reconciliation.
-
 ---
 
 ## 4. Payout Disbursements
 
-### 4.1 Verify Recipient Bank Account (Before Transfer)
-
-Always verify account name before sending money.
+### 4.1 Verify Recipient Account (Before Transfer)
 
 ```
 GET /api/v1/disbursements/account/validate
@@ -126,11 +138,9 @@ GET /api/v1/disbursements/account/validate
 Authorization: Bearer {token}
 ```
 
-**Response:** `accountName`, `bankCode`, `accountNumber`
+Show the resolved `accountName` in the approval UI before initiating a transfer.
 
-Use this in `POST /runs/{id}/approve` — verify the beneficiary account name before the transfer is initiated, and show the resolved name in the approval UI.
-
-### 4.2 Single Transfer (Per Beneficiary)
+### 4.2 Single Transfer
 
 ```
 POST /api/v1/disbursements/single
@@ -138,7 +148,7 @@ Authorization: Bearer {token}
 
 {
   "amount": 50000,
-  "reference": "fp-txn-{uuid}",         // unique per transaction
+  "reference": "fp-txn-{uuid}",
   "narration": "FlowPilot Payout — Run #123",
   "destinationBankCode": "058",
   "destinationAccountNumber": "0123456789",
@@ -155,9 +165,7 @@ Authorization: Bearer {token}
 | `responseBody.status` | `SUCCESS`, `FAILED`, `PENDING` |
 | `responseBody.disbursementReference` | Monnify's reference |
 
-### 4.3 Bulk Transfer (Entire Run at Once)
-
-For runs with many beneficiaries — more efficient than individual calls.
+### 4.3 Bulk Transfer (Entire Run)
 
 ```
 POST /api/v1/disbursements/batch
@@ -168,7 +176,7 @@ Authorization: Bearer {token}
   "batchReference": "fp-run-{run_id}",
   "narration": "Batch payout",
   "sourceAccountNumber": "{merchant_wallet_account}",
-  "onValidationFailure": "CONTINUE",     // don't abort entire batch on one failure
+  "onValidationFailure": "CONTINUE",
   "notificationInterval": 25,
   "transactionList": [
     {
@@ -179,12 +187,11 @@ Authorization: Bearer {token}
       "destinationAccountNumber": "0123456789",
       "currency": "NGN"
     }
-    // ...
   ]
 }
 ```
 
-**Webhook for batch completion:** `SUCCESSFUL_DISBURSEMENT` / `FAILED_DISBURSEMENT`
+**Batch result webhooks:** `SUCCESSFUL_DISBURSEMENT` / `FAILED_DISBURSEMENT`
 
 ### 4.4 Check Transfer Status
 
@@ -194,13 +201,9 @@ GET /api/v1/disbursements/single/summary
 Authorization: Bearer {token}
 ```
 
-Use this in the existing `GET /runs/{id}` poll loop to update per-beneficiary status.
-
 ---
 
 ## 5. Identity Verification (KYC)
-
-Replace the current auto-verify stub with real Monnify BVN/NIN lookups.
 
 ### 5.1 BVN Match
 
@@ -211,12 +214,12 @@ Authorization: Bearer {token}
 {
   "bvn": "12345678901",
   "name": "John Doe",
-  "dateOfBirth": "1990-01-15",   // YYYY-MM-DD
+  "dateOfBirth": "1990-01-15",
   "mobileNo": "08012345678"
 }
 ```
 
-**Response:** `matchStatus` (`EXACT_MATCH`, `PARTIAL_MATCH`, `NO_MATCH`)
+**Response:** `matchStatus` — `EXACT_MATCH`, `PARTIAL_MATCH`, or `NO_MATCH`
 
 Treat `EXACT_MATCH` and `PARTIAL_MATCH` as passing. Log `NO_MATCH` for manual review.
 
@@ -234,7 +237,7 @@ Authorization: Bearer {token}
 
 **Response:** `firstName`, `lastName`, `dateOfBirth`, `gender`, `photo` (base64)
 
-### 5.3 Integrate with Individual KYC Level 1
+### 5.3 Wire into Individual KYC Level 1
 
 Replace `asyncio.create_task(_auto_verify_individual_kyc(...))` in `POST /kyc/individual/level1`:
 
@@ -244,13 +247,14 @@ async def _verify_with_monnify(business_id, user_id, id_type, id_value, user_nam
     if id_type == "bvn":
         result = await monnify.bvn_match(token, id_value, user_name, dob)
         passed = result["matchStatus"] in ("EXACT_MATCH", "PARTIAL_MATCH")
-    else:  # nin
+    else:
         result = await monnify.nin_lookup(token, id_value, dob)
         passed = result.get("nin") == id_value
 
     new_status = "verified" if passed else "rejected"
     # update IndividualKycSubmissionModel.level_1_status
     # update BusinessModel.kyc_level, kyc_status
+    # if passed: attach bvn to reserved account (see Section 3.2)
     # send notification + email
 ```
 
@@ -258,20 +262,20 @@ async def _verify_with_monnify(business_id, user_id, id_type, id_value, user_nam
 
 ## 6. Banks List
 
-Cache this in Redis (refresh daily — it rarely changes).
+Cache in Redis and refresh daily.
 
 ```
 GET /api/v1/sdk/transactions/banks
 Authorization: Bearer {token}
 ```
 
-Replace the current hardcoded `NIGERIAN_BANKS` list in the codebase.
+Replace the hardcoded `NIGERIAN_BANKS` list.
 
 ---
 
-## 7. Merchant Wallet Balance
+## 7. Merchant Wallet Balance (Pre-Payout Check)
 
-Check your FlowPilot merchant wallet balance on Monnify (used before approving runs).
+Check available float before approving any run:
 
 ```
 GET /api/v1/disbursements/wallet/balance
@@ -279,7 +283,7 @@ GET /api/v1/disbursements/wallet/balance
 Authorization: Bearer {token}
 ```
 
-Use this in `POST /runs/{id}/approve` to confirm sufficient merchant float before initiating the batch.
+Validate sufficient balance in `POST /runs/{id}/approve` before initiating the batch.
 
 ---
 
@@ -288,14 +292,14 @@ Use this in `POST /runs/{id}/approve` to confirm sufficient merchant float befor
 | Phase | Task | Complexity |
 |---|---|---|
 | 1 | Monnify auth helper (`get_token`, auto-refresh) | Low |
-| 2 | Reserved account creation on onboarding | Low |
+| 2 | Reserved account creation per user on onboarding | Low |
 | 3 | Top-up webhook + wallet balance update | Medium |
 | 4 | Account verification before payout approval | Low |
 | 5 | Single transfer in payout run executor | Medium |
 | 6 | Bulk transfer + webhook for batch status | High |
-| 7 | BVN/NIN real verification in KYC Level 1 | Medium |
+| 7 | BVN/NIN real verification in KYC Level 1 + BVN attach | Medium |
 | 8 | Banks list endpoint + Redis cache | Low |
-| 9 | Remove all Interswitch/simulated code | Low |
+| 9 | Remove all simulated/stub code | Low |
 
 ---
 
@@ -305,22 +309,21 @@ Use this in `POST /runs/{id}/approve` to confirm sufficient merchant float befor
 |---|---|---|---|
 | `business` | `virtual_account_bank_code` | VARCHAR(10) | Bank code for reserved account |
 | `business` | `virtual_account_reference` | VARCHAR(100) | Monnify `reservedAccountCode` |
-| `business` | `monnify_customer_email` | VARCHAR(255) | Email used to create reserved account |
 | `payout_transaction` | `monnify_reference` | VARCHAR(100) | Monnify disbursement reference |
 | `payout_transaction` | `monnify_status` | VARCHAR(20) | `SUCCESS` / `FAILED` / `PENDING` |
 
 ---
 
-## 10. Monnify Webhook Events Reference
+## 10. Webhook Events Reference
 
-| Event | Trigger | Our action |
+| Event | Trigger | Action |
 |---|---|---|
 | `SUCCESSFUL_TRANSACTION` | Payment received into reserved account | Credit wallet, notify user |
 | `SUCCESSFUL_DISBURSEMENT` | Transfer succeeded | Mark beneficiary `success` |
 | `FAILED_DISBURSEMENT` | Transfer failed | Mark beneficiary `failed`, refund wallet |
 | `REVERSED_TRANSACTION` | Payment reversed by bank | Debit wallet, notify user |
 
-All webhooks must respond with `200 OK` within 30 seconds or Monnify will retry.
+All webhooks must respond `200 OK` within 30 seconds or Monnify will retry.
 
 ---
 
@@ -334,4 +337,4 @@ All webhooks must respond with `200 OK` within 30 seconds or Monnify will retry.
 
 ---
 
-*Last updated: 2026-04-16 — Post-hackathon migration planning document.*
+*Last updated: 2026-04-16*
