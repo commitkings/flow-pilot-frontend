@@ -59,12 +59,12 @@ export function LandingFeatures() {
               Capabilities
             </span>
             <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-[#0F0F0F] md:text-5xl">
-              Everything your finance team <br className="hidden md:block" />
-              needs to pay with confidence.
+              Everything you need <br className="hidden md:block" />
+              to pay with confidence.
             </h2>
           </div>
           <p className="max-w-xs text-sm font-medium leading-relaxed text-[#6B6B6B]">
-            Not a chatbot — an active payment system that verifies, checks, and executes. With you in control at every step.
+            Not a chatbot — an active payment system that verifies, checks, and executes. Built for individuals and teams alike, with you in control at every step.
           </p>
         </div>
 

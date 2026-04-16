@@ -27,12 +27,12 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">1. About FlowPilot</h2>
             <p className="leading-relaxed">
-              FlowPilot is a business-to-business (B2B) treasury execution platform that enables
-              organisations (&ldquo;Clients&rdquo;) to automate, analyse, and execute bulk payouts using
-              AI-powered agents. FlowPilot integrates with licensed payment infrastructure providers to
-              facilitate fund disbursement. FlowPilot is <strong>not</strong> a bank, payment processor,
-              or licensed financial institution. All fund movements are executed through third-party
-              licensed payment partners.
+              FlowPilot is an AI-powered bulk payment platform that enables both individuals and
+              organisations (&ldquo;Users&rdquo;) to automate, verify, and execute payouts at scale —
+              from a single person paying contractors to a business disbursing payroll across an entire team.
+              FlowPilot integrates with licensed payment infrastructure providers to facilitate fund
+              disbursement. FlowPilot is <strong>not</strong> a bank, payment processor, or licensed
+              financial institution. All fund movements are executed through third-party licensed payment partners.
             </p>
           </section>
 
@@ -41,16 +41,32 @@ export default function TermsOfServicePage() {
             <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">2. Eligibility &amp; Account Registration</h2>
             <div className="space-y-4">
               <p className="leading-relaxed">
-                To use FlowPilot you must: (a) be a registered legal business entity; (b) successfully
-                complete our Know Your Customer (&ldquo;KYC&rdquo;) and Know Your Business (&ldquo;KYB&rdquo;)
-                verification process; (c) have at least one authorised account owner who is 18 years of age
-                or older; and (d) not be prohibited by applicable law from using financial services platforms.
+                FlowPilot is available to two account types:
+              </p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>
+                  <strong>Individual Accounts:</strong> You must be a natural person who is 18 years of age
+                  or older, resident or operating in an eligible jurisdiction, and able to successfully
+                  complete our Know Your Customer (&ldquo;KYC&rdquo;) verification process.
+                </li>
+                <li>
+                  <strong>Business Accounts:</strong> You must be a registered legal business entity, have
+                  at least one authorised account owner who is 18 years of age or older, and successfully
+                  complete our Know Your Customer (&ldquo;KYC&rdquo;) and Know Your Business (&ldquo;KYB&rdquo;)
+                  verification process.
+                </li>
+              </ul>
+              <p className="leading-relaxed">
+                In all cases, you must not be prohibited by applicable law from using financial services
+                platforms, and you must not be on any sanctions list maintained by relevant authorities.
               </p>
               <p className="leading-relaxed">
                 You are responsible for maintaining the confidentiality of your credentials. You must
-                immediately notify us at <a href="mailto:security@flowpilot.ai" className="text-[#e86727] hover:underline">security@flowpilot.ai</a> if you
-                suspect any unauthorised access to your account. FlowPilot shall not be liable for any loss
-                arising from unauthorised access resulting from your failure to safeguard your credentials.
+                immediately notify us at{" "}
+                <a href="mailto:security@flowpilot.ai" className="text-[#e86727] hover:underline">security@flowpilot.ai</a>{" "}
+                if you suspect any unauthorised access to your account. FlowPilot shall not be liable
+                for any loss arising from unauthorised access resulting from your failure to safeguard
+                your credentials.
               </p>
             </div>
           </section>
@@ -61,37 +77,64 @@ export default function TermsOfServicePage() {
             <div className="space-y-4">
               <p className="leading-relaxed">
                 Access to payout execution, wallet top-up, scheduled payouts, and AI credit features
-                requires your business to have a <strong>verified</strong> KYC/KYB status. FlowPilot reserves
-                the right to suspend, restrict, or permanently terminate access to any account that fails
-                verification, provides false or misleading information, or is flagged by our compliance
-                systems or regulatory authorities.
+                requires a <strong>verified</strong> account status. For individuals, this means passing
+                KYC verification (government-issued ID, BVN/NIN, and biometric check). For business
+                accounts, this includes both KYC for authorised signatories and KYB verification of the
+                business entity. FlowPilot reserves the right to suspend, restrict, or permanently
+                terminate access to any account that fails verification, provides false or misleading
+                information, or is flagged by our compliance systems or regulatory authorities.
               </p>
               <p className="leading-relaxed">
                 You agree to provide accurate, current, and complete information during verification and
                 to promptly update this information if it changes. FlowPilot may request additional
-                documentation at any time to comply with applicable anti-money laundering (AML), counter-
-                terrorism financing (CTF), and other applicable regulations.
+                documentation at any time to comply with applicable anti-money laundering (AML),
+                counter-terrorism financing (CTF), and other applicable regulations.
               </p>
             </div>
           </section>
 
           {/* 4 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">4. Human-in-the-Loop Mandate</h2>
-            <p className="leading-relaxed">
-              FlowPilot operates on a strict <strong>Human-in-the-Loop</strong> principle. AI agents
-              assist with reconciliation, risk scoring, and candidate analysis, but <strong>no payout
-              can execute without explicit approval from an authorised human operator</strong> within your
-              organisation. You acknowledge and agree that the final legal and financial responsibility
-              for every approved payout rests solely with your organisation and its designated approvers.
-              FlowPilot&apos;s AI outputs are advisory in nature and do not constitute a guarantee of
-              accuracy or appropriateness.
-            </p>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">4. Account Tiers &amp; Transaction Limits</h2>
+            <div className="space-y-4">
+              <p className="leading-relaxed">
+                FlowPilot operates a tiered account system. Transaction limits apply based on your
+                account type and verification level:
+              </p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>
+                  <strong>Individual (Verified):</strong> Subject to a monthly payout limit of ₦300,000.
+                  Aggregate per-run limits apply as determined by our compliance engine.
+                </li>
+                <li>
+                  <strong>Business (Verified):</strong> Subject to a monthly payout limit of ₦1,500,000
+                  or as otherwise agreed in writing. Limits may be reviewed upon request with supporting
+                  documentation.
+                </li>
+              </ul>
+              <p className="leading-relaxed">
+                FlowPilot reserves the right to modify tier limits at any time with reasonable notice
+                to comply with regulatory requirements or risk management policies.
+              </p>
+            </div>
           </section>
 
           {/* 5 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">5. Wallet, Payments &amp; Fees</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">5. Human-in-the-Loop Mandate</h2>
+            <p className="leading-relaxed">
+              FlowPilot operates on a strict <strong>Human-in-the-Loop</strong> principle. AI agents
+              assist with reconciliation, risk scoring, and candidate analysis, but <strong>no payout
+              can execute without your explicit approval</strong>. You acknowledge and agree that the
+              final legal and financial responsibility for every approved payout rests solely with you
+              as the account holder or your designated approvers. FlowPilot&apos;s AI outputs are
+              advisory in nature and do not constitute a guarantee of accuracy or appropriateness.
+            </p>
+          </section>
+
+          {/* 6 */}
+          <section>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">6. Wallet, Payments &amp; Fees</h2>
             <div className="space-y-4">
               <p className="leading-relaxed">
                 FlowPilot maintains an internal wallet ledger on your behalf. Wallet balances are
@@ -116,19 +159,20 @@ export default function TermsOfServicePage() {
             </div>
           </section>
 
-          {/* 6 */}
+          {/* 7 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">6. Data Collection &amp; Privacy</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">7. Data Collection &amp; Privacy</h2>
             <div className="space-y-4">
-              <p className="leading-relaxed">We collect and process the following categories of data:</p>
+              <p className="leading-relaxed">We collect and process data appropriate to your account type, including:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>
-                  <strong>Account data:</strong> Business name, registration number, tax identification,
-                  director details, and contact information provided during onboarding and KYC/KYB.
+                  <strong>Identity data:</strong> For individuals — full name, date of birth, government ID,
+                  BVN/NIN, and biometric data. For businesses — entity name, registration number, TIN,
+                  director details, and authorised signatory identities.
                 </li>
                 <li>
-                  <strong>User data:</strong> Names, email addresses, job titles, phone numbers, login
-                  timestamps, and IP addresses of authorised team members.
+                  <strong>User data:</strong> Email addresses, phone numbers, login timestamps, and
+                  IP addresses of account holders and team members.
                 </li>
                 <li>
                   <strong>Payout data:</strong> Beneficiary names, bank account numbers, payment amounts,
@@ -148,36 +192,39 @@ export default function TermsOfServicePage() {
                 regulatory obligations; (c) detect fraud and maintain platform security; and (d) communicate
                 important service updates. We do not sell your personal data to third parties. Data is retained
                 for a minimum of 7 years to comply with financial recordkeeping requirements, or longer where
-                required by law.
+                required by law. For full details, see our{" "}
+                <a href="/privacy" className="text-[#e86727] hover:underline">Privacy Policy</a>.
               </p>
             </div>
           </section>
 
-          {/* 7 */}
+          {/* 8 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">7. Data Security</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">8. Data Security</h2>
             <p className="leading-relaxed">
               FlowPilot employs industry-standard security measures including encryption at rest and in
               transit, role-based access controls, multi-factor authentication enforcement, and continuous
               audit logging. However, no system is completely secure. You agree that FlowPilot shall not
               be liable for any breach of security or unauthorised access that is beyond our reasonable
               control, provided we have implemented reasonable safeguards. You must report any suspected
-              security incidents to <a href="mailto:security@flowpilot.ai" className="text-[#e86727] hover:underline">security@flowpilot.ai</a> immediately.
+              security incidents to{" "}
+              <a href="mailto:security@flowpilot.ai" className="text-[#e86727] hover:underline">security@flowpilot.ai</a>{" "}
+              immediately.
             </p>
           </section>
 
-          {/* 8 */}
+          {/* 9 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">8. Acceptable Use</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">9. Acceptable Use</h2>
             <div className="space-y-4">
               <p className="leading-relaxed">You must not use FlowPilot to:</p>
               <ul className="list-disc pl-6 space-y-2">
                 <li>Execute payouts for illegal, fraudulent, or money-laundering purposes.</li>
                 <li>Pay individuals or entities on any sanctioned persons or entities list.</li>
                 <li>Attempt to bypass, reverse-engineer, or exploit any security or approval control.</li>
-                <li>Share owner or admin credentials across multiple physical persons.</li>
+                <li>Share account credentials with unauthorised persons.</li>
                 <li>Upload beneficiary data that you do not have legal authority to process.</li>
-                <li>Use the platform for personal (non-business) payments.</li>
+                <li>Misrepresent your account type, identity, or the nature of your payout activity.</li>
               </ul>
               <p className="leading-relaxed">
                 Violation of this policy may result in immediate account suspension, fund freezing, and
@@ -186,9 +233,9 @@ export default function TermsOfServicePage() {
             </div>
           </section>
 
-          {/* 9 */}
+          {/* 10 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">9. AI &amp; Risk Scoring Disclaimer</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">10. AI &amp; Risk Scoring Disclaimer</h2>
             <p className="leading-relaxed">
               Risk scores, reconciliation results, and recommendations produced by FlowPilot&apos;s AI agents
               are generated using statistical models and are provided <strong>&ldquo;as-is&rdquo;</strong>. They
@@ -198,9 +245,9 @@ export default function TermsOfServicePage() {
             </p>
           </section>
 
-          {/* 10 */}
+          {/* 11 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">10. Limitation of Liability</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">11. Limitation of Liability</h2>
             <div className="space-y-4">
               <p className="leading-relaxed">
                 To the maximum extent permitted by applicable law, FlowPilot and its officers, directors,
@@ -210,7 +257,7 @@ export default function TermsOfServicePage() {
                 <li>Any indirect, incidental, special, consequential, or punitive damages.</li>
                 <li>Loss of profits, data, goodwill, or business opportunity.</li>
                 <li>Payout failures caused by third-party banking infrastructure outages.</li>
-                <li>Erroneous payouts approved by your authorised operators.</li>
+                <li>Erroneous payouts approved by you or your authorised team members.</li>
                 <li>
                   Any loss arising from your failure to maintain adequate internal controls or approval
                   workflows.
@@ -224,21 +271,21 @@ export default function TermsOfServicePage() {
             </div>
           </section>
 
-          {/* 11 */}
+          {/* 12 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">11. Indemnification</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">12. Indemnification</h2>
             <p className="leading-relaxed">
               You agree to indemnify, defend, and hold harmless FlowPilot and its affiliates from any
               claims, damages, liabilities, and expenses (including reasonable legal fees) arising from:
               (a) your use of the platform in violation of these Terms; (b) your breach of any applicable
-              law or regulation; (c) payouts approved by your team; or (d) any dispute with a beneficiary
-              or third party relating to a payout you initiated.
+              law or regulation; (c) payouts approved by you or your team; or (d) any dispute with a
+              beneficiary or third party relating to a payout you initiated.
             </p>
           </section>
 
-          {/* 12 */}
+          {/* 13 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">12. Service Availability</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">13. Service Availability</h2>
             <p className="leading-relaxed">
               FlowPilot targets 99.5% platform uptime but does not guarantee uninterrupted availability.
               Scheduled maintenance, third-party infrastructure failures, regulatory interventions, or
@@ -247,22 +294,22 @@ export default function TermsOfServicePage() {
             </p>
           </section>
 
-          {/* 13 */}
+          {/* 14 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">13. Termination</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">14. Termination</h2>
             <p className="leading-relaxed">
               Either party may terminate access to FlowPilot with 30 days&apos; written notice. FlowPilot
               may terminate or suspend access immediately without notice if you breach these Terms,
               fail KYC/KYB requirements, are subject to a legal or regulatory order, or pose a risk
               of harm to the platform or other users. Upon termination, outstanding wallet balances
-              (net of any fees owed) will be returned to your registered business bank account within
+              (net of any fees owed) will be returned to your registered bank account within
               30 business days, subject to any legal holds.
             </p>
           </section>
 
-          {/* 14 */}
+          {/* 15 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">14. Governing Law &amp; Dispute Resolution</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">15. Governing Law &amp; Dispute Resolution</h2>
             <p className="leading-relaxed">
               These Terms shall be governed by and construed in accordance with the laws of the Federal
               Republic of Nigeria. Any dispute arising from these Terms shall first be subject to good-faith
@@ -272,9 +319,9 @@ export default function TermsOfServicePage() {
             </p>
           </section>
 
-          {/* 15 */}
+          {/* 16 */}
           <section>
-            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">15. Changes to These Terms</h2>
+            <h2 className="text-xl font-bold text-[#0F0F0F] mb-4">16. Changes to These Terms</h2>
             <p className="leading-relaxed">
               FlowPilot reserves the right to update these Terms at any time. We will notify you of
               material changes via email or in-app notification at least 14 days before the changes take

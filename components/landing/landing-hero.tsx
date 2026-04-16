@@ -19,14 +19,15 @@ export function LandingHero() {
         </div> */}
 
         <h1 className="mx-auto mt-7 max-w-3xl text-center text-5xl font-extrabold leading-[1.06] tracking-tight text-[#0F0F0F] md:text-7xl">
-          Pay your team and vendors in bulk {" "}
+          Pay anyone in bulk —{" "}
           <span className="text-[#e86727]">safely, in minutes.</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-120 text-center text-[12px] leading-relaxed text-[#6B6B6B] md:text-[16px]">
-          FlowPilot automates your business payouts: verifies every recipient,
-          catches duplicates and fraud, and waits for your approval before a
-          single Naira moves.
+          Whether you&apos;re an individual paying contractors or a business
+          settling an entire team — FlowPilot verifies every recipient, catches
+          duplicates and fraud, and waits for your approval before a single
+          Naira moves.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-3">
@@ -47,7 +48,7 @@ export function LandingHero() {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-medium text-[#9A9A9A]">
-          <span>Built for African SMEs</span>
+          <span>For individuals &amp; businesses</span>
           <span className="h-1 w-1 rounded-full bg-[#D9D4C8]" />
           <span>Human-approved payouts</span>
           <span className="h-1 w-1 rounded-full bg-[#D9D4C8]" />

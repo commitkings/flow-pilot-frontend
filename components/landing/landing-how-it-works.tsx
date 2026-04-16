@@ -45,12 +45,12 @@ export function LandingHowItWorks() {
               How It Works
             </span>
             <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#0F0F0F] sm:text-4xl md:text-5xl">
-              Picture this: it&apos;s Friday,{" "}
-              <span className="text-[#e86727]">80 vendors to pay by end of day.</span>
+              Picture this: multiple people to pay,{" "}
+              <span className="text-[#e86727]">one deadline, zero room for error.</span>
             </h2>
           </div>
           <p className="max-w-xs text-sm font-medium leading-relaxed text-[#6B6B6B]">
-            Here&apos;s how FlowPilot handles it — from your instruction to bank execution.
+            Whether it&apos;s 5 freelancers or 500 staff — here&apos;s how FlowPilot handles it from instruction to execution.
           </p>
         </div>
 
