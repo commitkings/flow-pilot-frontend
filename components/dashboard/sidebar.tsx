@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -63,6 +63,8 @@ type NavItem = {
   badge?: string;
   /** Roles that can see this item. Undefined = all roles. */
   roles?: string[];
+  /** Renders a small sub-section label above this item inside the group. */
+  subSectionLabel?: string;
 };
 
 type NavGroup = {
@@ -72,17 +74,12 @@ type NavGroup = {
 
 const navGroups: NavGroup[] = [
   {
-    label: "Payouts",
-    items: [
-      { label: "All Payouts", href: "/dashboard/runs", icon: LayoutDashboard },
-      { label: "Scheduled", href: "/dashboard/runs/scheduled", icon: CalendarClock },
-      { label: "Templates", href: "/dashboard/runs/templates", icon: Bookmark },
-    ],
-  },
-  {
     label: "Operations",
     items: [
       { label: "Overview", href: "/dashboard", icon: Home },
+      { label: "All Payouts", href: "/dashboard/runs", icon: LayoutDashboard, subSectionLabel: "Payouts" },
+      { label: "Scheduled", href: "/dashboard/runs/scheduled", icon: CalendarClock },
+      { label: "Templates", href: "/dashboard/runs/templates", icon: Bookmark },
       { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
       { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
       { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },
@@ -231,7 +228,14 @@ export function Sidebar() {
               ? String(unreadCount)
               : item.badge;
             return (
-              <NavLink key={item.href} item={{ ...item, badge }} collapsed={isCollapsed} onClick={() => { onClose?.(); }} />
+              <React.Fragment key={item.href}>
+                {!isCollapsed && item.subSectionLabel && (
+                  <p className="mt-3 mb-0.5 px-3 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">
+                    {item.subSectionLabel}
+                  </p>
+                )}
+                <NavLink item={{ ...item, badge }} collapsed={isCollapsed} onClick={() => { onClose?.(); }} />
+              </React.Fragment>
             );
           })}
         </div>

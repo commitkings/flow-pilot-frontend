@@ -160,7 +160,7 @@ export default function ScheduledRunsPage() {
         <MetricCard
           label="Active"
           value={isLoading ? "…" : String(activeCount)}
-          subtext="Currently running on schedule"
+          subtext="Currently active on schedule"
           icon={<CalendarClock className="h-4 w-4" />}
           accent="green"
         />
@@ -182,10 +182,10 @@ export default function ScheduledRunsPage() {
                   Frequency
                 </th>
                 <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground lg:table-cell">
-                  Next Run
+                  Next Payout
                 </th>
                 <th className="hidden px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground xl:table-cell">
-                  Last Run
+                  Last Payout
                 </th>
                 <th className="px-4 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:px-6">
                   Status
@@ -208,7 +208,7 @@ export default function ScheduledRunsPage() {
                     colSpan={7}
                     className="py-12 text-center text-sm text-destructive"
                   >
-                    Failed to load scheduled runs. Please refresh.
+                    Failed to load scheduled payouts. Please refresh.
                   </td>
                 </tr>
               ) : runs.length === 0 ? (
@@ -219,10 +219,10 @@ export default function ScheduledRunsPage() {
                         <CalendarX2 className="h-5 w-5 text-muted-foreground" />
                       </div>
                       <p className="text-base font-black text-foreground">
-                        No scheduled runs yet
+                        No scheduled payouts yet
                       </p>
                       <p className="max-w-xs text-sm text-muted-foreground">
-                        Create your first scheduled run to automate recurring
+                        Create your first scheduled payout to automate recurring
                         payout workflows.
                       </p>
                       <Button
