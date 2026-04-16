@@ -22,6 +22,7 @@ export default function SignupPage() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [invalid, setInvalid] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const handleFocus = (e: React.FocusEvent<HTMLElement>) => {
     setFocused(true);
@@ -40,7 +41,8 @@ export default function SignupPage() {
 
   const canContinue = !!(
     firstName.trim() && lastName.trim() && workEmail.trim() &&
-    password.trim() && confirmPassword.trim() && password === confirmPassword
+    password.trim() && confirmPassword.trim() && password === confirmPassword &&
+    agreed
   );
 
   const onSubmit = async (e: { preventDefault(): void }) => {
@@ -94,6 +96,8 @@ export default function SignupPage() {
             showPassword={showPassword} onTogglePassword={() => setShowPassword((p) => !p)}
             showConfirm={showConfirm} onToggleConfirm={() => setShowConfirm((p) => !p)}
             passwordMismatch={submitted && confirmPassword.length > 0 && password !== confirmPassword}
+            agreed={agreed}
+            onAgreedChange={setAgreed}
             onSubmit={onSubmit}
             onGoogle={loginWithGoogle}
             loading={loading}

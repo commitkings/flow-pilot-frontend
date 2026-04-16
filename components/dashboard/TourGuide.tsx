@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
 
 // ── Tour step definitions ────────────────────────────────────────────────────
 
@@ -119,9 +120,14 @@ interface TourGuideProps {
 }
 
 export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeMobileMenu }: TourGuideProps) {
-  const steps = ALL_STEPS.filter(
-    (s) => !s.roles || (userRole && s.roles.includes(userRole))
-  );
+  const { data: orgProfile } = useOrgProfile();
+  const isIndividual = orgProfile?.account_type === "individual";
+
+  const steps = ALL_STEPS.filter((s) => {
+    if (s.roles && (!userRole || !s.roles.includes(userRole))) return false;
+    if (isIndividual && (s.tourId === "team" || s.tourId === "developer")) return false;
+    return true;
+  });
 
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);

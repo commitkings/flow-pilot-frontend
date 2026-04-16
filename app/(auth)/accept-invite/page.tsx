@@ -37,6 +37,7 @@ function AcceptInviteForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   function dobError(): string | null {
     if (!dob) return null;
@@ -68,7 +69,8 @@ function AcceptInviteForm() {
     dob &&
     !dobErr &&
     password.length >= 8 &&
-    password === confirmPassword
+    password === confirmPassword &&
+    agreed
   );
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -292,6 +294,22 @@ function AcceptInviteForm() {
             </p>
           )}
         </Field>
+
+        <div className="flex items-center space-x-2.5">
+          <input
+            type="checkbox"
+            id="terms"
+            className="h-4 w-4 rounded border-border-strong text-brand focus:ring-brand accent-brand cursor-pointer"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+          />
+          <label htmlFor="terms" className="text-sm text-muted-foreground select-none">
+            I agree to the{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">Terms of Service</a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">Privacy Policy</a>
+          </label>
+        </div>
 
         <Button
           type="submit"
