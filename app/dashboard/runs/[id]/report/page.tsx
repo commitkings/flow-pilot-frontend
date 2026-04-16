@@ -33,8 +33,11 @@ export default function RunReportPage() {
   };
 
   const auditEntries = report?.audit_trail ?? report?.entries ?? [];
-  const summary = report?.report?.summary;
-  const executionResults = report?.report?.execution_results as
+  const reportBody = report?.report as
+    | { executive_summary?: string; summary?: string; execution_results?: unknown }
+    | undefined;
+  const narrativeSummary = reportBody?.executive_summary ?? reportBody?.summary;
+  const executionResults = reportBody?.execution_results as
     | { payouts?: Array<{ beneficiary: string; institution: string; amount: number; status: string; reference: string }> }
     | undefined;
 
@@ -72,9 +75,9 @@ export default function RunReportPage() {
 
       {!reportLoading && !reportError && report && (
         <>
-          {summary && (
-            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-              {String(summary)}
+          {narrativeSummary && (
+            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 whitespace-pre-line leading-relaxed">
+              {narrativeSummary}
             </div>
           )}
 
