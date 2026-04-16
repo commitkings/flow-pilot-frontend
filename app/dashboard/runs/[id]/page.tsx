@@ -783,8 +783,8 @@ export default function RunDetailPage() {
                   Reassign
                 </Button>
               )}
-              {/* Nudge button — visible to creator or owner when there's an assigned approver */}
-              {run.assignedToId && (isCreator || isOwner) && (
+              {/* Remind Approver — visible to creator or owner */}
+              {(isCreator || isOwner) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -797,7 +797,7 @@ export default function RunDetailPage() {
                   ) : (
                     <Zap className="h-3.5 w-3.5" />
                   )}
-                  Nudge
+                  Remind Approver
                 </Button>
               )}
               {canApprove ? (
@@ -815,14 +815,18 @@ export default function RunDetailPage() {
             </div>
           </div>
           {/* Assignee info strip */}
-          {run.assignedTo && (
-            <div className="flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-100/40 px-4 py-2.5 text-sm dark:border-amber-800/40 dark:bg-amber-900/20">
-              <span className="text-amber-700 dark:text-amber-400">Assigned to:</span>
-              <span className="font-bold text-amber-900 dark:text-amber-200">{run.assignedTo.name}</span>
-              <span className="text-amber-600 dark:text-amber-500">·</span>
-              <span className="text-xs text-amber-700 dark:text-amber-400">{run.assignedTo.email}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-100/40 px-4 py-2.5 text-sm dark:border-amber-800/40 dark:bg-amber-900/20">
+            <span className="text-amber-700 dark:text-amber-400">Assigned to:</span>
+            {run.assignedTo ? (
+              <>
+                <span className="font-bold text-amber-900 dark:text-amber-200">{run.assignedTo.name}</span>
+                <span className="text-amber-600 dark:text-amber-500">·</span>
+                <span className="text-xs text-amber-700 dark:text-amber-400">{run.assignedTo.email}</span>
+              </>
+            ) : (
+              <span className="font-bold text-amber-900 dark:text-amber-200">Any available approver</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -1149,12 +1153,14 @@ export default function RunDetailPage() {
               value={<PersonChip name={run.createdByUser.name} email={run.createdByUser.email} color="brand" />}
             />
           )}
-          {run.assignedTo && (
-            <Detail
-              label="Assigned To"
-              value={<PersonChip name={run.assignedTo.name} email={run.assignedTo.email} color="amber" />}
-            />
-          )}
+          <Detail
+            label="Assigned To"
+            value={
+              run.assignedTo
+                ? <PersonChip name={run.assignedTo.name} email={run.assignedTo.email} color="amber" />
+                : <span className="text-sm text-muted-foreground">Any available approver</span>
+            }
+          />
           {run.approvedByUser && (
             <Detail
               label="Approved By"
