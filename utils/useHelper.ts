@@ -91,6 +91,11 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     budgetCap: r.budget_cap ?? null,
     assignedToId: r.assigned_to_id ?? null,
     assignedTo: r.assigned_to ?? null,
+    createdBy: r.created_by ?? null,
+    createdByUser: r.created_by_user ?? null,
+    approvedBy: r.approved_by ?? null,
+    approvedByUser: r.approved_by_user ?? null,
+    approvedAt: r.approved_at ?? null,
   };
 }
 

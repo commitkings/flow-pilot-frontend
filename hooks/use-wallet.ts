@@ -6,7 +6,9 @@ import {
   fetchWallet,
   fetchWalletTransactions,
   topUpWallet,
+  withdrawWallet,
   type TopUpPayload,
+  type WithdrawPayload,
 } from "@/lib/api-wallet";
 import { useAuth } from "@/context/auth-context";
 
@@ -26,11 +28,11 @@ export function useWallet() {
   });
 }
 
-export function useWalletTransactions(limit = 20, offset = 0) {
+export function useWalletTransactions(limit = 50, offset = 0, month?: string) {
   const businessId = useBusinessId();
   return useQuery({
-    queryKey: ["wallet-transactions", businessId, limit, offset],
-    queryFn: () => fetchWalletTransactions(businessId!, limit, offset),
+    queryKey: ["wallet-transactions", businessId, limit, offset, month],
+    queryFn: () => fetchWalletTransactions(businessId!, limit, offset, month),
     enabled: !!businessId,
     staleTime: 30_000,
     retry: false,
@@ -56,6 +58,25 @@ export function useTopUpWallet() {
     },
     onError: () => {
       toast.error("Top-up failed. Please try again.");
+    },
+  });
+}
+
+export function useWithdrawWallet() {
+  const qc = useQueryClient();
+  const businessId = useBusinessId();
+
+  return useMutation({
+    mutationFn: (payload: WithdrawPayload) => withdrawWallet(businessId!, payload),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["wallet"] });
+      qc.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      toast.success(
+        `₦${data.amount_debited.toLocaleString("en-NG", { minimumFractionDigits: 2 })} withdrawal recorded.`,
+      );
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Withdrawal failed. Please try again.");
     },
   });
 }

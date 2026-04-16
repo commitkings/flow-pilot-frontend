@@ -41,6 +41,11 @@ export type RunRecord = {
   budgetCap?: number | null;
   assignedToId?: string | null;
   assignedTo?: { id: string; name: string; email: string } | null;
+  createdBy?: string | null;
+  createdByUser?: { id: string; name: string; email: string } | null;
+  approvedBy?: string | null;
+  approvedByUser?: { id: string; name: string; email: string } | null;
+  approvedAt?: string | null;
 };
 
 export const institutions = [
