@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  BarChart2,
   Building2,
   Check,
   Copy,
@@ -25,6 +26,7 @@ import { useWallet, useWalletTransactions, useTopUpWallet, useWithdrawWallet } f
 import { useCredits, usePurchaseCredits } from "@/hooks/use-credits";
 import { useOrgProfile } from "@/hooks/use-settings-queries";
 import { useAuth } from "@/context/auth-context";
+import { useKycStatus } from "@/hooks/use-kyc-queries";
 import { getUserRole, isOwner, ApiError } from "@/lib/api-types";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -253,6 +255,110 @@ function BuyCreditsModal({ bundles, onClose }: { bundles: { credits: number; pri
   );
 }
 
+// ── Monthly limits card ───────────────────────────────────────────────────────
+
+import type { KycLimitInfo } from "@/lib/api-types";
+import Link from "next/link";
+
+function MonthlyLimitsCard({ limitInfo }: { limitInfo: KycLimitInfo }) {
+  const { monthly_limit, monthly_payout_used, single_limit, wallet_limit, at_max_level, kyc_level } = limitInfo;
+
+  const monthlyPct = monthly_limit > 0 ? Math.min(100, (monthly_payout_used / monthly_limit) * 100) : 0;
+  const remaining = Math.max(0, monthly_limit - monthly_payout_used);
+
+  const now = new Date();
+  const monthName = now.toLocaleString("en-NG", { month: "long", year: "numeric" });
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const daysLeft = daysInMonth - now.getDate() + 1;
+
+  const barColor = monthlyPct >= 90 ? "bg-red-500" : monthlyPct >= 70 ? "bg-amber-500" : "bg-emerald-500";
+  const textColor = monthlyPct >= 90 ? "text-red-600 dark:text-red-400" : monthlyPct >= 70 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card px-5 py-4 shadow-sm space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+            <BarChart2 className="h-4 w-4 text-brand" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Payout Limits</p>
+            <p className="text-xs text-muted-foreground">{monthName} · {daysLeft} day{daysLeft !== 1 ? "s" : ""} left</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1">
+          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+            Level {kyc_level}
+          </span>
+        </div>
+      </div>
+
+      {/* Monthly limit progress */}
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-foreground">Monthly payout volume</span>
+          <span className={`font-black ${textColor}`}>{monthlyPct.toFixed(0)}% used</span>
+        </div>
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+            style={{ width: `${monthlyPct}%` }}
+          />
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>{formatNGN(monthly_payout_used)} used</span>
+          <span>{formatNGN(remaining)} remaining of {formatNGN(monthly_limit)}</span>
+        </div>
+      </div>
+
+      {/* Other limits as compact chips */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Single payout cap</p>
+          <p className="mt-0.5 text-sm font-black text-foreground">{formatNGN(single_limit)}</p>
+        </div>
+        <div className="rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Wallet limit</p>
+          <p className="mt-0.5 text-sm font-black text-foreground">{formatNGN(wallet_limit)}</p>
+        </div>
+      </div>
+
+      {/* Warnings / upgrade CTA */}
+      {monthlyPct >= 90 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          {monthlyPct >= 100
+            ? "You've reached your monthly payout limit. No further payouts can be approved until the month resets."
+            : `You're almost at your monthly limit — only ${formatNGN(remaining)} remaining.`}
+          {!at_max_level && (
+            <> <Link href="/dashboard/kyc" className="font-semibold underline">Upgrade your KYC level</Link> for higher limits.</>
+          )}
+        </div>
+      )}
+      {monthlyPct >= 70 && monthlyPct < 90 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          You&apos;ve used {monthlyPct.toFixed(0)}% of your monthly limit. {formatNGN(remaining)} remaining.
+          {!at_max_level && (
+            <> <Link href="/dashboard/kyc" className="font-semibold underline">Upgrade your KYC level</Link> to increase your limits.</>
+          )}
+        </div>
+      )}
+      {!at_max_level && monthlyPct < 70 && (
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-muted-foreground">
+            Limits reset on the 1st of each month.
+          </p>
+          <Link href="/dashboard/kyc" className="text-[11px] font-semibold text-brand hover:underline">
+            Upgrade limits →
+          </Link>
+        </div>
+      )}
+      {at_max_level && (
+        <p className="text-[11px] text-muted-foreground">Limits reset on the 1st of each month. You&apos;re on the highest tier.</p>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function WalletPage() {
@@ -270,6 +376,7 @@ export default function WalletPage() {
   const { data: wallet, isLoading: walletLoading, isError: walletError, error: walletErrorObj, refetch: refetchWallet } = useWallet();
   const { data: credits } = useCredits();
   const { data: org } = useOrgProfile();
+  const { data: kycData } = useKycStatus();
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const { data: txData, isLoading: txLoading } = useWalletTransactions(50, 0, selectedMonth || undefined);
   const [showTopUp, setShowTopUp] = useState(false);
@@ -431,6 +538,11 @@ export default function WalletPage() {
           </div>
         )}
       </div>
+
+      {/* Monthly payout limits card */}
+      {kycData?.limit_info && kycData.kyc_status === "verified" && (
+        <MonthlyLimitsCard limitInfo={kycData.limit_info} />
+      )}
 
       {/* Virtual account card — fund wallet via bank transfer */}
       {org?.virtual_account_number && (
