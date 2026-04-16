@@ -10,6 +10,7 @@ const states = [
 ];
 
 interface Step2Props {
+  isIndividual?: boolean;
   merchantState: string;
   setMerchantState: (v: string) => void;
   dailyPayoutLimit: string;
@@ -23,6 +24,7 @@ interface Step2Props {
 }
 
 export function Step2FinancialSetup({
+  isIndividual,
   merchantState, setMerchantState,
   dailyPayoutLimit, setDailyPayoutLimit,
   singlePayoutLimit, setSinglePayoutLimit,
@@ -31,9 +33,11 @@ export function Step2FinancialSetup({
 }: Step2Props) {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <Field label="Registered State">
-        <SelectInput value={merchantState} onChange={setMerchantState} placeholder="Select state" options={states} />
-      </Field>
+      {!isIndividual && (
+        <Field label="Registered State">
+          <SelectInput value={merchantState} onChange={setMerchantState} placeholder="Select state" options={states} />
+        </Field>
+      )}
 
       <Field label="Default Daily Payout Limit (₦)">
         <AmountInput value={dailyPayoutLimit} onChange={setDailyPayoutLimit} placeholder="e.g. 5,000,000" />
@@ -43,13 +47,17 @@ export function Step2FinancialSetup({
         <AmountInput value={singlePayoutLimit} onChange={setSinglePayoutLimit} placeholder="e.g. 250,000" />
       </Field>
 
-      <Field label="Risk Alert Threshold">
-        <NumericInput value={riskAlertThreshold} onChange={setRiskAlertThreshold} placeholder="e.g. 0.35" decimal />
-      </Field>
+      {!isIndividual && (
+        <>
+          <Field label="Risk Alert Threshold">
+            <NumericInput value={riskAlertThreshold} onChange={setRiskAlertThreshold} placeholder="e.g. 0.35" decimal />
+          </Field>
 
-      <Field label="Liquidity Alert Buffer (%)">
-        <NumericInput value={liquidityAlertThreshold} onChange={setLiquidityAlertThreshold} placeholder="e.g. 15" />
-      </Field>
+          <Field label="Liquidity Alert Buffer (%)">
+            <NumericInput value={liquidityAlertThreshold} onChange={setLiquidityAlertThreshold} placeholder="e.g. 15" />
+          </Field>
+        </>
+      )}
     </div>
   );
 }

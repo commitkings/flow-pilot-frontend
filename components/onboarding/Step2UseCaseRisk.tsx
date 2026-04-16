@@ -1,34 +1,26 @@
-import { Scale, Shield, Zap } from "lucide-react";
-import { Field } from "@/components/ui/form-fields";
-import { CardSelect, PillSelect, type CardSelectOption } from "@/components/ui/select-fields";
+import { Field, SelectInput } from "@/components/ui/form-fields";
+import { PillSelect } from "@/components/ui/select-fields";
 
 export type RiskAppetite = "conservative" | "moderate" | "aggressive";
 
 const useCaseOptions = [
-  "Payroll Disbursement", "Vendor Payments", "Supplier Payments",
-  "Contractor Payments", "Refunds and Reversals", "Inter-account Transfers",
+  "Staff Salaries", "Vendor Payments", "Supplier Payments",
+  "Contractor / Freelancer Payments", "Refunds", "Moving Money Between Accounts",
 ];
 
-const riskOptions: CardSelectOption<RiskAppetite>[] = [
-  {
-    value: "conservative",
-    title: "Conservative",
-    description: "Strict risk controls. Only very low risk payouts auto-approved.",
-    icon: <Shield className="h-5 w-5 text-brand" />,
-  },
-  {
-    value: "moderate",
-    title: "Moderate",
-    description: "Balanced approach. Review borderline cases.",
-    icon: <Scale className="h-5 w-5 text-brand" />,
-  },
-  {
-    value: "aggressive",
-    title: "Aggressive",
-    description: "Speed-focused. Flag only high-risk payouts.",
-    icon: <Zap className="h-5 w-5 text-brand" />,
-  },
-];
+const riskOptions = ["Careful – strict checks on everything", "Balanced – review edge cases", "Fast – only flag obvious issues"];
+
+const riskLabelToValue: Record<string, RiskAppetite> = {
+  "Careful – strict checks on everything": "conservative",
+  "Balanced – review edge cases": "moderate",
+  "Fast – only flag obvious issues": "aggressive",
+};
+
+const riskValueToLabel: Record<RiskAppetite, string> = {
+  conservative: "Careful – strict checks on everything",
+  moderate: "Balanced – review edge cases",
+  aggressive: "Fast – only flag obvious issues",
+};
 
 interface Step2Props {
   selectedUseCases: string[];
@@ -43,12 +35,17 @@ export function Step2UseCaseRisk({
 }: Step2Props) {
   return (
     <div className="space-y-6">
-      <Field label="Primary Use Case">
+      <Field label="What do you mainly send money for?">
         <PillSelect options={useCaseOptions} selected={selectedUseCases} onToggle={toggleUseCase} />
       </Field>
 
-      <Field label="Risk Appetite">
-        <CardSelect options={riskOptions} selected={riskAppetite} onChange={setRiskAppetite} />
+      <Field label="How careful should we be with payments?">
+        <SelectInput
+          value={riskAppetite ? riskValueToLabel[riskAppetite] : ""}
+          onChange={(v) => setRiskAppetite(riskLabelToValue[v])}
+          placeholder="Choose your preference"
+          options={riskOptions}
+        />
       </Field>
     </div>
   );

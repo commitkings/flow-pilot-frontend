@@ -31,7 +31,7 @@ export function VerifyForm({
       </div>
 
       <p className="mt-5 text-center text-xl font-semibold text-foreground">
-        Verify your business email.
+        Verify your email.
       </p>
       <p className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
         We&apos;ve sent a 6-digit code to{" "}
