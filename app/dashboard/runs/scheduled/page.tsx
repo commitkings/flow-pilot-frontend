@@ -14,6 +14,7 @@ import {
   Trash2,
   Zap,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
@@ -23,6 +24,7 @@ import {
   useDeleteScheduledRun,
 } from "@/hooks/use-scheduled-runs";
 import { ScheduleRunModal } from "@/components/runs/ScheduleRunModal";
+import { useKycStatus } from "@/hooks/use-kyc-queries";
 import type { ScheduledRun } from "@/lib/api-scheduled-runs";
 
 /* ── Formatting helpers ──────────────────────────────────────────────────── */
@@ -259,6 +261,40 @@ function ScheduledRunRow({ run }: { run: ScheduledRun }) {
 export default function ScheduledRunsPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const { data: runs = [], isLoading, isError } = useScheduledRuns();
+  const { data: kycData } = useKycStatus();
+  const kycStatus = kycData?.kyc_status;
+  const accountType = kycData?.limit_info?.account_type ?? "business";
+  const isIndividual = accountType === "individual";
+
+  if (kycData && kycStatus !== "verified") {
+    return (
+      <div className="mx-auto max-w-lg py-24 text-center space-y-5">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 mx-auto">
+          <svg className="h-8 w-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Verification Required</h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {kycStatus === "pending"
+            ? (isIndividual
+                ? "Your identity is under review. You'll be able to create scheduled payouts once verification is complete (typically within a few minutes)."
+                : "Your business documents are under review. You'll be able to create scheduled payouts once verification is complete (typically within 10 minutes).")
+            : (isIndividual
+                ? "Verify your identity (BVN or NIN) to start scheduling payouts. It takes less than 2 minutes."
+                : "Complete business verification (KYC) before scheduling payouts. This ensures compliance and protects your account.")}
+        </p>
+        <Link
+          href="/dashboard/kyc"
+          className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+        >
+          {kycStatus === "pending"
+            ? "Check Verification Status"
+            : isIndividual ? "Verify Identity" : "Complete KYC Verification"}
+        </Link>
+      </div>
+    );
+  }
 
   const activeCount  = runs.filter((r) => r.run_type === "recurring" && r.is_active).length;
   const pendingCount = runs.filter((r) => r.run_type === "one_time" && r.is_active).length;

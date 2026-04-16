@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useKycStatus, useSubmitKyc } from "@/hooks/use-kyc-queries";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { KycBusinessType } from "@/lib/api-types";
+import { IndividualKycPage } from "@/components/kyc/IndividualKycPage";
 import {
   AlertCircle,
   Building2,
@@ -228,7 +230,39 @@ function InfoRow({ label, value, className }: { label: string; value: string; cl
 
 export default function KycPage() {
   const { data, isLoading } = useKycStatus();
+  const { data: orgProfile, isLoading: orgLoading } = useOrgProfile();
   const submitMut = useSubmitKyc();
+
+  // Branch based on account_type
+  const accountType = orgProfile?.account_type ?? "business";
+  const kycLevel = orgProfile?.kyc_level ?? 0;
+
+  if (isLoading || orgLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (accountType === "individual") {
+    return (
+      <div className="mx-auto max-w-2xl pb-16">
+        <PageHeader
+          title="Identity Verification (KYC)"
+          description="Verify your identity to unlock payout capabilities and higher limits."
+        />
+        <div className="mt-8">
+          <IndividualKycPage
+            kyc_status={data?.kyc_status ?? "not_submitted"}
+            kyc_level={kycLevel}
+            limit_info={data?.limit_info ?? null}
+            individual_submission={data?.individual_submission ?? null}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const [step, setStep] = useState(1);
   const [businessType, setBusinessType] = useState<KycBusinessType | "">("");
@@ -300,21 +334,13 @@ export default function KycPage() {
     });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   // ── Verified: show read-only card ─────────────────────────
   if (kyc_status === "verified" && submission) {
     return (
       <div className="mx-auto max-w-2xl pb-16">
         <PageHeader
           title="Business Verification (KYC)"
-          description="Your business has been verified. Documents are read-only."
+          description="Your business has been verified. You have full access to FlowPilot."
         />
         <div className="mt-8">
           <VerifiedCard submission={submission} />

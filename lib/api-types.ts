@@ -50,6 +50,8 @@ export interface User {
   phone: string | null;
   timezone: string | null;
   department: string | null;
+  /** ISO date YYYY-MM-DD — read-only after registration */
+  date_of_birth: string | null;
   is_active: boolean;
   has_taken_tour: boolean;
   email_verified: boolean;
@@ -102,8 +104,40 @@ export interface DashboardStats {
 
 // ── Onboarding ───────────────────────────────────────────────
 
+export type AccountType = "individual" | "business";
+
+export interface KycLimitInfo {
+  account_type: AccountType;
+  kyc_level: number;
+  monthly_limit: number;
+  single_limit: number;
+  wallet_limit: number;
+  at_max_level: boolean;
+  support_email: string;
+}
+
+export interface IndividualKycSubmission {
+  level_1_type: "nin" | "bvn" | null;
+  level_1_status: "not_submitted" | "pending" | "verified" | "rejected";
+  level_1_submitted_at: string | null;
+  level_1_verified_at: string | null;
+  level_2_address: string | null;
+  level_2_status: "not_submitted" | "pending" | "verified" | "rejected";
+  level_2_document_url: string | null;
+  level_2_submitted_at: string | null;
+  level_2_verified_at: string | null;
+  level_3_status: "not_submitted" | "pending" | "verified" | "rejected";
+  level_3_document_url: string | null;
+  level_3_submitted_at: string | null;
+  level_3_verified_at: string | null;
+}
+
 export interface OnboardingPayload {
   business_name: string;
+  /** "individual" or "business" — determines KYC flow and team visibility */
+  account_type?: AccountType;
+  /** ISO date YYYY-MM-DD — required, must be 18+ */
+  date_of_birth?: string;
   business_type?: string;
   monthly_txn_volume_range?: string;
   avg_monthly_payouts_range?: string;
@@ -122,6 +156,7 @@ export interface OnboardingPayload {
 export interface OnboardingBusiness {
   id: string;
   business_name: string;
+  account_type: AccountType;
   business_type: string;
 }
 
@@ -473,6 +508,8 @@ export interface InviteMemberPayload {
 export interface OrgProfile {
   id: string;
   business_name: string;
+  account_type: AccountType;
+  kyc_level: number;
   business_type: string | null;
   rc_number: string | null;
   tax_id: string | null;
@@ -536,7 +573,9 @@ export interface KycSubmission {
 
 export interface KycStatusResponse {
   kyc_status: "not_submitted" | "pending" | "verified";
+  limit_info: KycLimitInfo | null;
   submission: KycSubmission | null;
+  individual_submission?: IndividualKycSubmission | null;
 }
 
 export interface OrgConfig {
@@ -658,6 +697,7 @@ export interface RegisterViaInvitePayload {
   first_name: string;
   last_name: string;
   password: string;
+  date_of_birth?: string;
 }
 
 export interface RegisterViaInviteResponse extends AuthResponse {

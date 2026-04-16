@@ -78,6 +78,8 @@ export default function NewRunPage() {
   const { data: kycData } = useKycStatus();
   const { data: credits } = useCredits();
   const kycStatus = kycData?.kyc_status;
+  const accountType = kycData?.limit_info?.account_type ?? "business";
+  const isIndividual = accountType === "individual";
 
   // Analysts cannot create runs — redirect them to the runs list
   useEffect(() => {
@@ -98,14 +100,20 @@ export default function NewRunPage() {
         <h2 className="text-xl font-bold text-foreground">Verification Required</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {kycStatus === "pending"
-            ? "Your business documents are under review. You'll be able to create payouts once verification is complete (typically within 10 minutes)."
-            : "You need to complete business verification (KYC) before creating payouts. This helps us ensure compliance and protect your account."}
+            ? (isIndividual
+                ? "Your identity is under review. You'll be able to create payouts once verification is complete (typically within a few minutes)."
+                : "Your business documents are under review. You'll be able to create payouts once verification is complete (typically within 10 minutes).")
+            : (isIndividual
+                ? "Verify your identity (BVN or NIN) to start sending payouts. It takes less than 2 minutes."
+                : "Complete business verification (KYC) before creating payouts. This ensures compliance and protects your account.")}
         </p>
         <Link
           href="/dashboard/kyc"
           className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"
         >
-          {kycStatus === "pending" ? "Check Verification Status" : "Complete KYC Verification"}
+          {kycStatus === "pending"
+            ? "Check Verification Status"
+            : isIndividual ? "Verify Identity" : "Complete KYC Verification"}
         </Link>
       </div>
     );
