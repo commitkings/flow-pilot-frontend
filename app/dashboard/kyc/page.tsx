@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock,
   ExternalLink,
@@ -336,23 +337,30 @@ export default function KycPage() {
             <p className="text-sm text-muted-foreground">
               Choose the type that best describes your organisation. This determines which documents we collect.
             </p>
-            <div className="space-y-2">
-              {BUSINESS_TYPES.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setBusinessType(opt.value)}
-                  className={cn(
-                    "w-full rounded-xl border-2 p-4 text-left transition-all",
-                    businessType === opt.value
-                      ? "border-brand bg-brand/5"
-                      : "border-border bg-card hover:border-brand/40",
-                  )}
-                >
-                  <p className="text-sm font-semibold text-foreground">{opt.label}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{opt.description}</p>
-                </button>
-              ))}
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Business Type</label>
+                <div className="relative">
+                  <select
+                    value={businessType}
+                    onChange={(e) => setBusinessType(e.target.value as KycBusinessType | "")}
+                    className="w-full appearance-none rounded-xl border border-border bg-background px-4 py-3 pr-10 text-sm font-medium text-foreground outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  >
+                    <option value="" disabled>Select your business type…</option>
+                    {BUSINESS_TYPES.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+              {businessType && (
+                <div className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3">
+                  <p className="text-sm text-muted-foreground">
+                    {BUSINESS_TYPES.find((t) => t.value === businessType)?.description}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         );

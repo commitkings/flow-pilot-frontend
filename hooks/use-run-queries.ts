@@ -9,10 +9,11 @@ import { LIVE_RUN_STATUSES } from "@/lib/event-types";
 
 const ACTIVE_STATUSES = new Set(["planning", "running", "executing", "awaiting_approval"]);
 
-export function useRuns() {
+export function useRuns(enabled = true) {
   return useQuery({
     queryKey: ["runs"],
     queryFn: () => listRuns().then((runs) => runs.map(adaptRun)),
+    enabled,
     refetchInterval: (query) => {
       const runs = query.state.data;
       if (runs?.some((r) => ACTIVE_STATUSES.has(r.status))) return 5000;
