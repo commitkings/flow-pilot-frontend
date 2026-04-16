@@ -30,7 +30,7 @@ const ENDPOINTS: EndpointDef[] = [
     id: "list_runs",
     method: "GET",
     path: "/runs",
-    description: "List payout runs for your organisation, newest first.",
+    description: "List payouts for your organisation, newest first.",
     scope: "runs:read",
     pathParams: [],
     queryParams: [

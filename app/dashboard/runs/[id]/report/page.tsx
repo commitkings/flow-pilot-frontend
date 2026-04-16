@@ -79,10 +79,10 @@ export default function RunReportPage() {
           )}
 
           <Card className="rounded-xl border-slate-200 bg-white">
-            <CardHeader><CardTitle className="text-base">Run Summary</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Payout Summary</CardTitle></CardHeader>
             <CardContent className="grid gap-4 lg:grid-cols-2">
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <KV label="Run ID" value={truncateRunId(id)} />
+                <KV label="Payout ID" value={truncateRunId(id)} />
                 <KV label="Status" value={<StatusBadge status="completed" />} />
               </div>
               {!!report.report?.risk_overview && (

@@ -28,8 +28,8 @@ import {
 import type { Webhook as WebhookType } from "@/lib/api-developer";
 
 const WEBHOOK_EVENTS = [
-  { value: "run.completed", label: "Run Completed" },
-  { value: "run.failed", label: "Run Failed" },
+  { value: "run.completed", label: "Payout Completed" },
+  { value: "run.failed", label: "Payout Failed" },
   { value: "payout.succeeded", label: "Payout Succeeded" },
   { value: "payout.failed", label: "Payout Failed" },
   { value: "approval.requested", label: "Approval Requested" },

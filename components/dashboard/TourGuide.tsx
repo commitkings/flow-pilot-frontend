@@ -22,8 +22,8 @@ const ALL_STEPS: TourStep[] = [
   },
   {
     tourId: "runs",
-    title: "Payout Runs",
-    description: "Chat with AI to create payout runs. Describe who to pay — FlowPilot builds the candidate list.",
+    title: "Payouts",
+    description: "Chat with AI to create payouts. Describe who to pay — FlowPilot builds the candidate list.",
   },
   {
     tourId: "approvals",
@@ -50,7 +50,7 @@ const ALL_STEPS: TourStep[] = [
   },
   {
     title: "You're all set! 🎉",
-    description: "Head to Runs and create your first payout run. Retake this tour anytime from the navbar.",
+    description: "Head to Payouts and create your first payout. Retake this tour anytime from the navbar.",
   },
 ];
 

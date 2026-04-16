@@ -40,7 +40,7 @@ function applyFilters(rows: RunRecord[], f: ExportFilters): RunRecord[] {
 }
 
 function downloadCSV(rows: RunRecord[]) {
-  const header = "Run ID,Objective,Status,Candidates,Started";
+  const header = "Payout ID,Objective,Status,Candidates,Started";
   const lines = rows.map((r) =>
     [r.id, `"${r.objective.replace(/"/g, '""')}"`, r.status, r.candidates, r.startedAt].join(",")
   );
@@ -70,13 +70,13 @@ export function ExportRunsModal({ open, onClose, rows }: ExportRunsModalProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title="Export Runs"
-      description="Filter which runs to include before downloading."
+      title="Export Payouts"
+      description="Filter which payouts to include before downloading."
       maxWidth="max-w-md"
       footer={
         <>
           <span className="text-xs text-muted-foreground">
-            {preview.length} of {rows.length} run{rows.length !== 1 ? "s" : ""} selected
+            {preview.length} of {rows.length} payout{rows.length !== 1 ? "s" : ""} selected
           </span>
           <Button
             className="gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90"
@@ -90,7 +90,7 @@ export function ExportRunsModal({ open, onClose, rows }: ExportRunsModalProps) {
       }
     >
       <div className="space-y-5">
-        <Field label="Run ID contains">
+        <Field label="Payout ID contains">
           <TextInput value={draft.runId} onChange={(v) => set("runId", v)} placeholder="e.g. a3f9b2c1" />
         </Field>
 

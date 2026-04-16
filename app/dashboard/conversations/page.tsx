@@ -330,7 +330,7 @@ export default function ConversationsPage() {
           <div>
             <p className="text-base font-black text-foreground">No conversations yet</p>
             <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-              Start a new payout run and chat with FlowPilot — your conversation history will appear here.
+              Start a new payout and chat with FlowPilot — your conversation history will appear here.
             </p>
           </div>
           <Button

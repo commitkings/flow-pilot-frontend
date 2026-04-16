@@ -136,15 +136,15 @@ export default function ScheduledRunsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Scheduled Runs"
-        description="Automated recurring payout runs."
+        title="Scheduled Payouts"
+        description="Automated recurring payouts."
       >
         <Button
           className="gap-2 rounded-full bg-brand px-5 text-sm text-white hover:opacity-90"
           onClick={() => setScheduleOpen(true)}
         >
           <CalendarClock className="h-4 w-4" />
-          New Scheduled Run
+          New Scheduled Payout
         </Button>
       </PageHeader>
 
@@ -230,7 +230,7 @@ export default function ScheduledRunsPage() {
                         onClick={() => setScheduleOpen(true)}
                       >
                         <CalendarClock className="h-4 w-4" />
-                        New Scheduled Run
+                        New Scheduled Payout
                       </Button>
                     </div>
                   </td>

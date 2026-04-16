@@ -22,6 +22,8 @@ import {
   BarChart2,
   MessageSquare,
   Wallet,
+  CalendarClock,
+  Bookmark,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -70,10 +72,17 @@ type NavGroup = {
 
 const navGroups: NavGroup[] = [
   {
+    label: "Payouts",
+    items: [
+      { label: "All Payouts", href: "/dashboard/runs", icon: LayoutDashboard },
+      { label: "Scheduled", href: "/dashboard/runs/scheduled", icon: CalendarClock },
+      { label: "Templates", href: "/dashboard/runs/templates", icon: Bookmark },
+    ],
+  },
+  {
     label: "Operations",
     items: [
       { label: "Overview", href: "/dashboard", icon: Home },
-      { label: "Runs", href: "/dashboard/runs", icon: LayoutDashboard },
       { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
       { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
       { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },

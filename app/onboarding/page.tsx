@@ -29,7 +29,7 @@ const STEP_META: StepMeta[] = [
   {
     title: "Tell us about your business.",
     subtitle: "This helps FlowPilot configure your reconciliation and risk settings.",
-    asideTitle: "You're 4 steps away from automated payout control.",
+    asideTitle: "Let's get your first payout run ready.",
     asideFeatures: [
       "AI reconciles thousands of transactions in seconds — not hours",
       "Risk scores catch suspicious payouts before they leave your account",

@@ -51,7 +51,7 @@ export default function ApprovalsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Approvals"
-        description="Review and approve pending disbursements across all runs."
+        description="Review and approve pending disbursements across all payouts."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -108,7 +108,7 @@ export default function ApprovalsPage() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left">
-                {["Beneficiary", "Amount", "Risk Score", "Risk Decision", "Status", "Run", "Created"].map((h) => (
+                {["Beneficiary", "Amount", "Risk Score", "Risk Decision", "Status", "Payout", "Created"].map((h) => (
                   <th key={h} className="px-6 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground">
                     {h}
                   </th>

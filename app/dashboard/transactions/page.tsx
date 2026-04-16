@@ -82,8 +82,8 @@ export default function TransactionsPage() {
   const emptyMessage = activeFilterCount > 0
     ? "Try adjusting your filters."
     : isBankView
-      ? "Reconciled bank transactions will appear here after Transaction Search succeeds for a run."
-      : "Payout activity and reconciled bank transactions will appear here after runs complete.";
+      ? "Reconciled bank transactions will appear here after Transaction Search succeeds for a payout."
+      : "Payout activity and reconciled bank transactions will appear here after payouts complete.";
 
   return (
     <div className="space-y-6">

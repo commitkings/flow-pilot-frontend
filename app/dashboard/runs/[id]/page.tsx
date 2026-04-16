@@ -32,6 +32,9 @@ import { useRun, useRunReport, useRunSteps, useInvalidateRunQueries } from "@/ho
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 import { useRunEvents } from "@/hooks/use-run-events";
+import { useAssignApprover } from "@/hooks/use-candidate-mutations";
+import { useTeamMembers } from "@/hooks/use-team-queries";
+import { useAuth } from "@/context/auth-context";
 import type { PayoutCandidate } from "@/lib/mock-data";
 
 type BadgeStatus =
@@ -109,11 +112,11 @@ function summarizeRunStage(status: string): string {
     case "completed_with_errors":
       return "This run finished, but some recipients were held back or need follow-up.";
     case "completed":
-      return "This payout run finished successfully.";
+      return "This payout finished successfully.";
     case "failed":
       return "This run hit an error before completion.";
     default:
-      return "FlowPilot is preparing this payout run.";
+      return "FlowPilot is preparing this payout.";
   }
 }
 
@@ -541,9 +544,15 @@ const TABS = [
 export default function RunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+  const currentUserRole = user?.memberships?.[0]?.role;
+
   // Default to the activity/progress tab — it's the mission-control hero view
   const [activeTab, setActiveTab] = useState("activity");
   const [selectedCandidate, setSelectedCandidate] = useState<PayoutCandidate | null>(null);
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [reassignUserId, setReassignUserId] = useState("");
 
   const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
   const { data: transactionsResponse, isLoading: loadingTransactions, isError: transactionsError } =
@@ -551,6 +560,20 @@ export default function RunDetailPage() {
   const { data: candidates = [], isLoading: loadingCandidates } = useCandidates(id);
   const { data: auditReport, isLoading: loadingReport, isError: reportError } =
     useRunReport(id, activeTab === "audit");
+  const { data: teamData } = useTeamMembers();
+  const assignApproverMutation = useAssignApprover(id, () => setReassignOpen(false));
+
+  // Only owners or approvers with approval capability
+  const approvalCapableMembers = (teamData?.members ?? []).filter(
+    (m) => (m.role === "owner" || m.role === "approver") && m.is_active && !m.is_pending,
+  );
+
+  // Whether the current user is the designated approver (or unassigned + capable)
+  const isAssignedApprover =
+    !run?.assignedToId || run.assignedToId === currentUserId;
+  const canApprove =
+    isAssignedApprover && (currentUserRole === "owner" || currentUserRole === "approver");
+  const isOwner = currentUserRole === "owner";
 
   // Real-time pipeline data (live for active runs, replay for completed/failed)
   const isLiveRun = LIVE_RUN_STATUSES.has(run?.status ?? "");
@@ -661,17 +684,87 @@ export default function RunDetailPage() {
 
       {/* Approval banner */}
       {run.status === "awaiting_approval" && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-900 dark:bg-amber-950/30">
-          <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            Agents completed pre-execution analysis. Approval is required before payouts can execute.
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-900 dark:bg-amber-950/30 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                Analysis complete. Approval required before payouts execute.
+                {run.assignedTo && (
+                  <span className="ml-1 font-normal text-amber-700 dark:text-amber-400">
+                    Assigned to <span className="font-semibold">{run.assignedTo.name}</span>.
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isOwner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300"
+                  onClick={() => {
+                    setReassignUserId(run.assignedToId ?? "");
+                    setReassignOpen(true);
+                  }}
+                >
+                  Reassign
+                </Button>
+              )}
+              {canApprove ? (
+                <Button
+                  className="rounded-full bg-amber-500 px-6 text-white hover:bg-amber-600"
+                  onClick={() => router.push(`/dashboard/runs/${id}/approve`)}
+                >
+                  Review &amp; Approve
+                </Button>
+              ) : (
+                <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                  Waiting for {run.assignedTo?.name ?? "the assigned approver"} to review
+                </span>
+              )}
+            </div>
           </div>
-          <Button
-            className="rounded-full bg-amber-500 px-6 text-white hover:bg-amber-600"
-            onClick={() => router.push(`/dashboard/runs/${id}/approve`)}
-          >
-            Review &amp; Approve
-          </Button>
+        </div>
+      )}
+
+      {/* Reassign approver modal */}
+      {reassignOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <h3 className="text-lg font-black tracking-tight text-foreground">Reassign Approver</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose who should review and approve this run.
+            </p>
+            <select
+              value={reassignUserId}
+              onChange={(e) => setReassignUserId(e.target.value)}
+              className="mt-4 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+            >
+              <option value="">Select approver…</option>
+              {approvalCapableMembers.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.user?.display_name || m.user?.email || m.user_id} ({m.role})
+                </option>
+              ))}
+            </select>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-full"
+                onClick={() => setReassignOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-full bg-brand text-white hover:opacity-90"
+                disabled={!reassignUserId || assignApproverMutation.isPending}
+                onClick={() => assignApproverMutation.mutate(reassignUserId)}
+              >
+                {assignApproverMutation.isPending ? "Saving…" : "Confirm"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -828,9 +921,9 @@ export default function RunDetailPage() {
 
       {/* Run info strip */}
       <div className="rounded-2xl border border-border bg-card px-6 py-5">
-        <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Run Details</p>
+        <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-4">Payout Details</p>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <Detail label="Run ID" value={<span className="font-mono text-xs">{id}</span>} />
+          <Detail label="Payout ID" value={<span className="font-mono text-xs">{id}</span>} />
           <Detail label="Status" value={<StatusBadge status={status} label={statusLabel} />} />
           <Detail label="Total Volume" value={formatCurrency(totalCandidateAmount || summary.total_volume)} />
           <Detail label="Created" value={createdAtLabel} />
