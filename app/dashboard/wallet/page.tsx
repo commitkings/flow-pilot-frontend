@@ -5,18 +5,25 @@ import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
+  Building2,
+  Check,
+  Copy,
   Loader2,
   Minus,
   Plus,
   RefreshCw,
   ShieldAlert,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Wallet,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { useWallet, useWalletTransactions, useTopUpWallet, useWithdrawWallet } from "@/hooks/use-wallet";
+import { useCredits, usePurchaseCredits } from "@/hooks/use-credits";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
 import { useAuth } from "@/context/auth-context";
 import { getUserRole, isOwner } from "@/lib/api-types";
 import { PageHeader } from "@/components/ui/page-header";
@@ -164,6 +171,88 @@ function WithdrawModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Buy Credits modal ─────────────────────────────────────────────────────────
+
+function BuyCreditsModal({ bundles, onClose }: { bundles: { credits: number; price: number }[]; onClose: () => void }) {
+  const [selected, setSelected] = useState<number | null>(null);
+  const [reference, setReference] = useState("");
+  const { mutate: purchase, isPending } = usePurchaseCredits(onClose);
+
+  const canSubmit = selected !== null && reference.trim().length > 0 && !isPending;
+
+  const handleSubmit = () => {
+    if (!canSubmit || selected === null) return;
+    purchase({ credits: selected, reference: reference.trim() });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border/50 px-6 py-5">
+          <div>
+            <h2 className="text-lg font-black tracking-tight text-foreground">Buy AI Credits</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Each payout run uses 1 credit. Funds deducted from wallet.</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">✕</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {/* Bundle options */}
+          <div className="grid gap-3">
+            {bundles.map((b) => (
+              <button
+                key={b.credits}
+                type="button"
+                onClick={() => setSelected(b.credits)}
+                className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
+                  selected === b.credits
+                    ? "border-brand bg-brand/5 ring-1 ring-brand/30"
+                    : "border-border hover:border-brand/40 hover:bg-muted/30"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected === b.credits ? "bg-brand text-white" : "bg-muted"}`}>
+                    <Zap className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-black text-foreground">{b.credits} credits</p>
+                    <p className="text-xs text-muted-foreground">{b.credits} payout runs</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-foreground">₦{b.price.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">₦{(b.price / b.credits).toLocaleString()} / credit</p>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Payment reference */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Payment Reference <span className="text-destructive">*</span></label>
+            <input
+              type="text"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="e.g. PAY-CREDITS-001"
+              className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
+            />
+            <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">Must match your payment reference. Cannot be reused.</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-border/50 px-6 py-4">
+          <button type="button" onClick={onClose} disabled={isPending} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">Cancel</button>
+          <Button className="gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90 disabled:opacity-50" onClick={handleSubmit} disabled={!canSubmit}>
+            {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</> : <><Sparkles className="h-4 w-4" /> Buy Credits</>}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function WalletPage() {
@@ -179,10 +268,21 @@ export default function WalletPage() {
   if (!user || role === "analyst") return null;
 
   const { data: wallet, isLoading: walletLoading, isError: walletError, error: walletErrorObj, refetch: refetchWallet } = useWallet();
+  const { data: credits } = useCredits();
+  const { data: org } = useOrgProfile();
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const { data: txData, isLoading: txLoading } = useWalletTransactions(50, 0, selectedMonth || undefined);
   const [showTopUp, setShowTopUp] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  function copyToClipboard(value: string, field: string) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  }
 
   const monthOptions = getMonthOptions(12);
 
@@ -290,6 +390,98 @@ export default function WalletPage() {
           accent={wallet && wallet.total_debit > 0 ? "amber" : "default"}
         />
       </div>
+
+      {/* AI Credits card */}
+      <div className="rounded-2xl border border-border/60 bg-card px-5 py-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+              <Zap className="h-4 w-4 text-brand" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Processing Credits</p>
+              <p className="text-2xl font-black text-foreground">{credits?.balance ?? "…"}</p>
+              <p className="text-xs text-muted-foreground">
+                {credits?.balance === 1 ? "1 payout run remaining" : `${credits?.balance ?? "…"} payout runs remaining`}
+                {" · "}1 credit per run
+              </p>
+            </div>
+          </div>
+          {owner && (
+            <Button
+              className="gap-2 shrink-0 rounded-full bg-brand px-5 text-sm text-white hover:opacity-90"
+              onClick={() => setShowBuyCredits(true)}
+            >
+              <Sparkles className="h-4 w-4" />
+              Buy Credits
+            </Button>
+          )}
+        </div>
+        {credits && credits.balance === 0 && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            You have no AI credits left. Purchase a bundle to create new payout runs.
+          </div>
+        )}
+        {credits && credits.balance > 0 && credits.balance <= 2 && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+            Low credits — only {credits.balance} run{credits.balance !== 1 ? "s" : ""} remaining.
+          </div>
+        )}
+        {/* Bundle pricing reference */}
+        {credits?.bundles && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {credits.bundles.map((b) => (
+              <span key={b.credits} className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                {b.credits} credits · ₦{b.price.toLocaleString()}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Virtual account card — fund wallet via bank transfer */}
+      {org?.virtual_account_number && (
+        <div className="rounded-2xl border border-border/60 bg-card px-5 py-4 shadow-sm">
+          <div className="flex items-center gap-2.5 mb-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+              <Building2 className="h-4 w-4 text-brand" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fund Wallet via Bank Transfer</p>
+              <p className="text-xs text-muted-foreground">Transfer to the account below to top up your wallet instantly.</p>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              { label: "Account Number", value: org.virtual_account_number, field: "account" },
+              { label: "Bank Name", value: org.virtual_account_bank ?? "FlowPilot Microfinance Bank", field: "bank" },
+              { label: "Account Name", value: org.virtual_account_name ?? org.business_name, field: "name" },
+            ].map(({ label, value, field }) => (
+              <div key={field} className="flex items-center justify-between gap-2 rounded-xl border border-border/50 bg-muted/30 px-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+                  <p className="mt-0.5 font-mono text-sm font-semibold text-foreground truncate">{value}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(value, field)}
+                  className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  title={`Copy ${label}`}
+                >
+                  {copiedField === field ? (
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2.5 text-[11px] text-muted-foreground">
+            Transfers typically reflect within a few minutes. Use your company name or invoice number as the payment reference.
+          </p>
+        </div>
+      )}
 
       {/* Low balance notice */}
       {lowBalance && (
@@ -425,6 +617,9 @@ export default function WalletPage() {
 
       {showTopUp && <TopUpModal onClose={() => setShowTopUp(false)} />}
       {showWithdraw && <WithdrawModal onClose={() => setShowWithdraw(false)} />}
+      {showBuyCredits && credits && (
+        <BuyCreditsModal bundles={credits.bundles} onClose={() => setShowBuyCredits(false)} />
+      )}
     </div>
   );
 }

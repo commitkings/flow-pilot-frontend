@@ -96,6 +96,8 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     approvedBy: r.approved_by ?? null,
     approvedByUser: r.approved_by_user ?? null,
     approvedAt: r.approved_at ?? null,
+    platformFeeRate: r.platform_fee_rate ?? null,
+    platformFeeAmount: r.platform_fee_amount ?? null,
   };
 }
 
