@@ -78,7 +78,7 @@ const columns: TableColumn<RunRecord>[] = [
   },
   {
     id: "candidates",
-    header: "Candidates",
+    header: "Beneficiaries",
     headerClassName: "hidden md:table-cell",
     className: "hidden md:table-cell",
     cell: (run) => (

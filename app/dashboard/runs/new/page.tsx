@@ -12,6 +12,7 @@ import { useAuth } from "@/context/auth-context";
 import { useCreateRun } from "@/hooks/use-run-mutations";
 import { useTeamMembers } from "@/hooks/use-team-queries";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
+import { useCredits } from "@/hooks/use-credits";
 import Link from "next/link";
 import { ChatContainer, RunConfigPreview, ConversationSidebar } from "@/components/chat";
 import { useConfirmRun, useAbandonConversation } from "@/hooks/use-chat-mutations";
@@ -25,6 +26,7 @@ type Recipient = {
   beneficiaryName: string;
   institutionCode: string;
   accountNumber: string;
+  beneficiaryEmail: string;
   amount: string;
   purpose: string;
 };
@@ -60,6 +62,7 @@ function emptyRow(values: Partial<Recipient> = {}): Recipient {
     beneficiaryName: values.beneficiaryName ?? "",
     institutionCode: values.institutionCode ?? "",
     accountNumber: values.accountNumber ?? "",
+    beneficiaryEmail: values.beneficiaryEmail ?? "",
     amount: values.amount ?? "",
     purpose: values.purpose ?? "",
   };
@@ -73,6 +76,7 @@ export default function NewRunPage() {
   const role = user?.memberships?.[0]?.role;
 
   const { data: kycData } = useKycStatus();
+  const { data: credits } = useCredits();
   const kycStatus = kycData?.kyc_status;
 
   // Analysts cannot create runs — redirect them to the runs list
@@ -140,9 +144,14 @@ export default function NewRunPage() {
 
   // Team members for reviewer selection
   const { data: teamData } = useTeamMembers();
+  const currentUserId = user?.id;
   const approvalCapableMembers = (teamData?.members ?? []).filter(
     (m) => (m.role === "owner" || m.role === "approver") && m.is_active && !m.is_pending
   );
+  // When >1 capable members exist, exclude self from the assignable list (anti-fraud)
+  const assignableMembers = approvalCapableMembers.length > 1
+    ? approvalCapableMembers.filter((m) => m.user_id !== currentUserId)
+    : approvalCapableMembers;
   const showReviewerSelect = approvalCapableMembers.length >= 3;
   const [draftRestored, setDraftRestored] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -283,14 +292,15 @@ export default function NewRunPage() {
     };
     return lines.slice(1).map((line, idx) => {
       const cols = line.split(",");
-      const raw = col(cols, "institution_code") || col(cols, "institution") || col(cols, "bank");
+      const raw = col(cols, "bank_name") || col(cols, "institution_code") || col(cols, "institution") || col(cols, "bank");
       const code = resolveCode(raw, institutionOptions);
-      if (!raw) throw new Error(`Row ${idx + 2}: missing institution.`);
-      if (!code) throw new Error(`Row ${idx + 2}: unknown institution '${raw}'.`);
+      if (!raw) throw new Error(`Row ${idx + 2}: missing bank_name or institution_code.`);
+      if (!code) throw new Error(`Row ${idx + 2}: unknown bank '${raw}'. Use full name (e.g. "Access Bank"), short name, or bank code.`);
       return emptyRow({
         beneficiaryName: col(cols, "beneficiaryname") || col(cols, "name"),
         institutionCode: code,
         accountNumber: col(cols, "accountnumber") || col(cols, "account"),
+        beneficiaryEmail: col(cols, "beneficiaryemail") || col(cols, "email"),
         amount: col(cols, "amount"),
         purpose: col(cols, "purpose"),
       });
@@ -314,7 +324,8 @@ export default function NewRunPage() {
             !prev[0].institutionCode &&
             !prev[0].accountNumber &&
             !prev[0].amount &&
-            !prev[0].purpose;
+            !prev[0].purpose &&
+            !prev[0].beneficiaryEmail;
           return isOnlyBlankRow ? parsed : [...prev, ...parsed];
         });
       } catch (err) {
@@ -326,11 +337,17 @@ export default function NewRunPage() {
   };
 
   const downloadTemplate = () => {
-    const csv = ["beneficiaryName,institution_code,accountNumber,amount,purpose", "John Doe,058,0123456789,50000,February Salary"].join("\n");
+    const csv = [
+      "beneficiaryName,bank_name,accountNumber,beneficiaryEmail,amount,purpose",
+      "John Doe,Access Bank,0123456789,john.doe@example.com,50000,February Salary",
+      "Jane Smith,GTBank,0987654321,,75000,Consultant Fee",
+      "# Tip: beneficiaryEmail is optional. When provided the beneficiary receives an automatic payment notification email.",
+      "# Tip: bank_name accepts the full bank name (e.g. \"Access Bank\") or short name (e.g. \"GTBank\") or bank code (e.g. \"058\")",
+    ].join("\n");
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "recipients-template.csv";
+    a.download = "beneficiaries-template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -370,6 +387,7 @@ export default function NewRunPage() {
         institution_code: r.institutionCode,
         beneficiary_name: r.beneficiaryName,
         account_number: r.accountNumber,
+        beneficiary_email: r.beneficiaryEmail?.trim() || undefined,
         amount: Number(r.amount.replace(/,/g, "")),
         purpose: r.purpose || undefined,
       })),
@@ -617,7 +635,7 @@ export default function NewRunPage() {
               className="flex h-10 w-full items-center rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
             >
               <option value="">Auto-assign</option>
-              {approvalCapableMembers.map((m) => (
+              {assignableMembers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
                   {m.user?.display_name || m.user?.email || m.user_id} ({m.role})
                 </option>
@@ -735,11 +753,29 @@ export default function NewRunPage() {
                       className={`min-h-14 resize-none ${invalid && !row.purpose.trim() ? "border-destructive" : ""}`}
                     />
                   </Field>
+
+                  <div className="sm:col-span-2 space-y-2">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-muted-foreground/80">
+                      Email <span className="font-normal normal-case tracking-normal text-muted-foreground/50">(optional — beneficiary gets payment notification)</span>
+                    </label>
+                    <TextInput
+                      value={row.beneficiaryEmail}
+                      onChange={(v) => updateRow(row.id, { beneficiaryEmail: v })}
+                      placeholder="beneficiary@example.com"
+                    />
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
+
+        {recipients.length > 0 && total > 0 && (
+          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-2.5">
+            <span className="text-xs text-muted-foreground">{recipients.length} recipient{recipients.length !== 1 ? "s" : ""}</span>
+            <span className="text-sm font-black text-foreground">{naira(total)}</span>
+          </div>
+        )}
 
         <button
           type="button"
@@ -751,11 +787,54 @@ export default function NewRunPage() {
         </button>
       </section>
 
+      {/* Credit usage notice */}
+      {credits != null && (
+        <div className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-xs ${
+          credits.balance === 0
+            ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+            : "border-border bg-muted/40 text-muted-foreground"
+        }`}>
+          <span>
+            This run will use <span className="font-semibold">1 AI credit</span>.
+            {credits.balance === 0
+              ? " You have no credits remaining."
+              : ` You have ${credits.balance} credit${credits.balance !== 1 ? "s" : ""} remaining.`}
+          </span>
+          {credits.balance === 0 && (
+            <a href="/dashboard/wallet" className="font-semibold text-brand hover:underline ml-2 shrink-0">Buy credits</a>
+          )}
+        </div>
+      )}
+
+      {/* Amount breakdown */}
+      {total > 0 && (() => {
+        const fee = Math.ceil(total * 0.002 * 100) / 100;
+        const grandTotal = total + fee;
+        return (
+          <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm space-y-1">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>{recipients.length} recipient{recipients.length !== 1 ? "s" : ""}</span>
+              <span>{naira(total)}</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Platform fee (0.2%)</span>
+              <span>{naira(fee)}</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-1 font-black text-foreground">
+              <span>Total deduction</span>
+              <span>{naira(grandTotal)}</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Footer */}
       <div className="flex items-center justify-between pt-2 pb-8">
         <div className="text-sm text-muted-foreground">
-          Total: <span className="font-black text-foreground">{naira(total)}</span>
-          <span className="ml-2 text-muted-foreground/60">· {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}</span>
+          {total > 0
+            ? <><span className="font-black text-foreground">{recipients.length}</span> recipient{recipients.length !== 1 ? "s" : ""}</>
+            : <span>No amounts entered yet</span>
+          }
         </div>
         <div className="flex items-center gap-3">
           {(submitError || (submitted && !canSubmit)) && (

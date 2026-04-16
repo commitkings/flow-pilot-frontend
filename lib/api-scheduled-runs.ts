@@ -4,11 +4,14 @@
 
 import apiClient from "./axios";
 
+export type ScheduledRunType = "recurring" | "one_time";
+
 export interface ScheduledRun {
   id: string;
   name: string;
   objective: string;
-  cron_expression: string;
+  run_type: ScheduledRunType;
+  cron_expression: string | null;
   frequency_label: string;
   next_run_at: string | null;
   last_run_at: string | null;
@@ -20,8 +23,12 @@ export interface ScheduledRun {
 export interface CreateScheduledRunPayload {
   name: string;
   objective: string;
-  cron_expression: string;
+  run_type: ScheduledRunType;
+  /** Required for recurring runs */
+  cron_expression?: string;
   frequency_label: string;
+  /** Required for one_time runs — ISO 8601 UTC string */
+  run_at?: string;
 }
 
 export function listScheduledRuns(): Promise<ScheduledRun[]> {

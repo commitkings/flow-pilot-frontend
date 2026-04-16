@@ -181,6 +181,19 @@ export function nudgeApprover(runId: string): Promise<{ ok: boolean; nudged_user
   return apiClient.post(`/runs/${runId}/nudge`).then((r) => r.data);
 }
 
+export interface RerunPayload {
+  objective: string;
+  constraints?: string;
+  date_from?: string;
+  date_to?: string;
+  risk_tolerance?: number;
+  budget_cap?: number;
+}
+
+export function rerunPayout(runId: string, payload: RerunPayload): Promise<unknown> {
+  return apiClient.post(`/runs/${runId}/rerun`, payload).then((r) => r.data);
+}
+
 // ── 5. Approvals ─────────────────────────────────────────────────────────────
 
 export function approveCandidates(runId: string, candidateIds: string[]): Promise<ApproveResponse> {
@@ -587,6 +600,53 @@ export function setOrgRequire2FA(require: boolean): Promise<{ require_2fa: boole
   return apiClient.patch<{ require_2fa: boolean }>("/auth/2fa/org/require", { require }).then((r) => r.data);
 }
 
+// ── 16b. AI Credits ───────────────────────────────────────────────────────────
+
+export interface CreditBalance {
+  business_id: string;
+  balance: number;
+  bundles: { credits: number; price: number }[];
+}
+
+export interface CreditPurchasePayload {
+  credits: number;
+  reference: string;
+}
+
+export interface CreditPurchaseResult {
+  balance: number;
+  credits_added: number;
+  amount_charged: number;
+  reference: string;
+  already_processed: boolean;
+}
+
+export interface CreditTransaction {
+  id: string;
+  type: "purchase" | "debit";
+  credits: number;
+  description: string | null;
+  run_id: string | null;
+  created_at: string;
+}
+
+export interface CreditTransactionList {
+  transactions: CreditTransaction[];
+  total: number;
+}
+
+export function getCredits(businessId: string): Promise<CreditBalance> {
+  return apiClient.get<CreditBalance>("/credits", { params: { business_id: businessId } }).then((r) => r.data);
+}
+
+export function purchaseCredits(businessId: string, payload: CreditPurchasePayload): Promise<CreditPurchaseResult> {
+  return apiClient.post<CreditPurchaseResult>("/credits/purchase", payload, { params: { business_id: businessId } }).then((r) => r.data);
+}
+
+export function listCreditTransactions(businessId: string, limit = 50, offset = 0): Promise<CreditTransactionList> {
+  return apiClient.get<CreditTransactionList>("/credits/transactions", { params: { business_id: businessId, limit, offset } }).then((r) => r.data);
+}
+
 // ── 17. Dashboard ─────────────────────────────────────────────────────────────
 
 export function getDashboardStats(): Promise<DashboardStats> {
@@ -662,4 +722,19 @@ export async function deleteConversation(
     `/chat/conversations/${conversationId}`,
   );
   return data;
+}
+
+// ── Receipt email ─────────────────────────────────────────────────────────────
+
+export function sendReceiptEmail(
+  runId: string,
+  email: string,
+  candidateId?: string,
+): Promise<{ message: string }> {
+  return apiClient
+    .post<{ message: string }>(`/runs/${runId}/receipt/email`, {
+      email,
+      candidate_id: candidateId ?? null,
+    })
+    .then((r) => r.data);
 }

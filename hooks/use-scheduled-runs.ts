@@ -43,9 +43,13 @@ export function useToggleScheduledRun() {
       toggleScheduledRun(id, is_active),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
-      toast.success(
-        data.is_active ? "Scheduled run activated." : "Scheduled run paused.",
-      );
+      const label =
+        data.is_active
+          ? "Scheduled run activated."
+          : data.run_type === "one_time"
+            ? "One-time run cancelled."
+            : "Scheduled run paused.";
+      toast.success(label);
     },
     onError: () => {
       toast.error("Failed to update scheduled run. Please try again.");

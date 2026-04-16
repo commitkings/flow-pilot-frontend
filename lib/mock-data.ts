@@ -46,6 +46,8 @@ export type RunRecord = {
   approvedBy?: string | null;
   approvedByUser?: { id: string; name: string; email: string } | null;
   approvedAt?: string | null;
+  platformFeeRate?: number | null;
+  platformFeeAmount?: number | null;
 };
 
 export const institutions = [

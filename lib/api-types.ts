@@ -196,6 +196,9 @@ export interface ApiRunRecord {
   plan_steps?: PlanStep[];
   candidates?: Candidate[];
   error?: string | null;
+  // Monetization
+  platform_fee_rate?: number | null;
+  platform_fee_amount?: number | null;
 }
 
 export interface RunStatusResponse {
@@ -212,6 +215,7 @@ export interface CandidateInput {
   institution_code: string;
   beneficiary_name: string;
   account_number: string;
+  beneficiary_email?: string | null;
   amount: number;
   currency?: string;
   purpose?: string;
@@ -251,6 +255,7 @@ export interface Candidate {
   institution_code: string;
   beneficiary_name: string;
   account_number: string;
+  beneficiary_email: string | null;
   amount: number;
   currency: string;
   purpose: string | null;
@@ -480,20 +485,53 @@ export interface OrgProfile {
   logo_url: string | null;
   kyc_status: "not_submitted" | "pending" | "verified";
   is_active: boolean;
+  virtual_account_number: string | null;
+  virtual_account_bank: string | null;
+  virtual_account_name: string | null;
   config: OrgConfig | null;
 }
 
 // ── KYC ──────────────────────────────────────────────────────
 
+export type KycBusinessType =
+  | "limited_company"
+  | "ngo"
+  | "sole_proprietorship"
+  | "partnership"
+  | "mda";
+
 export interface KycSubmission {
   status: "pending" | "verified" | "rejected";
+  business_type: KycBusinessType | null;
+  registration_number: string | null;
+  tin_number: string | null;
+  // LLC / Sole Prop
   director_name: string | null;
+  // NGO
+  trustee_name: string | null;
+  scuml_number: string | null;
+  // Partnership
+  partner_names: string | null;  // JSON string
+  // MDA
+  authorized_officer_name: string | null;
+  // Timestamps
   submitted_at: string | null;
   verified_at: string | null;
+  // Presence flags (backwards compat)
   has_cac_certificate: boolean;
   has_tin_document: boolean;
   has_director_id: boolean;
   has_proof_of_address: boolean;
+  // Presigned document URLs (null if not uploaded)
+  cac_certificate_url: string | null;
+  tin_document_url: string | null;
+  proof_of_address_url: string | null;
+  director_id_url: string | null;
+  trustee_id_url: string | null;
+  partner_id_url: string | null;
+  scuml_letter_url: string | null;
+  mda_letter_url: string | null;
+  authorized_officer_id_url: string | null;
 }
 
 export interface KycStatusResponse {

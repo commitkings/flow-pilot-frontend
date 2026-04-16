@@ -12,7 +12,10 @@ import {
   FileText,
   Info,
   Loader2,
+  Pencil,
   Radio,
+  Receipt,
+  RefreshCw,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
@@ -32,8 +35,10 @@ import { useRun, useRunReport, useRunSteps, useInvalidateRunQueries } from "@/ho
 import { useTransactions } from "@/hooks/use-transaction-queries";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 import { useRunEvents } from "@/hooks/use-run-events";
-import { useAssignApprover } from "@/hooks/use-candidate-mutations";
+import { useAssignApprover, useUpdateCandidate } from "@/hooks/use-candidate-mutations";
+import { useRerunPayout } from "@/hooks/use-run-mutations";
 import { useTeamMembers } from "@/hooks/use-team-queries";
+import { useCredits } from "@/hooks/use-credits";
 import { useAuth } from "@/context/auth-context";
 import { useMutation } from "@tanstack/react-query";
 import { nudgeApprover } from "@/lib/api-client";
@@ -540,7 +545,7 @@ const RISK_BORDER_COLORS: Record<string, string> = {
 const TABS = [
   { key: "activity", label: "Progress" },
   { key: "transactions", label: "Activity Records" },
-  { key: "candidates", label: "Candidates" },
+  { key: "candidates", label: "Beneficiaries" },
   { key: "audit", label: "Review Notes" },
 ];
 
@@ -557,6 +562,21 @@ export default function RunDetailPage() {
   const [reassignOpen, setReassignOpen] = useState(false);
   const [reassignUserId, setReassignUserId] = useState("");
 
+  // Rerun modal state
+  const [rerunOpen, setRerunOpen] = useState(false);
+  const [rerunObjective, setRerunObjective] = useState("");
+  const [rerunConstraints, setRerunConstraints] = useState("");
+  const [rerunDateFrom, setRerunDateFrom] = useState("");
+  const [rerunDateTo, setRerunDateTo] = useState("");
+  const [rerunRisk, setRerunRisk] = useState(0.35);
+  const [rerunBudget, setRerunBudget] = useState("");
+
+  // Beneficiary inline edit state
+  const [editingCandidateId, setEditingCandidateId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editAccount, setEditAccount] = useState("");
+
   const { data: run, isLoading: loadingRun, isError: runError } = useRun(id);
   const { data: transactionsResponse, isLoading: loadingTransactions, isError: transactionsError } =
     useTransactions({ run_id: id });
@@ -564,12 +584,18 @@ export default function RunDetailPage() {
   const { data: auditReport, isLoading: loadingReport, isError: reportError } =
     useRunReport(id, activeTab === "audit");
   const { data: teamData } = useTeamMembers();
+  const { data: creditsData } = useCredits();
+  const creditBalance = creditsData?.balance ?? null;
   const assignApproverMutation = useAssignApprover(id, () => setReassignOpen(false));
 
   // Only owners or approvers with approval capability
   const approvalCapableMembers = (teamData?.members ?? []).filter(
     (m) => (m.role === "owner" || m.role === "approver") && m.is_active && !m.is_pending,
   );
+  // Exclude self from reassign dropdown when >1 capable members exist (anti-fraud)
+  const reassignableMembers = approvalCapableMembers.length > 1
+    ? approvalCapableMembers.filter((m) => m.user_id !== currentUserId)
+    : approvalCapableMembers;
 
   // Whether the current user is the designated approver (or unassigned + capable)
   const isAssignedApprover =
@@ -581,6 +607,9 @@ export default function RunDetailPage() {
     (currentUserRole === "owner" || currentUserRole === "approver") &&
     !(isCreator && approvalCapableMembers.length > 1);
   const isOwner = currentUserRole === "owner";
+
+  const rerunMutation = useRerunPayout(id, () => setRerunOpen(false));
+  const updateCandidateMutation = useUpdateCandidate(id, () => setEditingCandidateId(null));
 
   const nudgeMutation = useMutation({
     mutationFn: () => nudgeApprover(id),
@@ -694,9 +723,22 @@ export default function RunDetailPage() {
           </div>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-1 max-w-xl">{run.objective}</p>
         </div>
-        <p className="text-sm text-muted-foreground self-end">
-          {startedRelative === "—" ? "Start time unavailable" : `Started ${startedRelative}`}
-        </p>
+        <div className="flex items-center gap-3 self-end">
+          {(status === "completed" || status === "completed_with_errors") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full gap-1.5"
+              onClick={() => router.push(`/dashboard/runs/${id}/receipt`)}
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              Receipt
+            </Button>
+          )}
+          <p className="text-sm text-muted-foreground">
+            {startedRelative === "—" ? "Start time unavailable" : `Started ${startedRelative}`}
+          </p>
+        </div>
       </div>
 
       {/* Approval banner */}
@@ -708,6 +750,26 @@ export default function RunDetailPage() {
               <span>Analysis complete. Approval required before payouts execute.</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {/* Edit & Rerun — creator or owner only */}
+              {(isCreator || isOwner) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 gap-1.5"
+                  onClick={() => {
+                    setRerunObjective(run.objective ?? "");
+                    setRerunConstraints("");
+                    setRerunDateFrom("");
+                    setRerunDateTo("");
+                    setRerunRisk(run.riskTolerance ?? 0.35);
+                    setRerunBudget(run.budgetCap ? String(run.budgetCap) : "");
+                    setRerunOpen(true);
+                  }}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Edit &amp; Rerun
+                </Button>
+              )}
               {isOwner && (
                 <Button
                   variant="outline"
@@ -778,7 +840,7 @@ export default function RunDetailPage() {
               className="mt-4 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
             >
               <option value="">Select approver…</option>
-              {approvalCapableMembers.map((m) => (
+              {reassignableMembers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
                   {m.user?.display_name || m.user?.email || m.user_id} ({m.role})
                 </option>
@@ -798,6 +860,124 @@ export default function RunDetailPage() {
                 onClick={() => assignApproverMutation.mutate(reassignUserId)}
               >
                 {assignApproverMutation.isPending ? "Saving…" : "Confirm"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit & Rerun modal */}
+      {rerunOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
+            <div>
+              <h3 className="text-lg font-black tracking-tight text-foreground">Edit &amp; Rerun Payout</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Update the payout details and re-run the full analysis. This will reset the current approval and resubmit for review.
+              </p>
+              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                Warning: All current beneficiaries will be cleared and regenerated by the pipeline.
+              </div>
+              <div className={`mt-2 rounded-lg border px-3 py-2 text-xs flex items-center justify-between ${
+                creditBalance === 0
+                  ? "bg-red-50 border-red-200 text-red-800"
+                  : "bg-muted border-border text-muted-foreground"
+              }`}>
+                <span>
+                  Rerunning costs <strong>1 AI credit</strong> — the pipeline re-analyses from scratch.
+                </span>
+                {creditBalance !== null && (
+                  <span className={`ml-3 shrink-0 font-bold ${creditBalance === 0 ? "text-red-700" : ""}`}>
+                    {creditBalance} credit{creditBalance !== 1 ? "s" : ""} remaining
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground">Objective</label>
+                <textarea
+                  value={rerunObjective}
+                  onChange={(e) => setRerunObjective(e.target.value)}
+                  className="w-full min-h-20 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground resize-none outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  placeholder="Describe what this payout batch should do…"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Date From</label>
+                  <input
+                    type="date"
+                    value={rerunDateFrom}
+                    onChange={(e) => setRerunDateFrom(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Date To</label>
+                  <input
+                    type="date"
+                    value={rerunDateTo}
+                    onChange={(e) => setRerunDateTo(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Risk Tolerance: <span className="font-black text-foreground">{rerunRisk.toFixed(2)}</span>
+                  </label>
+                  <input
+                    type="range" min={0} max={1} step={0.01}
+                    value={rerunRisk}
+                    onChange={(e) => setRerunRisk(Number(e.target.value))}
+                    className="w-full accent-brand"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Budget Cap (₦, optional)</label>
+                  <input
+                    type="text"
+                    value={rerunBudget}
+                    onChange={(e) => setRerunBudget(e.target.value.replace(/[^0-9.]/g, ""))}
+                    placeholder="e.g. 5000000"
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-full"
+                onClick={() => setRerunOpen(false)}
+                disabled={rerunMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 rounded-full bg-brand text-white hover:opacity-90 gap-1.5"
+                disabled={!rerunObjective.trim() || rerunMutation.isPending || creditBalance === 0}
+                onClick={() =>
+                  rerunMutation.mutate({
+                    objective: rerunObjective.trim(),
+                    constraints: rerunConstraints || undefined,
+                    date_from: rerunDateFrom || undefined,
+                    date_to: rerunDateTo || undefined,
+                    risk_tolerance: rerunRisk,
+                    budget_cap: rerunBudget ? Number(rerunBudget) : undefined,
+                  })
+                }
+              >
+                {rerunMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                Confirm Rerun
               </Button>
             </div>
           </div>
@@ -1078,7 +1258,7 @@ export default function RunDetailPage() {
             </div>
           )}
 
-          {/* Candidates (enhanced B8) */}
+          {/* Beneficiaries tab */}
           {activeTab === "candidates" && (
             <div className="grid gap-4 lg:grid-cols-2">
               {loadingCandidates ? (
@@ -1087,18 +1267,101 @@ export default function RunDetailPage() {
                 </div>
               ) : candidates.length === 0 ? (
                 <p className="col-span-2 py-10 text-center text-sm text-muted-foreground">
-                  No payout candidates have been attached to this run.
+                  No beneficiaries have been attached to this run.
                 </p>
               ) : (
                 candidates.map((candidate) => {
                   const borderColor = RISK_BORDER_COLORS[candidate.decision] ?? "border-border";
+                  const isEditing = editingCandidateId === candidate.id;
+                  const canEdit = run.status === "awaiting_approval";
                   return (
-                    <CandidateCard
-                      key={candidate.id}
-                      candidate={candidate}
-                      borderColor={borderColor}
-                      onSelect={() => setSelectedCandidate(candidate)}
-                    />
+                    <div key={candidate.id} className="relative">
+                      {/* Edit button overlay — only when awaiting_approval */}
+                      {canEdit && !isEditing && (
+                        <button
+                          type="button"
+                          className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-colors border border-border/50"
+                          onClick={() => {
+                            setEditAmount(String(candidate.amount));
+                            setEditName(candidate.beneficiaryName);
+                            setEditAccount(candidate.accountNumber);
+                            setEditingCandidateId(candidate.id);
+                          }}
+                          title="Edit beneficiary"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+
+                      {isEditing ? (
+                        /* Inline edit form */
+                        <div className={`rounded-xl border-2 ${borderColor} bg-background p-4 space-y-3`}>
+                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Editing Beneficiary</p>
+                          <div className="space-y-2">
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Full Name</label>
+                              <input
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Account Number</label>
+                              <input
+                                value={editAccount}
+                                onChange={(e) => setEditAccount(e.target.value.replace(/\D/g, ""))}
+                                className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm font-mono outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-muted-foreground">Amount (₦)</label>
+                              <input
+                                value={editAmount}
+                                onChange={(e) => setEditAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                                className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 rounded-full text-xs"
+                              onClick={() => setEditingCandidateId(null)}
+                              disabled={updateCandidateMutation.isPending}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 rounded-full bg-brand text-white text-xs hover:opacity-90"
+                              disabled={updateCandidateMutation.isPending}
+                              onClick={() => {
+                                const amount = parseFloat(editAmount.replace(/,/g, ""));
+                                if (isNaN(amount) || amount <= 0) return;
+                                updateCandidateMutation.mutate({
+                                  candidateId: candidate.id,
+                                  payload: {
+                                    amount,
+                                    beneficiary_name: editName.trim() || undefined,
+                                    account_number: editAccount.trim() || undefined,
+                                  },
+                                });
+                              }}
+                            >
+                              {updateCandidateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <CandidateCard
+                          candidate={candidate}
+                          borderColor={borderColor}
+                          onSelect={() => setSelectedCandidate(candidate)}
+                        />
+                      )}
+                    </div>
                   );
                 })
               )}

@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Webhook, BarChart2, FlaskConical } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { KeyRound, Webhook, BarChart2, FlaskConical, ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { ApiKeysSection } from "@/components/settings/ApiKeysSection";
 import { WebhooksSection } from "@/components/settings/WebhooksSection";
 import { ApiUsageSection } from "@/components/settings/ApiUsageSection";
 import { ApiPlaygroundSection } from "@/components/settings/ApiPlaygroundSection";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type Tab = "api-keys" | "webhooks" | "usage" | "playground";
@@ -20,6 +23,44 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
 
 export default function DeveloperPage() {
   const [activeTab, setActiveTab] = useState<Tab>("api-keys");
+  const router = useRouter();
+  const { data: org, isLoading: orgLoading } = useOrgProfile();
+
+  // ── KYC gate ──────────────────────────────────────────────────────────────
+  if (!orgLoading && org && org.kyc_status !== "verified") {
+    const isPending = org.kyc_status === "pending";
+    return (
+      <div className="mx-auto max-w-6xl pb-16 space-y-6">
+        <PageHeader
+          title="Developer"
+          description="Manage API keys and webhooks to integrate FlowPilot with your systems."
+        />
+        <div className="flex flex-col items-center gap-5 rounded-2xl border border-border/60 bg-card p-10 text-center shadow-sm">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+            <ShieldAlert className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="text-base font-black text-foreground">
+              {isPending ? "Verification In Progress" : "Identity Verification Required"}
+            </h2>
+            <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
+              {isPending
+                ? "Your identity verification is under review. API keys and webhooks will be available once your organisation is verified."
+                : "Complete KYC/KYB verification before generating API keys or configuring webhooks. This protects you and ensures compliance with financial regulations."}
+            </p>
+          </div>
+          {!isPending && (
+            <Button
+              className="rounded-full bg-brand px-6 text-white hover:opacity-90"
+              onClick={() => router.push("/dashboard/settings?tab=workspace")}
+            >
+              Complete Verification
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl pb-16 space-y-6">

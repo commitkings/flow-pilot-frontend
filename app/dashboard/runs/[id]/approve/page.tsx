@@ -20,6 +20,7 @@ import { maskAccount, naira, truncateRunId } from "@/lib/mock-data";
 import { useCandidates } from "@/hooks/use-candidate-queries";
 import { useApproveCandidates, useUpdateCandidate } from "@/hooks/use-candidate-mutations";
 import { useRun } from "@/hooks/use-run-queries";
+import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
 
@@ -51,6 +52,7 @@ export default function ApprovalGatePage() {
     isError: candidatesError,
   } = useCandidates(id);
   const { data: run, isLoading: loadingRun } = useRun(id);
+  const { data: wallet } = useWallet();
 
   const approveMutation = useApproveCandidates(id, () => {
     router.push(`/dashboard/runs/${id}?phase=executing`);
@@ -131,8 +133,14 @@ export default function ApprovalGatePage() {
     setSelectedIds(allCandidates.filter((c) => c.decision === "allow").map((c) => c.id));
   };
 
+  const PLATFORM_FEE_RATE = 0.002;
+  const platformFee = Math.ceil(selectedTotal * PLATFORM_FEE_RATE * 100) / 100;
+  const totalWithFee = selectedTotal + platformFee;
+  const walletBalance = wallet?.balance ?? null;
+  const insufficientWallet = walletBalance !== null && totalWithFee > walletBalance;
+
   const onApprove = () => {
-    if (!confirmChecked || approveMutation.isPending) return;
+    if (!confirmChecked || approveMutation.isPending || insufficientWallet) return;
     approveMutation.mutate(effectiveSelectedIds);
   };
 
@@ -147,7 +155,7 @@ export default function ApprovalGatePage() {
   if (candidatesError) {
     return (
       <div className="flex items-center justify-center py-24">
-        <p className="text-sm text-destructive">Failed to load candidates. Please go back and try again.</p>
+        <p className="text-sm text-destructive">Failed to load beneficiaries. Please go back and try again.</p>
       </div>
     );
   }
@@ -195,23 +203,55 @@ export default function ApprovalGatePage() {
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            Selected total ({naira(selectedTotal)}) exceeds the run budget cap ({naira(budgetCap!)}). Deselect candidates or edit amounts before approving.
+            Selected total ({naira(selectedTotal)}) exceeds the run budget cap ({naira(budgetCap!)}). Deselect beneficiaries or edit amounts before approving.
           </div>
         </div>
       )}
 
-      {/* ── Liquidity warning ── */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          ForecastAgent flagged this batch as cautionary for liquidity. Review carefully before approving.
-        </div>
-      </div>
+      {/* ── Wallet balance + fee breakdown ── */}
+      {wallet != null && selectedTotal > 0 && (() => {
+        const balance = wallet.balance;
+        const shortfall = totalWithFee - balance;
+        if (shortfall > 0) {
+          return (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="space-y-1">
+                  <span className="font-semibold">Insufficient wallet balance.</span>
+                  <div className="text-xs space-y-0.5 mt-1">
+                    <div className="flex justify-between gap-6"><span>Payout total</span><span className="font-semibold">{naira(selectedTotal)}</span></div>
+                    <div className="flex justify-between gap-6"><span>Platform fee (0.2%)</span><span className="font-semibold">{naira(platformFee)}</span></div>
+                    <div className="flex justify-between gap-6 border-t border-red-200 pt-0.5 mt-0.5"><span className="font-semibold">Total deduction</span><span className="font-semibold">{naira(totalWithFee)}</span></div>
+                    <div className="flex justify-between gap-6"><span>Wallet balance</span><span className="font-semibold">{naira(balance)}</span></div>
+                    <div className="flex justify-between gap-6 text-red-700 dark:text-red-400"><span>Shortfall</span><span className="font-black">{naira(shortfall)}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>Wallet sufficient — {naira(balance)} available.</span>
+              </div>
+              <div className="text-xs space-y-0.5 ml-6">
+                <div className="flex justify-between gap-6"><span>Payout total</span><span className="font-semibold">{naira(selectedTotal)}</span></div>
+                <div className="flex justify-between gap-6"><span>Platform fee (0.2%)</span><span className="font-semibold">{naira(platformFee)}</span></div>
+                <div className="flex justify-between gap-6 border-t border-emerald-200 pt-0.5"><span className="font-semibold">Total deduction</span><span className="font-semibold">{naira(totalWithFee)}</span></div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Toolbar ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-foreground">
-          {effectiveSelectedIds.length} of {allCandidates.length} candidates selected
+          {effectiveSelectedIds.length} of {allCandidates.length} beneficiaries selected
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" className="rounded-full" onClick={selectAllSafe}>
@@ -657,9 +697,19 @@ export default function ApprovalGatePage() {
                   <p className="font-bold text-foreground ml-3 shrink-0">{naira(c.amount)}</p>
                 </div>
               ))}
-              <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
-                <p className="text-sm font-semibold text-muted-foreground">Total Disbursement</p>
-                <p className="text-lg font-black text-emerald-600">{naira(selectedTotal)}</p>
+              <div className="mt-2 border-t border-border pt-3 space-y-1">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Payout total</span>
+                  <span className="font-semibold text-foreground">{naira(selectedTotal)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Platform fee (0.2%)</span>
+                  <span className="font-semibold text-foreground">{naira(platformFee)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-1">
+                  <p className="text-sm font-semibold text-muted-foreground">Total Deduction</p>
+                  <p className="text-lg font-black text-emerald-600">{naira(totalWithFee)}</p>
+                </div>
               </div>
             </div>
 
@@ -679,7 +729,7 @@ export default function ApprovalGatePage() {
               )}
               <Button
                 className="h-11 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
-                disabled={!confirmChecked || approveMutation.isPending}
+                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet}
                 onClick={onApprove}
               >
                 {approveMutation.isPending ? (
