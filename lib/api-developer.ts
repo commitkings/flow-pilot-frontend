@@ -106,6 +106,18 @@ export function revokeApiKey(id: string): Promise<{ status: string }> {
   return apiClient.delete<{ status: string }>(`/developer/api-keys/${id}`).then((r) => r.data);
 }
 
+export function requestApiKeyReveal(keyId: string): Promise<{ sent: boolean }> {
+  return apiClient
+    .post<{ sent: boolean }>(`/developer/api-keys/${keyId}/request-reveal`)
+    .then((r) => r.data);
+}
+
+export function verifyApiKeyRevealOtp(keyId: string, otp: string): Promise<{ raw_key: string }> {
+  return apiClient
+    .post<{ raw_key: string }>(`/developer/api-keys/${keyId}/verify-reveal-otp`, { otp })
+    .then((r) => r.data);
+}
+
 // ── Approval Rules ────────────────────────────────────────────────────────────
 
 export interface ApprovalRule {

@@ -4,14 +4,16 @@ import { useState } from "react";
 import {
   Check,
   Copy,
+  Eye,
   KeyRound,
   Loader2,
+  Mail,
   Plus,
   ShieldAlert,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useApiKeys, useCreateApiKey, useRevokeApiKey } from "@/hooks/use-api-key-queries";
+import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRequestApiKeyReveal, useVerifyApiKeyRevealOtp } from "@/hooks/use-api-key-queries";
 import type { ApiKey } from "@/lib/api-developer";
 
 const SCOPES = [
@@ -49,8 +51,21 @@ export function ApiKeysSection() {
   const [selectedScopes, setSelectedScopes] = useState<string[]>([]);
   const [expiryDays, setExpiryDays] = useState<number>(90);
 
+  // First-time reveal after creation
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [keyCopied, setKeyCopied] = useState(false);
+
+  // Re-reveal flow (OTP) for existing keys
+  const [revealTarget, setRevealTarget] = useState<string | null>(null); // key id
+  const [otpValue, setOtpValue] = useState("");
+  const [revealedExistingKey, setRevealedExistingKey] = useState<{ id: string; raw: string } | null>(null);
+
+  const requestRevealMut = useRequestApiKeyReveal(() => {/* OTP modal already shown */});
+  const verifyOtpMut = useVerifyApiKeyRevealOtp((rawKey) => {
+    setRevealedExistingKey({ id: revealTarget!, raw: rawKey });
+    setRevealTarget(null);
+    setOtpValue("");
+  });
 
   const keys: ApiKey[] = keysQuery.data?.keys ?? [];
 
@@ -80,6 +95,12 @@ export function ApiKeysSection() {
     );
   };
 
+  const handleRevealClick = (keyId: string) => {
+    setRevealTarget(keyId);
+    setOtpValue("");
+    requestRevealMut.mutate(keyId);
+  };
+
   const handleCopyKey = () => {
     if (!revealedKey) return;
     navigator.clipboard.writeText(revealedKey);
@@ -89,7 +110,83 @@ export function ApiKeysSection() {
 
   return (
     <div className="space-y-5">
-      {/* ── Revealed key panel ──────────────────────────────────────────── */}
+      {/* ── Re-reveal OTP panel (for existing keys) ─────────────────────── */}
+      {revealTarget && (
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <Mail className="h-4 w-4 text-brand" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-foreground">Check your email</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                We sent a 6-digit code to your email. Enter it to reveal the key.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={otpValue}
+              onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              className="h-10 w-36 rounded-full border border-border/60 bg-background px-4 font-mono text-sm text-center tracking-widest text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
+            />
+            <Button
+              className="rounded-full bg-brand px-5 text-white shadow-sm hover:opacity-90"
+              disabled={otpValue.length !== 6 || verifyOtpMut.isPending}
+              onClick={() => verifyOtpMut.mutate({ keyId: revealTarget, otp: otpValue })}
+            >
+              {verifyOtpMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Reveal Key"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => { setRevealTarget(null); setOtpValue(""); }}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Re-revealed existing key panel ──────────────────────────────── */}
+      {revealedExistingKey && (
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10">
+              <ShieldAlert className="h-4 w-4 text-brand" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-foreground">Key revealed.</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">Copy and store it securely. Dismiss when done.</p>
+            </div>
+          </div>
+          <div className="relative rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
+            <code className="block break-all font-mono text-sm text-foreground pr-10">{revealedExistingKey.raw}</code>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(revealedExistingKey.raw); }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copy Key
+            </button>
+            <button
+              type="button"
+              onClick={() => setRevealedExistingKey(null)}
+              className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Revealed key panel (first time, after creation) ─────────────── */}
       {revealedKey && (
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
           <div className="flex items-start gap-3">
@@ -97,11 +194,9 @@ export function ApiKeysSection() {
               <ShieldAlert className="h-4 w-4 text-brand" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-foreground">
-                This key is shown only once.
-              </p>
+              <p className="font-semibold text-foreground">Your new API key</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Copy and store it securely. You won&apos;t be able to see it again.
+                Copy and store it securely. You can reveal it again anytime using the Reveal button — it will require email OTP verification.
               </p>
             </div>
           </div>
@@ -196,7 +291,22 @@ export function ApiKeysSection() {
                   </span>
                 </div>
               </div>
-              <div className="shrink-0">
+              <div className="flex shrink-0 gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                  onClick={() => handleRevealClick(key.id)}
+                  disabled={requestRevealMut.isPending && revealTarget === key.id}
+                  title="Reveal key (sends OTP to your email)"
+                >
+                  {requestRevealMut.isPending && revealTarget === key.id ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="mr-1.5 h-4 w-4" />
+                  )}
+                  Reveal
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
