@@ -24,6 +24,8 @@ interface AccountStepProps {
   showConfirm: boolean;
   onToggleConfirm: () => void;
   passwordMismatch: boolean;
+  agreed: boolean;
+  onAgreedChange: (v: boolean) => void;
   onSubmit: (e: { preventDefault(): void }) => void;
   onGoogle?: () => void;
   loading?: boolean;
@@ -44,6 +46,9 @@ export function AccountStep({
   onTogglePassword,
   showConfirm,
   onToggleConfirm,
+  passwordMismatch,
+  agreed,
+  onAgreedChange,
   onSubmit,
   onGoogle,
   loading = false,
@@ -127,6 +132,22 @@ export function AccountStep({
               required
             />
           </Field>
+        </div>
+
+        <div className="flex items-center space-x-2.5">
+          <input
+            type="checkbox"
+            id="terms"
+            className="h-4 w-4 rounded border-border-strong text-brand focus:ring-brand accent-brand cursor-pointer"
+            checked={agreed}
+            onChange={(e) => onAgreedChange(e.target.checked)}
+          />
+          <label htmlFor="terms" className="text-sm text-muted-foreground select-none">
+            I agree to the{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">Terms of Service</a>
+            {" "}and{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-brand hover:underline">Privacy Policy</a>
+          </label>
         </div>
 
         <Button
