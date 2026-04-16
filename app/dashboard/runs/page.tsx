@@ -24,6 +24,8 @@ import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { truncateRunId, type RunRecord } from "@/lib/mock-data";
 import { PageHeader } from "@/components/ui/page-header";
 import { useRuns } from "@/hooks/use-run-queries";
+import { useKycStatus } from "@/hooks/use-kyc-queries";
+import Link from "next/link";
 import { RunFilterModal } from "@/components/dashboard/run/RunFilterModal";
 import { ExportRunsModal } from "@/components/dashboard/run/ExportRunsModal";
 
@@ -114,11 +116,43 @@ export default function RunsPage() {
 
   const activeFilterCount = Object.values(appliedFilters).filter(Boolean).length;
 
+  const { data: kycData } = useKycStatus();
+  const kycStatus = kycData?.kyc_status;
+  const kycVerified = kycStatus === "verified";
+
   const {
     data: rows = [],
     isLoading: loadingRuns,
     isError: loadError,
-  } = useRuns();
+  } = useRuns(kycVerified);
+
+  // ── KYC gate ──────────────────────────────────────────────────────────────
+  if (kycData && !kycVerified) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Payouts" description="Monitor and manage all your payout batches." />
+        <div className="flex flex-col items-center gap-5 rounded-2xl border border-border/60 bg-card p-10 text-center shadow-sm">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+            <ShieldAlert className="h-7 w-7 text-muted-foreground" />
+          </div>
+          <div>
+            <h2 className="text-base font-black text-foreground">Verification Required</h2>
+            <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
+              {kycStatus === "pending"
+                ? "Your business documents are under review. You'll be able to access payouts once verification is complete."
+                : "Complete business verification (KYC) to unlock payouts and other features."}
+            </p>
+          </div>
+          <Link
+            href="/dashboard/kyc"
+            className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+          >
+            {kycStatus === "pending" ? "Check Verification Status" : "Complete Verification"}
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const showWelcome = searchParams.get("welcome") === "1" && !dismissedWelcome;
 

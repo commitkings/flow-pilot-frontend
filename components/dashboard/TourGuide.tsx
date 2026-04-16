@@ -21,9 +21,14 @@ const ALL_STEPS: TourStep[] = [
     description: "Quick tour — 30 seconds to learn the key features.",
   },
   {
+    tourId: "conversations",
+    title: "AI Conversations",
+    description: "Chat with AI to create payouts. Describe who to pay — FlowPilot builds the candidate list automatically.",
+  },
+  {
     tourId: "runs",
     title: "Payouts",
-    description: "Chat with AI to create payouts. Describe who to pay — FlowPilot builds the candidate list.",
+    description: "View and manage all payouts. Use Scheduled for recurring disbursements and Templates for reusable payout workflows.",
   },
   {
     tourId: "approvals",
@@ -35,6 +40,12 @@ const ALL_STEPS: TourStep[] = [
     tourId: "transactions",
     title: "Transactions",
     description: "Every disbursement tracked in real-time. Filter, export to CSV/PDF, or email reports.",
+  },
+  {
+    tourId: "wallet",
+    title: "Wallet",
+    description: "Fund your FlowPilot wallet via bank transfer to your virtual account. Balance is debited on each payout.",
+    roles: ["owner", "approver"],
   },
   {
     tourId: "team",
@@ -50,7 +61,7 @@ const ALL_STEPS: TourStep[] = [
   },
   {
     title: "You're all set! 🎉",
-    description: "Head to Payouts and create your first payout. Retake this tour anytime from the navbar.",
+    description: "Head to Conversations, describe your first payout, and go live. Retake this tour anytime from the navbar.",
   },
 ];
 
@@ -191,6 +202,10 @@ export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeM
       });
       return;
     }
+
+    // Scroll the element into view within its container (the sidebar nav overflows-y-auto,
+    // so items in the Administration group can be off-screen on shorter viewports).
+    el.scrollIntoView({ behavior: "instant", block: "nearest" });
 
     const r = el.getBoundingClientRect();
     setRect({ top: r.top, left: r.left, width: r.width, height: r.height });

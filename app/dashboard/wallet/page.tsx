@@ -25,7 +25,7 @@ import { useWallet, useWalletTransactions, useTopUpWallet, useWithdrawWallet } f
 import { useCredits, usePurchaseCredits } from "@/hooks/use-credits";
 import { useOrgProfile } from "@/hooks/use-settings-queries";
 import { useAuth } from "@/context/auth-context";
-import { getUserRole, isOwner } from "@/lib/api-types";
+import { getUserRole, isOwner, ApiError } from "@/lib/api-types";
 import { PageHeader } from "@/components/ui/page-header";
 
 function formatNGN(amount: number): string {
@@ -286,13 +286,12 @@ export default function WalletPage() {
 
   const monthOptions = getMonthOptions(12);
 
-  // ── KYC gate ──────────────────────────────────────────────────────────────
-  const walletErrorMessage = walletError && walletErrorObj instanceof Error ? walletErrorObj.message : "";
-  const isKycError = walletError && walletErrorMessage.toUpperCase().includes("KYC");
+  // ── KYC gate — 403 from wallet endpoint means KYC is not verified ─────────
+  const isKycError = walletError && walletErrorObj instanceof ApiError && walletErrorObj.status === 403;
 
   if (isKycError) {
-    const isPending = walletErrorMessage.toLowerCase().includes("pending");
-    const isRejected = walletErrorMessage.toLowerCase().includes("rejected");
+    const kycState = org?.kyc_status ?? "not_submitted";
+    const isPending = kycState === "pending";
 
     return (
       <div className="space-y-6">
@@ -302,22 +301,16 @@ export default function WalletPage() {
             <ShieldAlert className="h-7 w-7 text-muted-foreground" />
           </div>
           <div>
-            <h2 className="text-base font-black text-foreground">
-              {isRejected ? "Verification Rejected" : "Verification Required"}
-            </h2>
+            <h2 className="text-base font-black text-foreground">Verification Required</h2>
             <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
-              {isRejected
-                ? "Your identity verification was rejected. Please resubmit your documents to access your wallet."
-                : isPending
-                ? "Your identity verification is under review. Wallet access will be enabled once approved."
-                : "Complete identity verification to access your wallet. This helps us keep your funds safe and comply with financial regulations."}
+              {isPending
+                ? "Your business documents are under review. Wallet access will be enabled once verification is complete."
+                : "Complete business verification (KYC) to access your wallet and start processing payouts."}
             </p>
           </div>
-          {!isPending && (
-            <Button className="rounded-full bg-brand px-6 text-white hover:opacity-90" onClick={() => router.push("/dashboard/settings?tab=workspace")}>
-              {isRejected ? "Resubmit Verification" : "Complete Verification"}
-            </Button>
-          )}
+          <Button className="rounded-full bg-brand px-6 text-white hover:opacity-90" onClick={() => router.push("/dashboard/kyc")}>
+            {isPending ? "Check Verification Status" : "Complete Verification"}
+          </Button>
         </div>
       </div>
     );
