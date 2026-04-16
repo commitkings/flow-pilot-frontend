@@ -77,7 +77,7 @@ export default function DashboardPage() {
             className="h-10 shrink-0 rounded-full bg-primary px-5 text-primary-foreground font-semibold shadow-sm hover:opacity-90"
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            Start New Run
+            New Payout
           </Button>
         )}
       </div>
@@ -90,7 +90,7 @@ export default function DashboardPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand" />
             </span>
-            <span className="text-sm font-bold text-brand">Live Now — {liveRuns.length} run{liveRuns.length > 1 ? "s" : ""} processing</span>
+            <span className="text-sm font-bold text-brand">Live Now — {liveRuns.length} payout{liveRuns.length > 1 ? "s" : ""} processing</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {liveRuns.map((run) => (
@@ -118,7 +118,7 @@ export default function DashboardPage() {
           accent="brand"
         />
         <MetricCard
-          label="Runs This Month"
+          label="Payouts This Month"
           value={isLoading ? "…" : String(stats?.runs_this_month ?? 0)}
           subtext="Since start of month"
           icon={<Zap className="h-4 w-4" />}
@@ -134,7 +134,7 @@ export default function DashboardPage() {
         <MetricCard
           label="Active Now"
           value={isLoading ? "…" : String(stats?.active_runs ?? 0)}
-          subtext="Runs currently processing"
+          subtext="Payouts currently processing"
           icon={<Activity className="h-4 w-4" />}
           accent={stats?.active_runs ? "brand" : "default"}
         />
@@ -148,7 +148,7 @@ export default function DashboardPage() {
 
       {/* ── Recent runs ──────────────────────────────────────────────────── */}
       <div>
-        <SectionHeader title="Recent Runs">
+        <SectionHeader title="Recent Payouts">
           <Link
             href="/dashboard/runs"
             className="flex items-center gap-1 text-xs font-semibold text-brand hover:opacity-80 transition-opacity"
@@ -167,9 +167,9 @@ export default function DashboardPage() {
               <Zap className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-base font-black text-foreground">No runs yet</p>
+              <p className="text-base font-black text-foreground">No payouts yet</p>
               <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-                Start your first payout run by telling FlowPilot what you need in plain language.
+                Start your first payout by telling FlowPilot what you need in plain language.
               </p>
             </div>
             {canRun && (
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 className="rounded-full bg-primary px-5 text-primary-foreground font-semibold hover:opacity-90"
               >
                 <Plus className="mr-1.5 h-4 w-4" />
-                Start your first run
+                Start your first payout
               </Button>
             )}
           </div>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
             <QuickAction
               href="/dashboard/runs/new"
               icon={<Zap className="h-5 w-5" />}
-              title="Start a Payout Run"
+              title="Start a Payout"
               description="Describe your disbursement in plain English and let FlowPilot handle the rest."
               accent="brand"
             />

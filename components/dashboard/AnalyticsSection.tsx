@@ -338,10 +338,10 @@ export function AnalyticsSection() {
         <VolumeBarchart buckets={buckets} isLoading={txLoading} />
       </ChartCard>
 
-      {/* Run Outcomes */}
+      {/* Payout Outcomes */}
       <ChartCard
         icon={<PieChart className="h-3.5 w-3.5" />}
-        title="Run Outcomes"
+        title="Payout Outcomes"
         callout={String(runCounts.completed)}
         calloutLabel="completed"
       >

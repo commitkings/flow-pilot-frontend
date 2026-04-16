@@ -5,43 +5,43 @@ import { Bolt, BrainCircuit, FileCheck2, Hand, ShieldCheck, Cpu } from "lucide-r
 const features = [
   {
     icon: BrainCircuit,
-    title: "Self-Healing Ledger",
-    text: "Agents don't just find mismatches; they suggest resolutions for duplicate entries and orphan references in real-time.",
+    title: "Catches Payment Errors Automatically",
+    text: "Detects duplicate payments, mismatched references, and orphaned transactions before they cause problems — no manual reconciliation needed.",
     accent: "#0A84FF",
     tone: "bg-[#EAF2FF] text-[#0A84FF]",
   },
   {
     icon: ShieldCheck,
-    title: "Anti-Fraud Engine",
-    text: "Automatic cross-referencing of account numbers against Interswitch's KYC database before any funds are staged.",
+    title: "Verifies Every Recipient Before Money Moves",
+    text: "Every account number is cross-checked against Interswitch's KYC database before a single Naira is staged for payout.",
     accent: "#0D9D6D",
     tone: "bg-[#E8FBF2] text-[#0D9D6D]",
   },
   {
     icon: Bolt,
-    title: "Liquidity Guard",
-    text: "Real-time stress testing ensures that proposed payout batches never compromise your operating capital.",
+    title: "Checks You Can Afford It First",
+    text: "FlowPilot stress-tests your balance against the payout batch — so you never accidentally overdraw your operating account.",
     accent: "#D98700",
     tone: "bg-[#FFF5E6] text-[#D98700]",
   },
   {
     icon: Hand,
-    title: "Human-in-the-Loop",
-    text: "Deterministic safety rails. No agent can execute a transaction without a cryptographically signed human approval.",
+    title: "Nothing Moves Without Your Approval",
+    text: "Every payout run pauses for your sign-off. No AI executes transactions on its own — you stay in control, always.",
     accent: "#C0445E",
     tone: "bg-[#FFF0F2] text-[#C0445E]",
   },
   {
     icon: Cpu,
-    title: "Direct Protocol Access",
-    text: "Native integration with Interswitch search, lookup, and payout APIs for sub-second execution.",
+    title: "Powered by Interswitch — Bank-Grade Speed",
+    text: "Native connection to Interswitch's search, lookup, and payout APIs. Payments execute in real time, not overnight batches.",
     accent: "#1B2A44",
     tone: "bg-[#EEF0F5] text-[#1B2A44]",
   },
   {
     icon: FileCheck2,
-    title: "Automated Compliance",
-    text: "Every run generates a pre-formatted audit pack, including API timestamps and agent reasoning, ready for review.",
+    title: "Automatic Audit Report — Every Time",
+    text: "Every completed run generates a compliance-ready report with timestamps, agent reasoning, and full transaction history.",
     accent: "#0D7EA6",
     tone: "bg-[#EBF9FF] text-[#0D7EA6]",
   },
@@ -59,12 +59,12 @@ export function LandingFeatures() {
               Capabilities
             </span>
             <h2 className="mt-4 text-4xl font-extrabold tracking-tight text-[#0F0F0F] md:text-5xl">
-              Everything an SME <br className="hidden md:block" />
-              treasury team needs.
+              Everything your finance team <br className="hidden md:block" />
+              needs to pay with confidence.
             </h2>
           </div>
           <p className="max-w-xs text-sm font-medium leading-relaxed text-[#6B6B6B]">
-            Built as an execution surface for complex payments, not a passive chatbot.
+            Not a chatbot — an active payment system that verifies, checks, and executes. With you in control at every step.
           </p>
         </div>
 

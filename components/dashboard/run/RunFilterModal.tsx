@@ -51,8 +51,8 @@ export function RunFilterModal({ open, onClose, onApply, current }: RunFilterMod
     <Modal
       open={open}
       onClose={onClose}
-      title="Filter Runs"
-      description="Narrow down runs by any combination of fields."
+      title="Filter Payouts"
+      description="Narrow down payouts by any combination of fields."
       maxWidth="max-w-md"
       footer={
         <>
@@ -66,7 +66,7 @@ export function RunFilterModal({ open, onClose, onApply, current }: RunFilterMod
       }
     >
       <div className="space-y-5">
-        <Field label="Run ID">
+        <Field label="Payout ID">
           <TextInput
             value={draft.runId}
             onChange={(v) => set("runId", v)}

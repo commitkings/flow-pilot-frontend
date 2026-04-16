@@ -15,8 +15,8 @@ import { useApiKeys, useCreateApiKey, useRevokeApiKey } from "@/hooks/use-api-ke
 import type { ApiKey } from "@/lib/api-developer";
 
 const SCOPES = [
-  { value: "runs:read", label: "Read runs" },
-  { value: "runs:write", label: "Create & manage runs" },
+  { value: "runs:read", label: "Read payouts" },
+  { value: "runs:write", label: "Create & manage payouts" },
   { value: "approvals:read", label: "Read approvals" },
   { value: "approvals:write", label: "Submit approvals" },
   { value: "transactions:read", label: "Read transactions" },

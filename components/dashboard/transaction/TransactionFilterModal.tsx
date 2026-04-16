@@ -70,7 +70,7 @@ export function TransactionFilterModal({ open, onClose, onApply, current }: Tran
       }
     >
       <div className="space-y-5">
-        <Field label="Run ID">
+        <Field label="Payout ID">
           <TextInput
             value={draft.runId}
             onChange={(v) => set("runId", v)}

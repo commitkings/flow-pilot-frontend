@@ -27,7 +27,7 @@ function applyDateFilter(entries: AuditEntry[], fromDate: string, toDate: string
 }
 
 function downloadCSV(entries: AuditEntry[]) {
-  const header = "ID,Agent,Action,Run ID,Timestamp";
+  const header = "ID,Agent,Action,Payout ID,Timestamp";
   const lines = entries.map((e) =>
     [
       e.id,
@@ -65,7 +65,7 @@ async function buildPDFDoc(entries: AuditEntry[]) {
 
   autoTable(doc, {
     startY: 32,
-    head: [["Agent", "Action", "Run ID", "Timestamp"]],
+    head: [["Agent", "Action", "Payout ID", "Timestamp"]],
     body: entries.map((e) => [
       e.agent_type,
       e.action,

@@ -52,7 +52,7 @@ export default function NotificationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <PageHeader
           title="Notifications"
-          description="Stay updated on run completions, approvals, and system events."
+          description="Stay updated on payout completions, approvals, and system events."
         />
         {unreadCount > 0 && (
           <button

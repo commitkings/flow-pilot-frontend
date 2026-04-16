@@ -14,8 +14,8 @@ export function LandingFooter() {
               FLOWPILOT<span className="text-[#e86727]">.</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/40">
-              The execution layer for modern SME treasury. Supervised AI that reconciles,
-              scores risk, and executes payouts with total traceability.
+              Smart bulk payment automation for African SMEs. Verify recipients, catch fraud,
+              approve payouts, and stay compliant — all in one place.
             </p>
             {/* Live System Status */}
             <div className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">

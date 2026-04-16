@@ -5,23 +5,23 @@ import { PlaneLine } from "@/public/svg/PlaneLine";
 
 const steps = [
   {
-    title: "Configure Intent",
-    text: "Set natural language parameters for the run—like budget caps, date ranges for reconciliation, and specific risk tolerance levels.",
+    title: "Tell FlowPilot What to Do",
+    text: "Describe the run in plain English — \"pay all approved vendors from this month.\" Set budget caps and date ranges as needed.",
     color: "#e86727",
   },
   {
-    title: "Multi-Agent Sync",
-    text: "Planner orchestrates the cycle: ReconciliationAgent pulls Interswitch logs, while RiskAgent cross-references lookup data.",
+    title: "AI Checks Everything",
+    text: "FlowPilot verifies every account is real, scans for duplicates, cross-checks your balance, and flags anything that looks off.",
     color: "#0A84FF",
   },
   {
-    title: "Human Checkpoint",
-    text: "The system pauses for your review. Inspect liquidity forecasts and recipient verification results before a single Naira moves.",
+    title: "You Review and Approve",
+    text: "See exactly who gets paid, how much, and why anything was flagged. Nothing moves until you sign off.",
     color: "#0D9D6D",
   },
   {
-    title: "Atomic Execution",
-    text: "Approved payouts are fired through Interswitch Payout APIs with real-time status tracking and an immutable audit report.",
+    title: "Payments Go Out Instantly",
+    text: "Approved payouts fire through Interswitch in real time. A full compliance report is generated automatically when done.",
     color: "#6B4EFF",
   },
 ];
@@ -42,16 +42,15 @@ export function LandingHowItWorks() {
         <div className="mb-12 md:mb-20 flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#e86727]">
-              Runtime Model
+              How It Works
             </span>
             <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-[#0F0F0F] sm:text-4xl md:text-5xl">
-              A plan that flows,{" "}
-              <span className="text-[#e86727]">supervised.</span>
+              Picture this: it&apos;s Friday,{" "}
+              <span className="text-[#e86727]">80 vendors to pay by end of day.</span>
             </h2>
           </div>
           <p className="max-w-xs text-sm font-medium leading-relaxed text-[#6B6B6B]">
-            Your instructions pass through a rigorous multi-agent graph with
-            human checkpoints.
+            Here&apos;s how FlowPilot handles it — from your instruction to bank execution.
           </p>
         </div>
 

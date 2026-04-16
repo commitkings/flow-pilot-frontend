@@ -180,7 +180,7 @@ export default function KycPage() {
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
             <p className="text-sm text-blue-800">
-              To create payout runs, we need to verify your business identity.
+              To create payouts, we need to verify your business identity.
               Upload the required documents below. Review typically completes within 10 minutes.
             </p>
           </div>
