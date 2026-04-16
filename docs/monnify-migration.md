@@ -337,4 +337,67 @@ All webhooks must respond `200 OK` within 30 seconds or Monnify will retry.
 
 ---
 
-*Last updated: 2026-04-16*
+---
+
+## 12. Monnify API Endpoints Reference
+
+Full base URL: `https://sandbox.monnify.com` (sandbox) or `https://api.monnify.com` (production).  
+All calls except `/api/v1/auth/login` require `Authorization: Bearer {accessToken}`.
+
+### Authentication
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/auth/login` | Get access token · `Authorization: Basic base64(apiKey:secretKey)` |
+
+### Reserved Accounts (Virtual Accounts)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v2/bank-transfer/reserved-accounts` | Create a dedicated virtual account for a customer |
+| `GET`  | `/api/v2/bank-transfer/reserved-accounts/{accountReference}` | Fetch reserved account details |
+| `PUT`  | `/api/v2/bank-transfer/reserved-accounts/update-payment-source-filter/{accountReference}` | Attach BVN to reserved account after KYC |
+| `DELETE` | `/api/v1/bank-transfer/reserved-accounts/reference/{accountReference}` | Deallocate a reserved account |
+
+### Disbursements (Payouts)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/disbursements/single` | Initiate a single transfer |
+| `POST` | `/api/v1/disbursements/batch` | Initiate a batch transfer |
+| `GET`  | `/api/v1/disbursements/single/summary?reference={ref}` | Check single transfer status |
+| `GET`  | `/api/v1/disbursements/batch/summary?reference={ref}` | Check batch transfer status |
+| `GET`  | `/api/v1/disbursements/account/validate?accountNumber={}&bankCode={}` | Verify recipient account (get account name) |
+| `GET`  | `/api/v1/disbursements/wallet/balance?accountNumber={merchantAccount}` | Check merchant wallet balance |
+
+### Identity Verification (KYC)
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/kyc/bvn/match` | Match BVN against name + DOB |
+| `POST` | `/api/v1/kyc/nin` | Look up NIN details |
+
+### Banks & Reference Data
+
+| Method | Path | Description |
+|---|---|---|
+| `GET`  | `/api/v1/sdk/transactions/banks` | List all supported banks with codes |
+
+### Inbound Webhooks (Monnify → your server)
+
+| Event | Trigger |
+|---|---|
+| `SUCCESSFUL_TRANSACTION` | Payment received into a reserved account |
+| `SUCCESSFUL_DISBURSEMENT` | Transfer to a beneficiary succeeded |
+| `FAILED_DISBURSEMENT` | Transfer to a beneficiary failed |
+| `REVERSED_TRANSACTION` | Incoming payment was reversed by the bank |
+
+All webhook payloads are signed — verify with:
+```python
+hmac.new(MONNIFY_SECRET_KEY.encode(), raw_body, hashlib.sha512).hexdigest()
+# compare to request.headers["monnify-signature"]
+```
+
+---
+
+*Last updated: 2026-04-17*
