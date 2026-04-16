@@ -94,8 +94,8 @@ export default function NewRunPage() {
         <h2 className="text-xl font-bold text-foreground">Verification Required</h2>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {kycStatus === "pending"
-            ? "Your business documents are under review. You'll be able to create payout runs once verification is complete (typically within 10 minutes)."
-            : "You need to complete business verification (KYC) before creating payout runs. This helps us ensure compliance and protect your account."}
+            ? "Your business documents are under review. You'll be able to create payouts once verification is complete (typically within 10 minutes)."
+            : "You need to complete business verification (KYC) before creating payouts. This helps us ensure compliance and protect your account."}
         </p>
         <Link
           href="/dashboard/kyc"
@@ -393,8 +393,8 @@ export default function NewRunPage() {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div>
-              <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">New Run</h1>
-              <p className="hidden text-sm text-muted-foreground sm:block">Configure your treasury payout run</p>
+              <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">New Payout</h1>
+              <p className="hidden text-sm text-muted-foreground sm:block">Configure your payout batch</p>
             </div>
           </div>
           {/* Mode pill toggle */}
@@ -528,7 +528,7 @@ export default function NewRunPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">New Run</h1>
+            <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">New Payout</h1>
             <p className="hidden text-sm text-muted-foreground sm:block">Configure your objective and payout recipients.</p>
           </div>
         </div>
@@ -767,7 +767,7 @@ export default function NewRunPage() {
             className="gap-2 rounded-full bg-brand px-8 text-white hover:opacity-90"
           >
             <Rocket className="h-4 w-4" />
-            Start Run
+            Start Payout
           </Button>
         </div>
       </div>

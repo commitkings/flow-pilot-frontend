@@ -88,6 +88,9 @@ export function adaptRun(r: ApiRunRecord): RunRecord {
     startedRelative,
     startedAt: r.created_at,
     startedAtLabel,
+    budgetCap: r.budget_cap ?? null,
+    assignedToId: r.assigned_to_id ?? null,
+    assignedTo: r.assigned_to ?? null,
   };
 }
 

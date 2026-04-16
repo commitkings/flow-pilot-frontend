@@ -74,7 +74,7 @@ export default function AuditPage() {
     <div className="space-y-6">
       <PageHeader
         title="Audit Trail"
-        description="Full audit trail and agent activity across all runs."
+        description="Full audit trail and agent activity across all payouts."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -86,7 +86,7 @@ export default function AuditPage() {
           accent="brand"
         />
         <MetricCard
-          label="Runs Covered"
+          label="Payouts Covered"
           value={isLoading ? "…" : String(uniqueRuns)}
           subtext="Distinct runs"
           icon={<Activity className="h-4 w-4" />}
@@ -154,7 +154,7 @@ export default function AuditPage() {
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {tab === "action" ? "Action" : "Run ID"}
+                    {tab === "action" ? "Action" : "Payout ID"}
                   </button>
                 ))}
               </div>
@@ -176,7 +176,7 @@ export default function AuditPage() {
                     key="run_id"
                     value={runIdFilter}
                     onChange={(e) => { setRunIdFilter(e.target.value); setOffset(0); }}
-                    placeholder="Run ID…"
+                    placeholder="Payout ID…"
                     className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 )}

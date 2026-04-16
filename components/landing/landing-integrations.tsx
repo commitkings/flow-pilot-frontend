@@ -3,10 +3,10 @@ export function LandingIntegrations() {
     <section className="bg-[#FAF8F4] py-20 border-t border-[#E8E4DC]">
       <div className="mx-auto max-w-7xl px-6 md:px-10 text-center">
         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#9A9A9A]">
-          Direct Protocol Access
+          Bank-Grade Infrastructure
         </span>
         <h3 className="mt-4 text-2xl font-bold text-[#0F0F0F] md:text-3xl">
-          Connected to the Interswitch Ecosystem
+          Built on the Interswitch Network
         </h3>
         
         {/* Grid: 2 columns on mobile, auto-flow on desktop */}

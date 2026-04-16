@@ -147,6 +147,36 @@ export function listCandidates(runId: string, approvalStatus?: string): Promise<
     .then((r) => r.data);
 }
 
+export interface UpdateCandidatePayload {
+  amount?: number;
+  beneficiary_name?: string;
+  account_number?: string;
+  institution_code?: string;
+}
+
+export function updateCandidate(
+  runId: string,
+  candidateId: string,
+  payload: UpdateCandidatePayload,
+): Promise<import("./api-types").Candidate> {
+  return apiClient
+    .patch<import("./api-types").Candidate>(`/runs/${runId}/candidates/${candidateId}`, payload)
+    .then((r) => r.data);
+}
+
+export interface AssignApproverResponse {
+  run_id: string;
+  assigned_to_id: string;
+  assigned_to_name: string;
+  assigned_to_email: string;
+}
+
+export function assignApprover(runId: string, userId: string): Promise<AssignApproverResponse> {
+  return apiClient
+    .patch<AssignApproverResponse>(`/runs/${runId}/assign-approver`, { user_id: userId })
+    .then((r) => r.data);
+}
+
 // ── 5. Approvals ─────────────────────────────────────────────────────────────
 
 export function approveCandidates(runId: string, candidateIds: string[]): Promise<ApproveResponse> {

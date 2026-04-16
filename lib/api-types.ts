@@ -170,12 +170,21 @@ export interface PlanStep {
   status: string;
 }
 
+export interface AssignedTo {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface ApiRunRecord {
   run_id: string;
   objective: string;
   status: ApiRunStatus;
   created_at: string;
   risk_tolerance?: number | null;
+  budget_cap?: number | null;
+  assigned_to_id?: string | null;
+  assigned_to?: AssignedTo | null;
   current_step?: string | null;
   candidate_count?: number;
   // Detail-only fields (absent in list response)

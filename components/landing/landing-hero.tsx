@@ -19,14 +19,14 @@ export function LandingHero() {
         </div> */}
 
         <h1 className="mx-auto mt-7 max-w-3xl text-center text-5xl font-extrabold leading-[1.06] tracking-tight text-[#0F0F0F] md:text-7xl">
-          Treasury execution,{" "}
-          <span className="text-[#e86727]">without the drag.</span>
+          Pay your team and vendors in bulk {" "}
+          <span className="text-[#e86727]">safely, in minutes.</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-120 text-center text-[12px] leading-relaxed text-[#6B6B6B] md:text-[16px]">
-          FlowPilot turns operator goals into supervised runs. Agents reconcile,
-          score risk, verify recipients, and execute approved payouts with
-          full traceability.
+          FlowPilot automates your business payouts: verifies every recipient,
+          catches duplicates and fraud, and waits for your approval before a
+          single Naira moves.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-3">
@@ -34,7 +34,7 @@ export function LandingHero() {
             href="/signup"
             className="group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0F0F0F] px-8 text-sm font-bold text-white transition-all hover:bg-[#2A2A2A] hover:shadow-xl hover:shadow-black/10 active:scale-[0.98] sm:w-auto"
           >
-            Start Free
+            Start Your First Payout
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
 
@@ -46,13 +46,13 @@ export function LandingHero() {
           </Link>
         </div>
 
-        {/* <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-medium text-[#9A9A9A]">
-          <span>Built for SMEs</span>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs font-medium text-[#9A9A9A]">
+          <span>Built for African SMEs</span>
           <span className="h-1 w-1 rounded-full bg-[#D9D4C8]" />
           <span>Human-approved payouts</span>
           <span className="h-1 w-1 rounded-full bg-[#D9D4C8]" />
           <span>Audit ready by default</span>
-        </div> */}
+        </div>
 
         <PipelineSection/>
       </div>

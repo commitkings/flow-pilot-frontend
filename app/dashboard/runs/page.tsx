@@ -5,8 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Activity,
   ArrowRight,
-  BookmarkIcon,
-  CalendarClock,
   Copy,
   Download,
   FileSearch,
@@ -28,14 +26,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useRuns } from "@/hooks/use-run-queries";
 import { RunFilterModal } from "@/components/dashboard/run/RunFilterModal";
 import { ExportRunsModal } from "@/components/dashboard/run/ExportRunsModal";
-import { RunTemplatesPicker } from "@/components/runs/RunTemplatesPicker";
 
 const LIVE_STATUSES = new Set(["planning", "reconciling", "scoring", "executing"]);
 
 const columns: TableColumn<RunRecord>[] = [
   {
     id: "id",
-    header: "Run ID",
+    header: "Payout ID",
     cell: (run) => (
       <button
         type="button"
@@ -111,7 +108,6 @@ export default function RunsPage() {
   const [query, setQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<import("@/components/dashboard/run/RunFilterModal").RunFilters>({
     runId: "", status: "", minCandidates: "", fromDate: "", toDate: "",
   });
@@ -147,14 +143,14 @@ export default function RunsPage() {
       )}
 
       <PageHeader
-        title="Runs"
-        description="Monitor and manage all your automated treasury runs."
+        title="Payouts"
+        description="Monitor and manage all your payout batches."
       />
 
       {/* Metric cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <MetricCard
-          label="Total Runs"
+          label="Total Payouts"
           value={loadingRuns ? "…" : String(rows.length)}
           subtext="Active automation"
           icon={<Zap className="h-4 w-4" />}
@@ -182,7 +178,7 @@ export default function RunsPage() {
           accent="amber"
         />
         <MetricCard
-          label="Failed Runs"
+          label="Failed Payouts"
           value={
             loadingRuns
               ? "…"
@@ -230,16 +226,10 @@ export default function RunsPage() {
           <SearchInput
             value={query}
             onChange={setQuery}
-            placeholder="Search by objective or run ID..."
+            placeholder="Search by objective or payout ID..."
             className="w-full md:w-80"
           />
           <div className="flex w-full items-center gap-2 md:w-auto">
-            <ToolbarButton icon={<BookmarkIcon className="h-3.5 w-3.5" />} onClick={() => setTemplatesOpen(true)}>
-              Templates
-            </ToolbarButton>
-            <ToolbarButton icon={<CalendarClock className="h-3.5 w-3.5" />} onClick={() => router.push("/dashboard/runs/scheduled")}>
-              Scheduled
-            </ToolbarButton>
             <ToolbarButton icon={<SlidersHorizontal className="h-3.5 w-3.5" />} onClick={() => setFilterOpen(true)} badge={activeFilterCount || undefined}>
               Filter
             </ToolbarButton>
@@ -259,14 +249,6 @@ export default function RunsPage() {
             open={exportOpen}
             onClose={() => setExportOpen(false)}
             rows={rows}
-          />
-
-          <RunTemplatesPicker
-            open={templatesOpen}
-            onClose={() => setTemplatesOpen(false)}
-            onSelect={(objective) => {
-              router.push(`/dashboard/runs/new?objective=${encodeURIComponent(objective)}`);
-            }}
           />
         </div>
 
@@ -290,16 +272,16 @@ export default function RunsPage() {
             emptyState={
               <div className="space-y-3 flex items-center flex-col">
                 <p className="text-base font-black text-foreground">
-                  No runs found
+                  No payouts found
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Create your first run to start automated treasury execution.
+                  Create your first payout to get started.
                 </p>
                 <Button
                   className="mt-1 rounded-full bg-brand px-6 text-white hover:opacity-90"
                   onClick={openNewRun}
                 >
-                  Start Your First Run
+                  Start Your First Payout
                 </Button>
               </div>
             }

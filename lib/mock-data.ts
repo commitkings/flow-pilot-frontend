@@ -38,6 +38,9 @@ export type RunRecord = {
   startedAt: string;
   startedAtLabel: string;
   error?: string | null;
+  budgetCap?: number | null;
+  assignedToId?: string | null;
+  assignedTo?: { id: string; name: string; email: string } | null;
 };
 
 export const institutions = [

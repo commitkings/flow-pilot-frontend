@@ -1,41 +1,41 @@
 "use client";
 
 const pipeline = [
-  { 
-    step: "01", 
-    title: "Reconciliation", 
-    rotation: "-rotate-6", 
-    zIndex: "z-10", 
+  {
+    step: "01",
+    title: "Reconciliation",
+    rotation: "-rotate-6",
+    zIndex: "z-10",
     status: "Matching Active",
-    label: "Ingestion Engine",
-    description: "Normalizing multi-channel data streams to resolve unmatched transaction references."
+    label: "Error Detection",
+    description: "Checks every transaction for duplicates, mismatches, and orphaned entries — in seconds."
   },
-  { 
-    step: "02", 
-    title: "Risk Scoring", 
-    rotation: "rotate-2", 
-    zIndex: "z-20", 
+  {
+    step: "02",
+    title: "Risk Scoring",
+    rotation: "rotate-2",
+    zIndex: "z-20",
     status: "Scoring Layer",
-    label: "Security Kernel",
-    description: "Analyzing payout candidates against historical patterns and liquidity stress factors."
+    label: "Fraud Check",
+    description: "Analyses each payout against fraud signals, account history, and your live balance."
   },
-  { 
-    step: "03", 
-    title: "Approval Gate", 
-    rotation: "-rotate-3", 
-    zIndex: "z-30", 
-    status: "Awaiting Ops",
-    label: "Verification Node",
-    description: "Human-in-the-loop review for high-variance candidates before final signature."
+  {
+    step: "03",
+    title: "Approval Gate",
+    rotation: "-rotate-3",
+    zIndex: "z-30",
+    status: "Awaiting You",
+    label: "You're in Control",
+    description: "Pauses for your review. Inspect the results and approve before any money moves."
   },
-  { 
-    step: "04", 
-    title: "Execution", 
-    rotation: "rotate-6", 
-    zIndex: "z-40", 
-    status: "Ready to Push",
-    label: "Disbursement Hub",
-    description: "Finalizing real-time instructions to Interswitch APIs for instant settlement."
+  {
+    step: "04",
+    title: "Execution",
+    rotation: "rotate-6",
+    zIndex: "z-40",
+    status: "Ready to Send",
+    label: "Payment Hub",
+    description: "Sends approved payments through Interswitch instantly, with live status and a full audit trail."
   },
 ];
 

@@ -40,7 +40,7 @@ export function Navbar() {
             className="h-10 rounded-full bg-brand px-4 md:px-6 font-bold text-white transition-all shadow-sm hover:opacity-90"
           >
             <Plus className="h-4 w-4 stroke-3 md:mr-1.5" />
-            <span className="hidden md:inline">New Run</span>
+            <span className="hidden md:inline">New Payout</span>
           </Button>
         )}
         {isTeamPage && (

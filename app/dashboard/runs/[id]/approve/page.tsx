@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Pencil,
   ShieldCheck,
   X,
 } from "lucide-react";
@@ -17,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { maskAccount, naira, truncateRunId } from "@/lib/mock-data";
 import { useCandidates } from "@/hooks/use-candidate-queries";
-import { useApproveCandidates } from "@/hooks/use-candidate-mutations";
+import { useApproveCandidates, useUpdateCandidate } from "@/hooks/use-candidate-mutations";
 import { useRun } from "@/hooks/use-run-queries";
 import { useAuth } from "@/context/auth-context";
 import { cn } from "@/lib/utils";
@@ -27,13 +28,7 @@ export default function ApprovalGatePage() {
   const router = useRouter();
   const { user } = useAuth();
   const role = user?.memberships?.[0]?.role;
-
-  // Analysts cannot approve — redirect to the run detail page
-  useEffect(() => {
-    if (user && role === "analyst") {
-      router.replace(`/dashboard/runs/${id}`);
-    }
-  }, [user, role, id, router]);
+  const userId = user?.id;
 
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
@@ -43,6 +38,12 @@ export default function ApprovalGatePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [expandedRisk, setExpandedRisk] = useState<string | null>(null);
+
+  // Inline edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editAccount, setEditAccount] = useState("");
 
   const {
     data: allCandidates = [],
@@ -54,6 +55,21 @@ export default function ApprovalGatePage() {
   const approveMutation = useApproveCandidates(id, () => {
     router.push(`/dashboard/runs/${id}?phase=executing`);
   });
+
+  const updateMutation = useUpdateCandidate(id, () => setEditingId(null));
+
+  // Authorization: analysts cannot approve; non-assigned users cannot approve
+  useEffect(() => {
+    if (!user || !run) return;
+    if (role === "analyst") {
+      router.replace(`/dashboard/runs/${id}`);
+      return;
+    }
+    // If a specific approver is assigned and the current user is not them (and not an owner), redirect
+    if (run.assignedToId && run.assignedToId !== userId && role !== "owner") {
+      router.replace(`/dashboard/runs/${id}`);
+    }
+  }, [user, run, role, userId, id, router]);
 
   const effectiveSelectedIds =
     selectedIds ?? allCandidates.filter((c) => c.approvalStatus === "selected").map((c) => c.id);
@@ -70,9 +86,35 @@ export default function ApprovalGatePage() {
 
   const selectedCandidates = allCandidates.filter((candidate) => effectiveSelectedIds.includes(candidate.id));
   const selectedTotal = selectedCandidates.reduce((acc, candidate) => acc + candidate.amount, 0);
-  
+  const allCandidatesTotal = allCandidates.reduce((acc, c) => acc + c.amount, 0);
+  const budgetCap = run?.budgetCap ?? null;
+  const overBudget = budgetCap !== null && selectedTotal > budgetCap;
+
   const riskTolerance = run?.riskTolerance ?? 0.35;
   const reviewThreshold = riskTolerance + (1 - riskTolerance) / 2;
+
+  const startEdit = (candidateId: string) => {
+    const c = allCandidates.find((x) => x.id === candidateId);
+    if (!c) return;
+    setEditAmount(c.amount.toString());
+    setEditName(c.beneficiaryName);
+    setEditAccount(c.accountNumber);
+    setEditingId(candidateId);
+  };
+
+  const commitEdit = () => {
+    if (!editingId) return;
+    const amount = parseFloat(editAmount.replace(/,/g, ""));
+    if (isNaN(amount) || amount <= 0) return;
+    updateMutation.mutate({
+      candidateId: editingId,
+      payload: {
+        amount,
+        beneficiary_name: editName.trim() || undefined,
+        account_number: editAccount.trim() || undefined,
+      },
+    });
+  };
 
   const activeCandidate = allCandidates.find((candidate) => candidate.id === activeCandidateId) ?? null;
 
@@ -135,8 +177,28 @@ export default function ApprovalGatePage() {
         <span className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-foreground">
           Risk Tolerance {riskTolerance.toFixed(2)}
         </span>
+        {budgetCap !== null && (
+          <span className={cn(
+            "rounded-full px-3 py-1 text-sm font-semibold",
+            overBudget
+              ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
+          )}>
+            Budget: {naira(selectedTotal)} / {naira(budgetCap)}
+          </span>
+        )}
         <StatusBadge status="review" label="Forecast: Caution" />
       </div>
+
+      {/* ── Budget cap warning ── */}
+      {overBudget && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            Selected total ({naira(selectedTotal)}) exceeds the run budget cap ({naira(budgetCap!)}). Deselect candidates or edit amounts before approving.
+          </div>
+        </div>
+      )}
 
       {/* ── Liquidity warning ── */}
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
@@ -181,6 +243,7 @@ export default function ApprovalGatePage() {
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Decision</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Lookup</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Risk Flags</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-wider text-muted-foreground">Edit</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -270,6 +333,60 @@ export default function ApprovalGatePage() {
                       </div>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {editingId === candidate.id ? (
+                      <div className="flex flex-col gap-1.5 min-w-[220px]">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          placeholder="Amount"
+                          className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
+                        />
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="Beneficiary name"
+                          className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
+                        />
+                        <input
+                          type="text"
+                          value={editAccount}
+                          onChange={(e) => setEditAccount(e.target.value)}
+                          placeholder="Account number"
+                          className="h-8 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
+                        />
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={commitEdit}
+                            disabled={updateMutation.isPending}
+                            className="flex-1 rounded-lg bg-emerald-600 py-1 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+                          >
+                            {updateMutation.isPending ? "…" : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId(null)}
+                            className="flex-1 rounded-lg border border-border py-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startEdit(candidate.id)}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-brand hover:text-brand transition-colors"
+                        title="Edit candidate"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -366,6 +483,50 @@ export default function ApprovalGatePage() {
                   )}
                 </div>
               )}
+
+              {/* Mobile inline edit */}
+              {editingId === candidate.id ? (
+                <div className="mt-3 space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                  <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Edit Details</p>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    placeholder="Amount"
+                    className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
+                  />
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Beneficiary name"
+                    className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
+                  />
+                  <input
+                    type="text"
+                    value={editAccount}
+                    onChange={(e) => setEditAccount(e.target.value)}
+                    placeholder="Account number"
+                    className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={commitEdit} disabled={updateMutation.isPending}>
+                      {updateMutation.isPending ? "Saving…" : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={() => setEditingId(null)}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => startEdit(candidate.id)}
+                  className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-brand transition-colors"
+                >
+                  <Pencil className="h-3 w-3" />
+                  Edit details
+                </button>
+              )}
             </div>
           );
         })}
@@ -460,9 +621,10 @@ export default function ApprovalGatePage() {
               Reject All
             </Button>
             <Button
-              className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm sm:flex-none"
-              disabled={effectiveSelectedIds.length === 0}
+              className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm sm:flex-none disabled:opacity-50"
+              disabled={effectiveSelectedIds.length === 0 || overBudget}
               onClick={() => setConfirmOpen(true)}
+              title={overBudget ? "Selected total exceeds budget cap" : undefined}
             >
               <ShieldCheck className="mr-1.5 h-4 w-4" />
               Approve Selected

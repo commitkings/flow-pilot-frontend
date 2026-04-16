@@ -324,7 +324,7 @@ export default function WalletPage() {
                   {/* Details */}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-foreground">
-                      {tx.description ?? (tx.type === "credit" ? "Wallet top-up" : "Run spend")}
+                      {tx.description ?? (tx.type === "credit" ? "Wallet top-up" : "Payout spend")}
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {formatDate(tx.created_at)}

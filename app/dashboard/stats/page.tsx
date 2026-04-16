@@ -108,12 +108,12 @@ export default function StatsPage() {
         <MetricCard
           label="Total Disbursed"
           value={statsLoading ? "…" : formatCurrency(stats?.total_volume_disbursed ?? 0)}
-          subtext="All-time across all runs"
+          subtext="All-time across all payouts"
           icon={<TrendingUp className="h-4 w-4" />}
           accent="brand"
         />
         <MetricCard
-          label="Total Runs"
+          label="Total Payouts"
           value={statsLoading ? "…" : String(totalRuns)}
           subtext={`${completedRuns} completed · ${failedRuns} failed`}
           icon={<Zap className="h-4 w-4" />}
@@ -122,14 +122,14 @@ export default function StatsPage() {
         <MetricCard
           label="Success Rate"
           value={statsLoading ? "…" : `${successRate}%`}
-          subtext="Runs completed successfully"
+          subtext="Payouts completed successfully"
           icon={<CheckCircle2 className="h-4 w-4" />}
           accent={successRate >= 80 ? "green" : successRate >= 50 ? "amber" : "default"}
         />
         <MetricCard
           label="Active Now"
           value={statsLoading ? "…" : String(stats?.active_runs ?? 0)}
-          subtext="Runs currently processing"
+          subtext="Payouts currently processing"
           icon={<Activity className="h-4 w-4" />}
           accent={stats?.active_runs ? "brand" : "default"}
         />
