@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity,
@@ -13,6 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { StatusBadge } from "@/components/status-badge";
 import { getActiveSessions } from "@/lib/api-client";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
 import type { ActiveSessionsResponse } from "@/lib/api-client";
 
 function getInitials(name: string): string {
@@ -101,6 +104,14 @@ function MemberRow({ member }: { member: SessionMember }) {
 }
 
 export default function SessionsPage() {
+  const router = useRouter();
+  const { data: orgProfile } = useOrgProfile();
+  useEffect(() => {
+    if (orgProfile?.account_type === "individual") {
+      router.replace("/dashboard");
+    }
+  }, [orgProfile, router]);
+
   const {
     data,
     isLoading,

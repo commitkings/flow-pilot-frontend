@@ -211,8 +211,9 @@ export function Sidebar() {
       ...group,
       items: group.items.filter((item) => {
         if (!item.roles && userRole || item.roles?.includes(userRole ?? "")) {
-          // Hide Team Members and Developer for individual accounts
+          // Hide Team Members, Sessions, and Developer for individual accounts
           if (isIndividual && item.href === "/dashboard/team") return false;
+          if (isIndividual && item.href === "/dashboard/sessions") return false;
           if (isIndividual && item.href === "/dashboard/developer") return false;
           return true;
         }

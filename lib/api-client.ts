@@ -475,9 +475,12 @@ export function submitIndividualKycLevel2(payload: { address: string; proof_of_a
   return apiClient.post("/kyc/individual/level2", fd, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
 }
 
-export function submitIndividualKycLevel3(file: File): Promise<{ status: string; message: string }> {
+export function submitIndividualKycLevel3(
+  { govId, selfie }: { govId: File; selfie: File }
+): Promise<{ status: string; message: string }> {
   const fd = new FormData();
-  fd.append("government_id", file);
+  fd.append("government_id", govId);
+  fd.append("liveness_selfie", selfie);
   return apiClient.post("/kyc/individual/level3", fd, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
 }
 
@@ -758,3 +761,22 @@ export function sendReceiptEmail(
     })
     .then((r) => r.data);
 }
+
+// ── 20. Approval PIN ──────────────────────────────────────────────────────────
+
+export function getApprovalPinStatus(): Promise<{ has_pin: boolean }> {
+  return apiClient.get<{ has_pin: boolean }>("/auth/approval-pin/status").then((r) => r.data);
+}
+
+export function setupApprovalPin(pin: string): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/approval-pin/setup", { pin }).then((r) => r.data);
+}
+
+export function verifyApprovalPin(pin: string): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/approval-pin/verify", { pin }).then((r) => r.data);
+}
+
+export function removeApprovalPin(): Promise<{ message: string }> {
+  return apiClient.delete<{ message: string }>("/auth/approval-pin/remove").then((r) => r.data);
+}
+

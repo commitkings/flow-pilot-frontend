@@ -22,6 +22,7 @@ import { useApproveCandidates, useUpdateCandidate } from "@/hooks/use-candidate-
 import { useRun } from "@/hooks/use-run-queries";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/context/auth-context";
+import { useApprovalPinStatus, useVerifyApprovalPin } from "@/hooks/use-approval-pin";
 import { cn } from "@/lib/utils";
 
 export default function ApprovalGatePage() {
@@ -39,6 +40,12 @@ export default function ApprovalGatePage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [expandedRisk, setExpandedRisk] = useState<string | null>(null);
+  const [pinValue, setPinValue] = useState("");
+  const [pinVerified, setPinVerified] = useState(false);
+
+  const { data: pinStatusData } = useApprovalPinStatus();
+  const hasPin = pinStatusData?.has_pin ?? false;
+  const verifyPin = useVerifyApprovalPin(() => setPinVerified(true));
 
   // Inline edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -141,7 +148,14 @@ export default function ApprovalGatePage() {
 
   const onApprove = () => {
     if (!confirmChecked || approveMutation.isPending || insufficientWallet) return;
+    if (hasPin && !pinVerified) return;
     approveMutation.mutate(effectiveSelectedIds);
+  };
+
+  const onConfirmOpen = () => {
+    setPinValue("");
+    setPinVerified(false);
+    setConfirmOpen(true);
   };
 
   if (loadingCandidates || loadingRun) {
@@ -663,7 +677,7 @@ export default function ApprovalGatePage() {
             <Button
               className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm sm:flex-none disabled:opacity-50"
               disabled={effectiveSelectedIds.length === 0 || overBudget}
-              onClick={() => setConfirmOpen(true)}
+              onClick={onConfirmOpen}
               title={overBudget ? "Selected total exceeds budget cap" : undefined}
             >
               <ShieldCheck className="mr-1.5 h-4 w-4" />
@@ -713,6 +727,44 @@ export default function ApprovalGatePage() {
               </div>
             </div>
 
+            {/* PIN step-up */}
+            {hasPin && (
+              <div className="mt-4 space-y-2 rounded-xl border border-border bg-muted/30 p-3">
+                <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-brand" />
+                  {pinVerified ? "PIN verified" : "Enter your approval PIN to confirm"}
+                </p>
+                {!pinVerified && (
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={pinValue}
+                      onChange={(e) => setPinValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="PIN"
+                      className="h-9 w-28 rounded-full border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="rounded-full"
+                      disabled={pinValue.length < 4 || verifyPin.isPending}
+                      onClick={() => verifyPin.mutate(pinValue)}
+                    >
+                      {verifyPin.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Verify"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!hasPin && (
+              <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                Add an Approval PIN in Settings → Security for extra confirmation security.
+              </p>
+            )}
+
             <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-muted-foreground">
               <input
                 type="checkbox"
@@ -729,7 +781,7 @@ export default function ApprovalGatePage() {
               )}
               <Button
                 className="h-11 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
-                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet}
+                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet || (hasPin && !pinVerified)}
                 onClick={onApprove}
               >
                 {approveMutation.isPending ? (

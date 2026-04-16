@@ -12,12 +12,13 @@ import { useRouter } from "next/navigation";
 import { fetchHealth, updateMe } from "@/lib/api-client";
 import { getUserRole } from "@/lib/api-types";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
+import { useIdleTimeout } from "@/hooks/use-idle-timeout";
 import Link from "next/link";
-import { ShieldAlert, ShieldCheck, X } from "lucide-react";
+import { Clock, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, isLoading, refreshUser } = useAuth();
+  const { user, isAuthenticated, isLoading, refreshUser, logout } = useAuth();
   const router = useRouter();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showTour, setShowTour] = useState(false);
   const [show2FAPrompt, setShow2FAPrompt] = useState(false);
   const [graceTimeLeft, setGraceTimeLeft] = useState<string | null>(null);
+  const [idleWarning, setIdleWarning] = useState(false);
 
   const { data: kycData } = useKycStatus();
   const kycStatus = kycData?.kyc_status ?? null;
@@ -95,19 +97,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => { cancelled = true; };
   }, []);
 
-  const handleTourDone = async () => {
+  const handleTourComplete = async () => {
     setShowTour(false);
+    const wasFirstTour = !user?.has_taken_tour;
     try {
       await updateMe({ has_taken_tour: true } as never);
       await refreshUser();
     } catch {
       // best-effort — tour still closes
     }
-    // Prompt 2FA setup for users who haven't enabled it yet
-    if (user && !user.totp_enabled) {
+    if (wasFirstTour && user && !user.totp_enabled) {
       setShow2FAPrompt(true);
     }
   };
+
+  const handleTourSkip = async () => {
+    setShowTour(false);
+    try {
+      await updateMe({ has_taken_tour: true } as never);
+      await refreshUser();
+    } catch {
+      // best-effort
+    }
+    // No 2FA prompt on skip/cancel
+  };
+
+  useIdleTimeout({
+    timeoutMs: 30 * 60 * 1000,
+    warnBeforeMs: 5 * 60 * 1000,
+    enabled: isAuthenticated,
+    onWarn: () => setIdleWarning(true),
+    onIdle: () => {
+      setIdleWarning(false);
+      logout();
+    },
+  });
 
   if (isLoading) {
     return <LoadingLogo />;
@@ -128,8 +152,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     {showTour && (
       <TourGuide
         userRole={getUserRole(user)}
-        onComplete={handleTourDone}
-        onSkip={handleTourDone}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
         openMobileMenu={() => { if (!mobileMenuOpen) setMobileMenuOpen(true); }}
         closeMobileMenu={() => { if (mobileMenuOpen) setMobileMenuOpen(false); }}
       />
@@ -221,6 +245,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 Set up 2FA now
               </Link>
+            </div>
+          )}
+          {idleWarning && (
+            <div className="flex items-center justify-center gap-2 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-800">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              You&apos;ve been inactive for 25 minutes. You&apos;ll be logged out in 5 minutes unless you continue.
+              <button
+                type="button"
+                onClick={() => setIdleWarning(false)}
+                className="ml-2 underline font-semibold hover:opacity-80"
+              >
+                Stay logged in
+              </button>
             </div>
           )}
           <Navbar />
