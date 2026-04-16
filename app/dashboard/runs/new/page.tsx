@@ -160,7 +160,7 @@ export default function NewRunPage() {
   const assignableMembers = approvalCapableMembers.length > 1
     ? approvalCapableMembers.filter((m) => m.user_id !== currentUserId)
     : approvalCapableMembers;
-  const showReviewerSelect = approvalCapableMembers.length >= 3;
+  const showReviewerSelect = approvalCapableMembers.length > 1;
   const [draftRestored, setDraftRestored] = useState(false);
   const csvRef = useRef<HTMLInputElement>(null);
 
