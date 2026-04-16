@@ -35,6 +35,9 @@ import { useRunEvents } from "@/hooks/use-run-events";
 import { useAssignApprover } from "@/hooks/use-candidate-mutations";
 import { useTeamMembers } from "@/hooks/use-team-queries";
 import { useAuth } from "@/context/auth-context";
+import { useMutation } from "@tanstack/react-query";
+import { nudgeApprover } from "@/lib/api-client";
+import { toast } from "sonner";
 import type { PayoutCandidate } from "@/lib/mock-data";
 
 type BadgeStatus =
@@ -571,9 +574,23 @@ export default function RunDetailPage() {
   // Whether the current user is the designated approver (or unassigned + capable)
   const isAssignedApprover =
     !run?.assignedToId || run.assignedToId === currentUserId;
+  // Creator should not approve when there are >1 approval-capable members
+  const isCreator = !!run?.createdBy && run.createdBy === currentUserId;
   const canApprove =
-    isAssignedApprover && (currentUserRole === "owner" || currentUserRole === "approver");
+    isAssignedApprover &&
+    (currentUserRole === "owner" || currentUserRole === "approver") &&
+    !(isCreator && approvalCapableMembers.length > 1);
   const isOwner = currentUserRole === "owner";
+
+  const nudgeMutation = useMutation({
+    mutationFn: () => nudgeApprover(id),
+    onSuccess: (data) => {
+      toast.success(`Reminder sent to ${data.nudged_user}`);
+    },
+    onError: () => {
+      toast.error("Could not send reminder. Please try again.");
+    },
+  });
 
   // Real-time pipeline data (live for active runs, replay for completed/failed)
   const isLiveRun = LIVE_RUN_STATUSES.has(run?.status ?? "");
@@ -661,7 +678,7 @@ export default function RunDetailPage() {
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Runs
+            Back to Payouts
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-black tracking-tight text-foreground">
@@ -688,16 +705,9 @@ export default function RunDetailPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>
-                Analysis complete. Approval required before payouts execute.
-                {run.assignedTo && (
-                  <span className="ml-1 font-normal text-amber-700 dark:text-amber-400">
-                    Assigned to <span className="font-semibold">{run.assignedTo.name}</span>.
-                  </span>
-                )}
-              </span>
+              <span>Analysis complete. Approval required before payouts execute.</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {isOwner && (
                 <Button
                   variant="outline"
@@ -709,6 +719,23 @@ export default function RunDetailPage() {
                   }}
                 >
                   Reassign
+                </Button>
+              )}
+              {/* Nudge button — visible to creator or owner when there's an assigned approver */}
+              {run.assignedToId && (isCreator || isOwner) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 gap-1.5"
+                  disabled={nudgeMutation.isPending}
+                  onClick={() => nudgeMutation.mutate()}
+                >
+                  {nudgeMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="h-3.5 w-3.5" />
+                  )}
+                  Nudge
                 </Button>
               )}
               {canApprove ? (
@@ -725,6 +752,15 @@ export default function RunDetailPage() {
               )}
             </div>
           </div>
+          {/* Assignee info strip */}
+          {run.assignedTo && (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-100/40 px-4 py-2.5 text-sm dark:border-amber-800/40 dark:bg-amber-900/20">
+              <span className="text-amber-700 dark:text-amber-400">Assigned to:</span>
+              <span className="font-bold text-amber-900 dark:text-amber-200">{run.assignedTo.name}</span>
+              <span className="text-amber-600 dark:text-amber-500">·</span>
+              <span className="text-xs text-amber-700 dark:text-amber-400">{run.assignedTo.email}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -927,6 +963,31 @@ export default function RunDetailPage() {
           <Detail label="Status" value={<StatusBadge status={status} label={statusLabel} />} />
           <Detail label="Total Volume" value={formatCurrency(totalCandidateAmount || summary.total_volume)} />
           <Detail label="Created" value={createdAtLabel} />
+          {run.createdByUser && (
+            <Detail
+              label="Created By"
+              value={<PersonChip name={run.createdByUser.name} email={run.createdByUser.email} color="brand" />}
+            />
+          )}
+          {run.assignedTo && (
+            <Detail
+              label="Assigned To"
+              value={<PersonChip name={run.assignedTo.name} email={run.assignedTo.email} color="amber" />}
+            />
+          )}
+          {run.approvedByUser && (
+            <Detail
+              label="Approved By"
+              value={
+                <div className="space-y-1">
+                  <PersonChip name={run.approvedByUser.name} email={run.approvedByUser.email} color="green" />
+                  {run.approvedAt && (
+                    <p className="text-[11px] text-muted-foreground pl-8">{formatDateTime(run.approvedAt)}</p>
+                  )}
+                </div>
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -1383,6 +1444,33 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="space-y-1">
       <p className="text-xs font-black uppercase tracking-wider text-muted-foreground/60">{label}</p>
       <div className="text-sm text-foreground">{value}</div>
+    </div>
+  );
+}
+
+function PersonChip({
+  name,
+  email,
+  color,
+}: {
+  name: string;
+  email: string;
+  color: "brand" | "amber" | "green";
+}) {
+  const colorMap = {
+    brand: "bg-brand/10 text-brand",
+    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    green: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  };
+  return (
+    <div className="flex items-center gap-2">
+      <div className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black", colorMap[color])}>
+        {name.slice(0, 1).toUpperCase()}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{email}</p>
+      </div>
     </div>
   );
 }

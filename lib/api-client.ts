@@ -177,6 +177,10 @@ export function assignApprover(runId: string, userId: string): Promise<AssignApp
     .then((r) => r.data);
 }
 
+export function nudgeApprover(runId: string): Promise<{ ok: boolean; nudged_user: string }> {
+  return apiClient.post(`/runs/${runId}/nudge`).then((r) => r.data);
+}
+
 // ── 5. Approvals ─────────────────────────────────────────────────────────────
 
 export function approveCandidates(runId: string, candidateIds: string[]): Promise<ApproveResponse> {

@@ -185,6 +185,11 @@ export interface ApiRunRecord {
   budget_cap?: number | null;
   assigned_to_id?: string | null;
   assigned_to?: AssignedTo | null;
+  created_by?: string | null;
+  created_by_user?: AssignedTo | null;
+  approved_by?: string | null;
+  approved_by_user?: AssignedTo | null;
+  approved_at?: string | null;
   current_step?: string | null;
   candidate_count?: number;
   // Detail-only fields (absent in list response)
