@@ -148,7 +148,7 @@ export default function ApprovalGatePage() {
 
   const onApprove = () => {
     if (!confirmChecked || approveMutation.isPending || insufficientWallet) return;
-    if (hasPin && !pinVerified) return;
+    if (!hasPin || !pinVerified) return;
     approveMutation.mutate(effectiveSelectedIds);
   };
 
@@ -760,9 +760,18 @@ export default function ApprovalGatePage() {
             )}
 
             {!hasPin && (
-              <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                Add an Approval PIN in Settings → Security for extra confirmation security.
-              </p>
+              <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1.5">
+                <p className="text-sm font-semibold text-destructive">Approval PIN required</p>
+                <p className="text-xs text-muted-foreground">
+                  You need to set up an Approval PIN before you can approve payouts.{" "}
+                  <a
+                    href="/dashboard/settings?tab=security"
+                    className="font-semibold text-brand underline"
+                  >
+                    Set it up in Settings → Security
+                  </a>
+                </p>
+              </div>
             )}
 
             <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-muted-foreground">
@@ -781,7 +790,7 @@ export default function ApprovalGatePage() {
               )}
               <Button
                 className="h-11 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
-                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet || (hasPin && !pinVerified)}
+                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet || !hasPin || (hasPin && !pinVerified)}
                 onClick={onApprove}
               >
                 {approveMutation.isPending ? (
