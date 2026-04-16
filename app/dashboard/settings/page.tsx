@@ -417,6 +417,22 @@ export default function SettingsPage() {
                   <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-10 rounded-full" />
                 </div>
 
+                {user?.date_of_birth && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground">Date of Birth</label>
+                    <div className="relative">
+                      <Input
+                        defaultValue={new Date(user.date_of_birth).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}
+                        disabled
+                        className="h-10 rounded-full pr-24"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+                        Cannot change
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Timezone</label>
                   <select value={tz} onChange={(e) => setTz(e.target.value)} className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10">

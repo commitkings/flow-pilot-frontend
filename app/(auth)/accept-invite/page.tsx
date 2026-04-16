@@ -30,12 +30,26 @@ function AcceptInviteForm() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [dob, setDob] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  function dobError(): string | null {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return "Invalid date";
+    const today = new Date();
+    const age = today.getFullYear() - birth.getFullYear() -
+      (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate()) ? 1 : 0);
+    if (age < 18) return "You must be at least 18 years old";
+    return null;
+  }
+
+  const dobErr = dobError();
 
   useEffect(() => {
     if (!token) {
@@ -51,6 +65,8 @@ function AcceptInviteForm() {
   const canSubmit = !!(
     firstName.trim() &&
     lastName.trim() &&
+    dob &&
+    !dobErr &&
     password.length >= 8 &&
     password === confirmPassword
   );
@@ -65,6 +81,7 @@ function AcceptInviteForm() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         password,
+        date_of_birth: dob || undefined,
       });
       if (data.requires_2fa_setup && data.token) {
         // Store the token so the auth context picks it up on the next page load,
@@ -228,6 +245,24 @@ function AcceptInviteForm() {
               required
             />
           </Field>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-[11px] font-black uppercase tracking-wider text-muted-foreground/80">
+            Date of Birth
+          </label>
+          <p className="text-xs text-muted-foreground -mt-1">Required for identity verification. You must be 18 or older.</p>
+          <input
+            type="date"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+            max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
+            required
+            className="h-11 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all focus:border-brand focus:ring-1 focus:ring-brand/10"
+          />
+          {dobErr && dob && (
+            <p className="mt-1 text-xs text-destructive">{dobErr}</p>
+          )}
         </div>
 
         <Field label="Password">

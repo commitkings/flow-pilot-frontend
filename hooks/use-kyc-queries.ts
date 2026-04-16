@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getKycStatus, submitKyc, uploadOrgLogo } from "@/lib/api-client";
+import {
+  getKycStatus,
+  submitKyc,
+  submitIndividualKycLevel1,
+  submitIndividualKycLevel2,
+  submitIndividualKycLevel3,
+  uploadOrgLogo,
+} from "@/lib/api-client";
 import { toast } from "sonner";
 
 export function useKycStatus() {
@@ -27,6 +34,48 @@ export function useSubmitKyc() {
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.detail ?? "Failed to submit KYC documents.");
+    },
+  });
+}
+
+export function useSubmitIndividualKycLevel1() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: submitIndividualKycLevel1,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["kyc-status"] });
+      toast.success("Identity submitted. Verification in progress.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail ?? "Failed to submit identity.");
+    },
+  });
+}
+
+export function useSubmitIndividualKycLevel2() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: submitIndividualKycLevel2,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["kyc-status"] });
+      toast.success("Address submitted. Verification in progress.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail ?? "Failed to submit address.");
+    },
+  });
+}
+
+export function useSubmitIndividualKycLevel3() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: submitIndividualKycLevel3,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["kyc-status"] });
+      toast.success("Government ID submitted. Verification in progress.");
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.detail ?? "Failed to submit government ID.");
     },
   });
 }

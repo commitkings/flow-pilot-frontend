@@ -461,6 +461,26 @@ export function submitKyc(formData: FormData): Promise<{ status: string; message
     .then((r) => r.data);
 }
 
+export function submitIndividualKycLevel1(payload: { id_type: "nin" | "bvn"; id_value: string }): Promise<{ status: string; message: string }> {
+  const fd = new FormData();
+  fd.append("id_type", payload.id_type);
+  fd.append("id_value", payload.id_value);
+  return apiClient.post("/kyc/individual/level1", fd, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
+}
+
+export function submitIndividualKycLevel2(payload: { address: string; proof_of_address?: File }): Promise<{ status: string; message: string }> {
+  const fd = new FormData();
+  fd.append("address", payload.address);
+  if (payload.proof_of_address) fd.append("proof_of_address", payload.proof_of_address);
+  return apiClient.post("/kyc/individual/level2", fd, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
+}
+
+export function submitIndividualKycLevel3(file: File): Promise<{ status: string; message: string }> {
+  const fd = new FormData();
+  fd.append("government_id", file);
+  return apiClient.post("/kyc/individual/level3", fd, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
+}
+
 // ── 14. Auth (Extended) ──────────────────────────────────────────────────────
 
 export function forgotPassword(email: string): Promise<{ message: string }> {

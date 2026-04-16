@@ -26,40 +26,61 @@ export default function DeveloperPage() {
   const router = useRouter();
   const { data: org, isLoading: orgLoading } = useOrgProfile();
 
-  // ── KYC gate ──────────────────────────────────────────────────────────────
-  if (!orgLoading && org && org.kyc_status !== "verified") {
-    const isPending = org.kyc_status === "pending";
-    return (
-      <div className="mx-auto max-w-6xl pb-16 space-y-6">
-        <PageHeader
-          title="Developer"
-          description="Manage API keys and webhooks to integrate FlowPilot with your systems."
-        />
-        <div className="flex flex-col items-center gap-5 rounded-2xl border border-border/60 bg-card p-10 text-center shadow-sm">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
-            <ShieldAlert className="h-7 w-7 text-muted-foreground" />
-          </div>
-          <div>
-            <h2 className="text-base font-black text-foreground">
-              {isPending ? "Verification In Progress" : "Identity Verification Required"}
-            </h2>
-            <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">
-              {isPending
-                ? "Your identity verification is under review. API keys and webhooks will be available once your organisation is verified."
-                : "Complete KYC/KYB verification before generating API keys or configuring webhooks. This protects you and ensures compliance with financial regulations."}
-            </p>
-          </div>
-          {!isPending && (
-            <Button
-              className="rounded-full bg-brand px-6 text-white hover:opacity-90"
-              onClick={() => router.push("/dashboard/settings?tab=workspace")}
-            >
-              Complete Verification
-            </Button>
-          )}
+  const accountType = org?.account_type ?? "business";
+  const kycLevel = org?.kyc_level ?? 0;
+  const isIndividual = accountType === "individual";
+
+  const pageHeader = (
+    <PageHeader
+      title="Developer"
+      description="Manage API keys and webhooks to integrate FlowPilot with your systems."
+    />
+  );
+
+  const gateCard = (title: string, body: string, cta?: React.ReactNode) => (
+    <div className="mx-auto max-w-6xl pb-16 space-y-6">
+      {pageHeader}
+      <div className="flex flex-col items-center gap-5 rounded-2xl border border-border/60 bg-card p-10 text-center shadow-sm">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+          <ShieldAlert className="h-7 w-7 text-muted-foreground" />
         </div>
+        <div>
+          <h2 className="text-base font-black text-foreground">{title}</h2>
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground leading-relaxed">{body}</p>
+        </div>
+        {cta}
       </div>
-    );
+    </div>
+  );
+
+  if (!orgLoading && org) {
+    // Individual accounts: API access not available
+    if (isIndividual) {
+      return gateCard(
+        "API Access Not Available",
+        "The public API and developer tools are only available to business accounts. Individual accounts cannot generate API keys or configure webhooks.",
+        undefined
+      );
+    }
+
+    // Business accounts: require at least KYC Level 1
+    if (kycLevel < 1) {
+      const isPending = org.kyc_status === "pending";
+      return gateCard(
+        isPending ? "Verification In Progress" : "Business Verification Required",
+        isPending
+          ? "Your business documents are under review. API keys and webhooks will be available once your organisation reaches Level 1 verification."
+          : "Complete Level 1 business verification (KYC) before generating API keys or configuring webhooks. This protects you and ensures compliance with financial regulations.",
+        !isPending ? (
+          <Button
+            className="rounded-full bg-brand px-6 text-white hover:opacity-90"
+            onClick={() => router.push("/dashboard/kyc")}
+          >
+            Complete Verification
+          </Button>
+        ) : undefined
+      );
+    }
   }
 
   return (

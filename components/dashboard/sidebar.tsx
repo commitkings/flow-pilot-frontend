@@ -33,6 +33,7 @@ import { useDashboardShell } from "@/components/dashboard-shell-context";
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from "@/hooks/use-notification-queries";
 import { getUserRole } from "@/lib/api-types";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
 
 function getInitials(name: string | null | undefined): string {
   if (!name?.trim()) return "??";
@@ -198,16 +199,25 @@ export function Sidebar() {
   const roleLabel = formatWorkspaceRole(user?.memberships?.[0]?.role);
   const userRole = getUserRole(user);
 
+  const { data: orgProfile } = useOrgProfile();
+  const isIndividual = orgProfile?.account_type === "individual";
+
   const { data: notifData } = useNotifications({ limit: 1 });
   const unreadCount = notifData?.unread_count ?? 0;
 
-  // Filter nav items by role
+  // Filter nav items by role, and hide Team Members for individual accounts
   const visibleGroups = navGroups
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) => !item.roles || (userRole && item.roles.includes(userRole))
-      ),
+      items: group.items.filter((item) => {
+        if (!item.roles && userRole || item.roles?.includes(userRole ?? "")) {
+          // Hide Team Members and Developer for individual accounts
+          if (isIndividual && item.href === "/dashboard/team") return false;
+          if (isIndividual && item.href === "/dashboard/developer") return false;
+          return true;
+        }
+        return !item.roles;
+      }),
     }))
     .filter((group) => group.items.length > 0);
 
