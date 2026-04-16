@@ -3,6 +3,7 @@
  */
 
 import apiClient from "./axios";
+import type { CandidateInput } from "./api-types";
 
 export type ScheduledRunType = "recurring" | "one_time";
 
@@ -29,6 +30,14 @@ export interface CreateScheduledRunPayload {
   frequency_label: string;
   /** Required for one_time runs — ISO 8601 UTC string */
   run_at?: string;
+  /** Full payout run fields */
+  business_id?: string;
+  date_from?: string;
+  date_to?: string;
+  risk_tolerance?: number;
+  budget_cap?: number;
+  assigned_approver_id?: string;
+  candidates?: CandidateInput[];
 }
 
 export function listScheduledRuns(): Promise<ScheduledRun[]> {

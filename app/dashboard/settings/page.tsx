@@ -201,6 +201,18 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [tz, setTz] = useState(user?.timezone ?? "Africa/Lagos");
 
+  // Populate profile fields when user data loads asynchronously
+  useEffect(() => {
+    if (user) {
+      setFirstName((prev) => prev || (user.first_name ?? ""));
+      setLastName((prev) => prev || (user.last_name ?? ""));
+      setJobTitle((prev) => prev || (user.job_title ?? ""));
+      setDepartment((prev) => prev || (user.department ?? ""));
+      setPhone((prev) => prev || (user.phone ?? ""));
+      setTz(user.timezone ?? "Africa/Lagos");
+    }
+  }, [user]);
+
   // Password form state
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");

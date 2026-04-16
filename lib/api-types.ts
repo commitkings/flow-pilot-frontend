@@ -114,6 +114,7 @@ export interface KycLimitInfo {
   wallet_limit: number;
   at_max_level: boolean;
   support_email: string;
+  monthly_payout_used: number;
 }
 
 export interface IndividualKycSubmission {

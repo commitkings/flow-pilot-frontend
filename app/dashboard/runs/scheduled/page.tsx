@@ -23,7 +23,6 @@ import {
   useToggleScheduledRun,
   useDeleteScheduledRun,
 } from "@/hooks/use-scheduled-runs";
-import { ScheduleRunModal } from "@/components/runs/ScheduleRunModal";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import type { ScheduledRun } from "@/lib/api-scheduled-runs";
 
@@ -259,7 +258,6 @@ function ScheduledRunRow({ run }: { run: ScheduledRun }) {
 /* ── Page ────────────────────────────────────────────────────────────────── */
 
 export default function ScheduledRunsPage() {
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const { data: runs = [], isLoading, isError } = useScheduledRuns();
   const { data: kycData } = useKycStatus();
   const kycStatus = kycData?.kyc_status;
@@ -302,13 +300,13 @@ export default function ScheduledRunsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Scheduled Payouts" description="One-time and recurring automated payouts.">
-        <Button
-          className="gap-2 rounded-full bg-brand px-5 text-sm text-white hover:opacity-90"
-          onClick={() => setScheduleOpen(true)}
+        <Link
+          href="/dashboard/runs/scheduled/new"
+          className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
         >
           <CalendarClock className="h-4 w-4" />
           New Scheduled Payout
-        </Button>
+        </Link>
       </PageHeader>
 
       {/* Metric cards */}
@@ -381,13 +379,13 @@ export default function ScheduledRunsPage() {
                       <p className="max-w-xs text-sm text-muted-foreground">
                         Create a one-time or recurring payout to automate your workflows.
                       </p>
-                      <Button
-                        className="mt-1 gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90"
-                        onClick={() => setScheduleOpen(true)}
+                      <Link
+                        href="/dashboard/runs/scheduled/new"
+                        className="mt-1 inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2 text-sm font-semibold text-white hover:opacity-90"
                       >
                         <CalendarClock className="h-4 w-4" />
                         New Scheduled Payout
-                      </Button>
+                      </Link>
                     </div>
                   </td>
                 </tr>
@@ -399,7 +397,6 @@ export default function ScheduledRunsPage() {
         </div>
       </div>
 
-      <ScheduleRunModal open={scheduleOpen} onClose={() => setScheduleOpen(false)} />
     </div>
   );
 }
