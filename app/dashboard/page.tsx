@@ -270,7 +270,7 @@ export default function DashboardPage() {
             <QuickAction
               href="/dashboard/runs"
               icon={<ShieldAlert className="h-5 w-5" />}
-              title={`${stats!.pending_approvals} Run${stats!.pending_approvals > 1 ? "s" : ""} Need Approval`}
+              title={`${stats!.pending_approvals} Payout${stats!.pending_approvals > 1 ? "s" : ""} Need Approval`}
               description="Review risk scores and approve or reject pending disbursements."
               accent="amber"
             />
