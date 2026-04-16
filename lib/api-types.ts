@@ -118,16 +118,18 @@ export interface KycLimitInfo {
 
 export interface IndividualKycSubmission {
   level_1_type: "nin" | "bvn" | null;
+  level_1_masked_value: string | null;
   level_1_status: "not_submitted" | "pending" | "verified" | "rejected";
   level_1_submitted_at: string | null;
   level_1_verified_at: string | null;
   level_2_address: string | null;
   level_2_status: "not_submitted" | "pending" | "verified" | "rejected";
-  level_2_document_url: string | null;
+  level_2_document_uploaded: boolean;
   level_2_submitted_at: string | null;
   level_2_verified_at: string | null;
   level_3_status: "not_submitted" | "pending" | "verified" | "rejected";
-  level_3_document_url: string | null;
+  level_3_document_uploaded: boolean;
+  level_3_selfie_uploaded: boolean;
   level_3_submitted_at: string | null;
   level_3_verified_at: string | null;
 }

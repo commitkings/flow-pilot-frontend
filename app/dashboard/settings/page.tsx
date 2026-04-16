@@ -58,6 +58,11 @@ import {
   useSetOrgRequire2FA,
 } from "@/hooks/use-2fa-queries";
 import { ApprovalRulesSection } from "@/components/settings/ApprovalRulesSection";
+import {
+  useApprovalPinStatus,
+  useSetupApprovalPin,
+  useRemoveApprovalPin,
+} from "@/hooks/use-approval-pin";
 import { cn } from "@/lib/utils";
 
 type Tab = "profile" | "workspace" | "security" | "account";
@@ -124,6 +129,15 @@ export default function SettingsPage() {
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [backupCopied, setBackupCopied] = useState(false);
   const [showOrgEnforce, setShowOrgEnforce] = useState(false);
+
+  // Approval PIN state
+  const { data: pinStatusData } = useApprovalPinStatus();
+  const hasPin = pinStatusData?.has_pin ?? false;
+  const setupPin = useSetupApprovalPin();
+  const removePin = useRemoveApprovalPin();
+  const [pinStep, setPinStep] = useState<"idle" | "setup" | "removing">("idle");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
 
   const handleStartSetup = async () => {
     const data = await twoFASetup.mutateAsync();
@@ -856,6 +870,108 @@ export default function SettingsPage() {
                         )}
                       </div>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Approval PIN ── */}
+              <div className="space-y-4 border-t border-border/50 pt-6">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Approval PIN</h3>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                      Set a 4–6 digit PIN that must be entered before confirming any payout approval.
+                    </p>
+                  </div>
+                  <div className="shrink-0">
+                    <StatusBadge status={hasPin ? "active" : "pending"} label={hasPin ? "Enabled" : "Not set"} />
+                  </div>
+                </div>
+
+                {pinStep === "idle" && (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setPinStep("setup"); setNewPin(""); setConfirmPin(""); }}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+                    >
+                      <Lock className="h-4 w-4" />
+                      {hasPin ? "Change PIN" : "Set up PIN"}
+                    </button>
+                    {hasPin && (
+                      <button
+                        type="button"
+                        onClick={() => setPinStep("removing")}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
+                      >
+                        Remove PIN
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {pinStep === "setup" && (
+                  <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3 shadow-sm sm:max-w-sm">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-muted-foreground">New PIN (4–6 digits)</label>
+                      <Input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={newPin}
+                        onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="Enter PIN"
+                        className="h-10 rounded-full"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-muted-foreground">Confirm PIN</label>
+                      <Input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={confirmPin}
+                        onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="Re-enter PIN"
+                        className="h-10 rounded-full"
+                      />
+                      {confirmPin && newPin !== confirmPin && (
+                        <p className="text-xs text-destructive">PINs do not match</p>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90"
+                        disabled={newPin.length < 4 || newPin !== confirmPin || setupPin.isPending}
+                        onClick={() => setupPin.mutate(newPin, { onSuccess: () => setPinStep("idle") })}
+                      >
+                        {setupPin.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save PIN
+                      </Button>
+                      <button type="button" onClick={() => setPinStep("idle")} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {pinStep === "removing" && (
+                  <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 space-y-3 sm:max-w-sm">
+                    <p className="text-sm text-muted-foreground">Are you sure you want to remove your approval PIN? Approvals will no longer require PIN confirmation.</p>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="destructive"
+                        className="rounded-full shadow-sm"
+                        disabled={removePin.isPending}
+                        onClick={() => removePin.mutate(undefined, { onSuccess: () => setPinStep("idle") })}
+                      >
+                        {removePin.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Remove PIN
+                      </Button>
+                      <button type="button" onClick={() => setPinStep("idle")} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

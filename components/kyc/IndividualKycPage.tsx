@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
+  Camera,
   CheckCircle2,
   Clock,
-  ExternalLink,
   Lock,
   Mail,
   ShieldCheck,
   TrendingUp,
   Upload,
   User,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,6 +112,7 @@ function LevelCard({
   limitSummary,
   status,
   locked,
+  submissionDetail,
   children,
 }: {
   level: number;
@@ -119,11 +121,13 @@ function LevelCard({
   limitSummary: string;
   status: string;
   locked?: boolean;
+  submissionDetail?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const isVerified = status === "verified";
   const isPending = status === "pending";
+  const hasSubmission = isVerified || isPending;
 
   return (
     <div className={cn(
@@ -162,6 +166,13 @@ function LevelCard({
           </span>
         )}
       </div>
+
+      {/* Submission summary — shown when pending or verified */}
+      {hasSubmission && submissionDetail && (
+        <div className="border-t border-border/40 px-5 pb-4 pt-3">
+          {submissionDetail}
+        </div>
+      )}
 
       {open && !locked && !isVerified && (
         <div className="border-t border-border/60 px-5 pb-5 pt-4">
@@ -308,31 +319,230 @@ function Level2Form() {
   );
 }
 
+// ── Shared camera component ────────────────────────────────────────────────────
+
+function LiveCamera({
+  onCapture,
+  onClose,
+  facingMode,
+  onToggleFacing,
+  purpose,
+}: {
+  onCapture: (file: File, filename: string) => void;
+  onClose: () => void;
+  facingMode: "user" | "environment";
+  onToggleFacing: () => void;
+  purpose?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [consented, setConsented] = useState(false);
+
+  useEffect(() => {
+    if (!consented) return;
+    let active = true;
+    setError(null);
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } } })
+      .then((stream) => {
+        if (!active) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      })
+      .catch(() => setError("Camera access denied. Please allow camera access in your browser settings and try again."));
+    return () => {
+      active = false;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, [facingMode, consented]);
+
+  // Consent gate — shown before requesting camera permission
+  if (!consented) {
+    return (
+      <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <Camera className="h-5 w-5 text-brand mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-foreground">Camera access required</p>
+            <p className="text-xs text-muted-foreground">
+              {purpose ?? "Your browser will ask for permission to use your camera."}
+              {" "}We only use your camera for this verification — no images are stored without your submission.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full gap-1.5 text-xs"
+            onClick={() => setConsented(true)}
+          >
+            <Camera className="h-3.5 w-3.5" /> Allow Camera
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="rounded-full text-xs text-muted-foreground"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  function capture(filename: string) {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) onCapture(new File([blob], filename, { type: "image/jpeg" }), filename);
+    }, "image/jpeg", 0.92);
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 space-y-2">
+        <p className="text-xs text-destructive">{error}</p>
+        <button type="button" onClick={onClose} className="text-xs underline text-muted-foreground">Cancel</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="relative overflow-hidden rounded-xl border border-border bg-black">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full"
+          style={{ maxHeight: 280, objectFit: "cover" }}
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleFacing}
+          title={facingMode === "user" ? "Switch to rear camera" : "Switch to front camera"}
+          className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 text-xs font-bold"
+        >
+          ↺
+        </button>
+        <div className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white/80">
+          {facingMode === "user" ? "Front" : "Rear"}
+        </div>
+      </div>
+      <Button
+        type="button"
+        onClick={() => capture(facingMode === "user" ? "selfie.jpg" : "id-photo.jpg")}
+        className="w-full h-11 rounded-full font-bold gap-2"
+      >
+        <Camera className="h-4 w-4" /> Capture
+      </Button>
+    </div>
+  );
+}
+
 // ── Level 3 form ──────────────────────────────────────────────────────────────
 
 function Level3Form() {
   const [govIdFile, setGovIdFile] = useState<File | null>(null);
+  const [selfieFile, setSelfieFile] = useState<File | null>(null);
+  const [activeCamera, setActiveCamera] = useState<"govid" | "selfie" | null>(null);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [selfieFacing, setSelfieFacing] = useState<"user" | "environment">("user");
   const mut = useSubmitIndividualKycLevel3();
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Upload a government-issued photo ID. Accepted: NIN card, international passport, or driver&apos;s licence.
-        Image or PDF, max 10 MB.
-      </p>
-      <DocUpload
-        label="Government-Issued Photo ID"
-        accept=".pdf,.jpg,.jpeg,.png"
-        file={govIdFile}
-        onChange={setGovIdFile}
-      />
+    <div className="space-y-5">
+      {/* Step 1 — Government ID */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Step 1 — Government ID</p>
+        <p className="text-sm text-muted-foreground">
+          Upload or photograph your NIN card, international passport, or driver&apos;s licence. Image or PDF, max 10 MB.
+        </p>
+
+        {activeCamera === "govid" ? (
+          <LiveCamera
+            facingMode={facingMode}
+            onToggleFacing={() => setFacingMode((m) => m === "environment" ? "user" : "environment")}
+            onCapture={(f) => { setGovIdFile(f); setActiveCamera(null); }}
+            onClose={() => setActiveCamera(null)}
+            purpose="We need to photograph your government-issued ID document."
+          />
+        ) : (
+          <div className="space-y-2">
+            <DocUpload
+              label="Government-Issued Photo ID"
+              accept=".pdf,.jpg,.jpeg,.png"
+              file={govIdFile}
+              onChange={setGovIdFile}
+            />
+            <button
+              type="button"
+              onClick={() => setActiveCamera("govid")}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-brand/60 hover:text-brand"
+            >
+              <Camera className="h-4 w-4" /> Take Photo of ID
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Step 2 — Liveness selfie */}
+      <div className="space-y-2 border-t border-border/60 pt-4">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Step 2 — Liveness Check</p>
+        <p className="text-sm text-muted-foreground">
+          Take a live selfie using your front camera so we can confirm it&apos;s really you. This must be taken live — no uploads.
+        </p>
+
+        {activeCamera === "selfie" ? (
+          <LiveCamera
+            facingMode={selfieFacing}
+            onToggleFacing={() => setSelfieFacing((m) => m === "user" ? "environment" : "user")}
+            onCapture={(f) => { setSelfieFile(f); setActiveCamera(null); }}
+            onClose={() => setActiveCamera(null)}
+            purpose="We need to take a live selfie to confirm it's really you (liveness check)."
+          />
+        ) : selfieFile ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 p-3">
+            <span className="text-xs text-green-700 font-medium">Selfie captured</span>
+            <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setSelfieFile(null)}>
+              Retake
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { setSelfieFacing("user"); setActiveCamera("selfie"); }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand/40 bg-brand/5 py-3 text-sm font-semibold text-brand transition-colors hover:bg-brand/10"
+          >
+            <Camera className="h-4 w-4" /> Take Liveness Selfie
+          </button>
+        )}
+      </div>
+
       <Button
         type="button"
-        disabled={!govIdFile || mut.isPending}
-        onClick={() => govIdFile && mut.mutate(govIdFile)}
+        disabled={!govIdFile || !selfieFile || mut.isPending}
+        onClick={() => govIdFile && selfieFile && mut.mutate({ govId: govIdFile, selfie: selfieFile })}
         className="w-full h-11 rounded-full font-bold"
       >
-        {mut.isPending ? "Uploading…" : "Submit Government ID"}
+        {mut.isPending ? "Uploading…" : "Submit Government ID & Selfie"}
       </Button>
     </div>
   );
@@ -383,6 +593,18 @@ export function IndividualKycPage({
           subtitle="Submit your BVN or NIN to verify your identity."
           limitSummary="Unlocks: ₦300k/month · ₦50k/txn · ₦500k wallet"
           status={l1Status}
+          submissionDetail={sub?.level_1_masked_value ? (
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className="text-muted-foreground">
+                <span className="font-semibold text-foreground">{sub.level_1_type?.toUpperCase()}</span>
+                {" "}submitted
+              </span>
+              <span className="font-mono text-foreground tracking-widest">{sub.level_1_masked_value}</span>
+              {sub.level_1_verified_at && (
+                <span className="text-green-600">Verified {new Date(sub.level_1_verified_at).toLocaleDateString()}</span>
+              )}
+            </div>
+          ) : undefined}
         >
           <Level1Form />
         </LevelCard>
@@ -394,6 +616,21 @@ export function IndividualKycPage({
           limitSummary="Unlocks: ₦1m/month · ₦200k/txn · ₦2m wallet"
           status={l2Status}
           locked={l1Status !== "verified"}
+          submissionDetail={sub?.level_2_address ? (
+            <div className="space-y-1.5 text-xs">
+              <p className="text-muted-foreground">
+                <span className="font-semibold text-foreground">Address:</span>{" "}{sub.level_2_address}
+              </p>
+              {sub.level_2_document_uploaded && (
+                <p className="text-muted-foreground">
+                  <span className="font-semibold text-foreground">Proof of address:</span>{" "}document submitted
+                </p>
+              )}
+              {sub.level_2_verified_at && (
+                <p className="text-green-600">Verified {new Date(sub.level_2_verified_at).toLocaleDateString()}</p>
+              )}
+            </div>
+          ) : undefined}
         >
           <Level2Form />
         </LevelCard>
@@ -405,6 +642,19 @@ export function IndividualKycPage({
           limitSummary="Unlocks: ₦3m/month · ₦500k/txn · ₦5m wallet"
           status={l3Status}
           locked={l2Status !== "verified"}
+          submissionDetail={(sub?.level_3_document_uploaded || sub?.level_3_selfie_uploaded) ? (
+            <div className="flex flex-wrap gap-3 text-xs">
+              {sub?.level_3_document_uploaded && (
+                <span className="text-muted-foreground"><span className="font-semibold text-foreground">Government ID:</span> document submitted</span>
+              )}
+              {sub?.level_3_selfie_uploaded && (
+                <span className="text-muted-foreground"><span className="font-semibold text-foreground">Liveness selfie:</span> captured</span>
+              )}
+              {sub?.level_3_verified_at && (
+                <span className="text-green-600">Verified {new Date(sub.level_3_verified_at).toLocaleDateString()}</span>
+              )}
+            </div>
+          ) : undefined}
         >
           <Level3Form />
         </LevelCard>

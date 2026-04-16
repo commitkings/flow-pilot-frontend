@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useState } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -45,8 +45,10 @@ import {
   useToggleMemberStatus,
   useUpdateMemberRole,
 } from "@/hooks/use-team-queries";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { importTeamMembers, getTeamImportTemplateUrl, getActiveSessions } from "@/lib/api-client";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
 import type { BulkImportResult } from "@/lib/api-client";
 import type { TeamMember } from "@/lib/api-types";
 import { useQuery } from "@tanstack/react-query";
@@ -261,6 +263,14 @@ function MemberActions({
 // ── main page ─────────────────────────────────────────────────────────────────
 
 export default function TeamPage() {
+  const router = useRouter();
+  const { data: orgProfile } = useOrgProfile();
+  useEffect(() => {
+    if (orgProfile?.account_type === "individual") {
+      router.replace("/dashboard");
+    }
+  }, [orgProfile, router]);
+
   const { inviteOpen, setInviteOpen } = useDashboardShell();
   const { user } = useAuth();
   const [teamQuery, setTeamQuery] = useState("");
