@@ -55,9 +55,17 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const INDIVIDUAL_NEXT_LEVEL: Record<number, { label: string; monthly: number; single: number; wallet: number }> = {
+  0: { label: "Level 1 unlocks", monthly: 300_000, single: 50_000, wallet: 500_000 },
+  1: { label: "Level 2 unlocks", monthly: 1_000_000, single: 200_000, wallet: 2_000_000 },
+  2: { label: "Level 3 unlocks", monthly: 3_000_000, single: 500_000, wallet: 5_000_000 },
+};
+
 function LimitCard({ info, kyc_status }: { info: KycLimitInfo | null; kyc_status: string }) {
   if (!info) return null;
   const active = kyc_status === "verified" && info.kyc_level > 0;
+  const nextLevel = INDIVIDUAL_NEXT_LEVEL[info.kyc_level];
+
   return (
     <div className={cn(
       "rounded-2xl border p-5 space-y-3",
@@ -86,6 +94,15 @@ function LimitCard({ info, kyc_status }: { info: KycLimitInfo | null; kyc_status
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Complete Level 1 to activate your payout limits.</p>
+      )}
+      {/* Next level teaser */}
+      {!info.at_max_level && nextLevel && (
+        <div className="rounded-xl border border-brand/20 bg-brand/5 px-3 py-2 space-y-1">
+          <p className="text-xs font-semibold text-brand">{nextLevel.label}</p>
+          <p className="text-xs text-muted-foreground">
+            {fmt(nextLevel.monthly)}/month &middot; {fmt(nextLevel.single)}/txn &middot; {fmt(nextLevel.wallet)} wallet
+          </p>
+        </div>
       )}
       {active && info.at_max_level && (
         <div className="flex items-start gap-2 rounded-xl border border-brand/20 bg-brand/5 px-3 py-2">

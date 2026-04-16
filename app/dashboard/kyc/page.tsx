@@ -18,11 +18,15 @@ import {
   Clock,
   ExternalLink,
   FileText,
+  Lock,
   Loader2,
+  Mail,
   ShieldCheck,
+  TrendingUp,
   Upload,
   User,
 } from "lucide-react";
+import type { KycLimitInfo } from "@/lib/api-types";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -147,6 +151,158 @@ function DocLink({ label, url }: { label: string; url: string | null | undefined
   );
 }
 
+// ── Business limits + tiers ───────────────────────────────────────────────────
+
+function fmt(n: number) {
+  return `₦${n.toLocaleString("en-NG")}`;
+}
+
+const BUSINESS_TIERS = [
+  {
+    level: 1,
+    label: "Level 1 — Basic",
+    requirements: "CAC Certificate + Director/Owner ID",
+    monthly: 1_500_000,
+    single: 300_000,
+    wallet: 3_000_000,
+  },
+  {
+    level: 2,
+    label: "Level 2 — Standard",
+    requirements: "Level 1 + TIN Document + Proof of Address",
+    monthly: 10_000_000,
+    single: 2_000_000,
+    wallet: 20_000_000,
+  },
+  {
+    level: 3,
+    label: "Level 3 — Full",
+    requirements: "Level 2 + all compliance documents",
+    monthly: 50_000_000,
+    single: 5_000_000,
+    wallet: 100_000_000,
+  },
+];
+
+function BusinessLimitsSection({
+  limit_info,
+  onUpgrade,
+}: {
+  limit_info: KycLimitInfo | null;
+  onUpgrade: () => void;
+}) {
+  const currentLevel = limit_info?.kyc_level ?? 1;
+  const atMax = limit_info?.at_max_level ?? false;
+
+  return (
+    <div className="space-y-4">
+      {/* Active limits card */}
+      {limit_info && currentLevel > 0 && (
+        <div className="rounded-2xl border border-green-200 bg-green-50 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-green-600" />
+            <p className="text-sm font-bold text-foreground">
+              Level {currentLevel} Limits Active
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">Monthly</p>
+              <p className="text-sm font-black text-foreground">{fmt(limit_info.monthly_limit)}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">Per Payment</p>
+              <p className="text-sm font-black text-foreground">{fmt(limit_info.single_limit)}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-xs text-muted-foreground">Wallet Cap</p>
+              <p className="text-sm font-black text-foreground">{fmt(limit_info.wallet_limit)}</p>
+            </div>
+          </div>
+          {atMax && (
+            <div className="flex items-start gap-2 rounded-xl border border-brand/20 bg-brand/5 px-3 py-2">
+              <Mail className="h-3.5 w-3.5 text-brand mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                You&apos;re at the maximum level. To request higher limits, email{" "}
+                <a href={`mailto:${limit_info.support_email}`} className="font-semibold text-brand underline">
+                  {limit_info.support_email}
+                </a>.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tier upgrade cards */}
+      {!atMax && (
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-foreground">Upgrade for higher limits</p>
+          {BUSINESS_TIERS.map((tier) => {
+            const done = currentLevel >= tier.level;
+            const next = tier.level === currentLevel + 1;
+            const locked = tier.level > currentLevel + 1;
+            return (
+              <div
+                key={tier.level}
+                className={cn(
+                  "rounded-2xl border-2 p-4 space-y-2 transition-colors",
+                  done ? "border-green-200 bg-green-50/40" :
+                  next ? "border-brand/40 bg-brand/5" :
+                  "border-border bg-muted/20 opacity-60"
+                )}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black",
+                      done ? "bg-green-500 text-white" :
+                      next ? "bg-brand text-white" :
+                      "bg-muted text-muted-foreground"
+                    )}>
+                      {done ? <CheckCircle2 className="h-4 w-4" /> :
+                       locked ? <Lock className="h-3.5 w-3.5" /> : tier.level}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{tier.label}</p>
+                      <p className="text-xs text-muted-foreground">{tier.requirements}</p>
+                    </div>
+                  </div>
+                  {next && (
+                    <Button
+                      size="sm"
+                      className="rounded-full shrink-0 text-xs bg-brand text-white hover:opacity-90"
+                      onClick={onUpgrade}
+                    >
+                      Upgrade
+                    </Button>
+                  )}
+                  {done && (
+                    <span className="text-xs font-semibold text-green-600">Active</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2 pl-11">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Monthly</p>
+                    <p className="text-xs font-bold text-foreground">{fmt(tier.monthly)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Per Payment</p>
+                    <p className="text-xs font-bold text-foreground">{fmt(tier.single)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Wallet Cap</p>
+                    <p className="text-xs font-bold text-foreground">{fmt(tier.wallet)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Verified read-only card ───────────────────────────────────────────────────
 
 function VerifiedCard({ submission }: { submission: NonNullable<import("@/lib/api-types").KycStatusResponse["submission"]> }) {
@@ -264,6 +420,7 @@ export default function KycPage() {
     );
   }
 
+  const [showUpgradeForm, setShowUpgradeForm] = useState(false);
   const [step, setStep] = useState(1);
   const [businessType, setBusinessType] = useState<KycBusinessType | "">("");
 
@@ -330,20 +487,24 @@ export default function KycPage() {
     if (authOfficerIdFile) fd.append("authorized_officer_id", authOfficerIdFile);
 
     submitMut.mutate(fd, {
-      onSuccess: () => setStep(1),
+      onSuccess: () => { setStep(1); setShowUpgradeForm(false); },
     });
   };
 
-  // ── Verified: show read-only card ─────────────────────────
-  if (kyc_status === "verified" && submission) {
+  // ── Verified: show read-only card + limits ────────────────
+  if (kyc_status === "verified" && submission && !showUpgradeForm) {
     return (
       <div className="mx-auto max-w-2xl pb-16">
         <PageHeader
           title="Business Verification (KYC)"
           description="Your business has been verified. You have full access to FlowPilot."
         />
-        <div className="mt-8">
+        <div className="mt-8 space-y-6">
           <VerifiedCard submission={submission} />
+          <BusinessLimitsSection
+            limit_info={data?.limit_info ?? null}
+            onUpgrade={() => setShowUpgradeForm(true)}
+          />
         </div>
       </div>
     );
@@ -731,11 +892,22 @@ export default function KycPage() {
   return (
     <div className="mx-auto max-w-2xl pb-16">
       <PageHeader
-        title="Business Verification (KYC)"
-        description="Submit your business documents to unlock full platform access."
+        title={showUpgradeForm ? "Upgrade Your KYC Level" : "Business Verification (KYC)"}
+        description={showUpgradeForm ? "Submit additional documents to unlock higher payment limits." : "Submit your business documents to unlock full platform access."}
       />
 
       <div className="mt-8 space-y-6">
+        {/* Upgrade mode — back button */}
+        {showUpgradeForm && (
+          <button
+            type="button"
+            onClick={() => setShowUpgradeForm(false)}
+            className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            ← Back to verification details
+          </button>
+        )}
+
         {/* Pending status card */}
         {isPending && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 flex items-start gap-3">
