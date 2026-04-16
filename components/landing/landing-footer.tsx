@@ -14,7 +14,7 @@ export function LandingFooter() {
               FLOWPILOT<span className="text-[#e86727]">.</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/40">
-              Smart bulk payment automation for African SMEs. Verify recipients, catch fraud,
+              Smart bulk payment automation for individuals and businesses across Africa. Verify recipients, catch fraud,
               approve payouts, and stay compliant — all in one place.
             </p>
             {/* Live System Status */}
@@ -60,7 +60,7 @@ export function LandingFooter() {
           </span>
 
           <p className="text-[11px] font-medium text-white/30">
-            © {new Date().getFullYear()} FlowPilot Technologies. Built for the next generation of African SMEs.
+            © {new Date().getFullYear()} FlowPilot Technologies. Built for every African who moves money.
           </p>
         </div>
       </div>
