@@ -32,7 +32,7 @@ function fmt(n: number) {
 function StatusBadge({ status }: { status: string }) {
   if (status === "verified")
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+      <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand">
         <CheckCircle2 className="h-3 w-3" /> Verified
       </span>
     );
@@ -69,10 +69,10 @@ function LimitCard({ info, kyc_status }: { info: KycLimitInfo | null; kyc_status
   return (
     <div className={cn(
       "rounded-2xl border p-5 space-y-3",
-      active ? "border-green-200 bg-green-50" : "border-border bg-muted/30"
+      active ? "border-border/60 bg-card" : "border-border bg-muted/30"
     )}>
       <div className="flex items-center gap-2">
-        <TrendingUp className={cn("h-4 w-4", active ? "text-green-600" : "text-muted-foreground")} />
+        <TrendingUp className={cn("h-4 w-4", active ? "text-brand" : "text-muted-foreground")} />
         <p className="text-sm font-bold text-foreground">
           {active ? `Level ${info.kyc_level} Limits Active` : "No Active Limits"}
         </p>
@@ -149,8 +149,8 @@ function LevelCard({
   return (
     <div className={cn(
       "rounded-2xl border-2 transition-colors",
-      isVerified ? "border-green-200 bg-green-50/30" :
-      isPending ? "border-amber-200 bg-amber-50/30" :
+      isVerified ? "border-border/60 bg-card" :
+      isPending ? "border-border bg-muted/20" :
       locked ? "border-border bg-muted/20 opacity-70" :
       "border-border bg-card"
     )}>
@@ -160,8 +160,8 @@ function LevelCard({
       >
         <div className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-black",
-          isVerified ? "bg-green-500 text-white" :
-          isPending ? "bg-amber-400 text-white" :
+          isVerified ? "bg-brand/80 text-white" :
+          isPending ? "bg-muted text-muted-foreground" :
           locked ? "bg-muted text-muted-foreground" :
           "bg-brand/10 text-brand border-2 border-brand"
         )}>
@@ -220,12 +220,12 @@ function DocUpload({
       <div
         className={cn(
           "flex items-center justify-between gap-3 rounded-xl border p-3",
-          file ? "border-green-200 bg-green-50" : "border-border"
+          file ? "border-border/60 bg-muted/20" : "border-border"
         )}
       >
         {file ? (
           <>
-            <span className="text-xs text-green-700 font-medium truncate">{file.name}</span>
+            <span className="text-xs text-foreground font-medium truncate">{file.name}</span>
             <button type="button" className="text-xs text-muted-foreground underline shrink-0" onClick={() => onChange(null)}>Remove</button>
           </>
         ) : (
@@ -536,8 +536,8 @@ function Level3Form() {
             purpose="We need to take a live selfie to confirm it's really you (liveness check)."
           />
         ) : selfieFile ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 p-3">
-            <span className="text-xs text-green-700 font-medium">Selfie captured</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+            <span className="text-xs text-foreground font-medium">Selfie captured</span>
             <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setSelfieFile(null)}>
               Retake
             </button>
@@ -618,7 +618,7 @@ export function IndividualKycPage({
               </span>
               <span className="font-mono text-foreground tracking-widest">{sub.level_1_masked_value}</span>
               {sub.level_1_verified_at && (
-                <span className="text-green-600">Verified {new Date(sub.level_1_verified_at).toLocaleDateString()}</span>
+                <span className="text-muted-foreground">Verified{new Date(sub.level_1_verified_at).toLocaleDateString()}</span>
               )}
             </div>
           ) : undefined}
@@ -644,7 +644,7 @@ export function IndividualKycPage({
                 </p>
               )}
               {sub.level_2_verified_at && (
-                <p className="text-green-600">Verified {new Date(sub.level_2_verified_at).toLocaleDateString()}</p>
+                <p className="text-muted-foreground">Verified{new Date(sub.level_2_verified_at).toLocaleDateString()}</p>
               )}
             </div>
           ) : undefined}
@@ -668,7 +668,7 @@ export function IndividualKycPage({
                 <span className="text-muted-foreground"><span className="font-semibold text-foreground">Liveness selfie:</span> captured</span>
               )}
               {sub?.level_3_verified_at && (
-                <span className="text-green-600">Verified {new Date(sub.level_3_verified_at).toLocaleDateString()}</span>
+                <span className="text-muted-foreground">Verified{new Date(sub.level_3_verified_at).toLocaleDateString()}</span>
               )}
             </div>
           ) : undefined}

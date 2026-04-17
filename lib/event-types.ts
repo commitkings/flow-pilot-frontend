@@ -143,11 +143,3 @@ export const AGENT_LABELS: Record<string, string> = {
   audit: "Audit",
 };
 
-/** Agent badge colors (Tailwind classes) */
-export const AGENT_COLORS: Record<string, { bg: string; text: string }> = {
-  planner: { bg: "border border-sky-300 bg-sky-50 dark:border-sky-700 dark:bg-sky-950/30", text: "text-sky-800 dark:text-sky-200" },
-  reconciliation: { bg: "border border-violet-300 bg-violet-50 dark:border-violet-700 dark:bg-violet-950/30", text: "text-violet-800 dark:text-violet-200" },
-  risk: { bg: "border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30", text: "text-amber-800 dark:text-amber-200" },
-  execution: { bg: "border border-teal-300 bg-teal-50 dark:border-teal-700 dark:bg-teal-950/30", text: "text-teal-800 dark:text-teal-200" },
-  audit: { bg: "border border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/30", text: "text-slate-800 dark:text-slate-200" },
-};

@@ -542,8 +542,7 @@ export default function NewScheduledRunPage() {
           <DateRangeInput from={fromDate} to={toDate} onFromChange={setFromDate} onToChange={setToDate} />
         </Field>
 
-        <Field label="Payment Safety Level">
-          <div className="flex items-center justify-between mb-2">
+        <Field label="Risk Tolerance">          <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground">Threshold</span>
             <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-black text-brand">
               {riskTolerance.toFixed(2)}
@@ -622,8 +621,7 @@ export default function NewScheduledRunPage() {
         )}
 
         {csvDuplicateWarning && (
-          <p className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
-            ⚠ {csvDuplicateWarning}
+          <p className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-xs text-foreground/70">            ⚠ {csvDuplicateWarning}
           </p>
         )}
 
@@ -733,8 +731,7 @@ export default function NewScheduledRunPage() {
       {credits != null && (
         <div className={`flex items-center justify-between rounded-xl border px-4 py-2.5 text-xs ${
           credits.balance === 0
-            ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
-            : "border-border bg-muted/40 text-muted-foreground"
+            ? "border-destructive/20 bg-destructive/5 text-destructive"            : "border-border bg-muted/40 text-muted-foreground"
         }`}>
           <span>
             Each run execution uses <span className="font-semibold">1 AI credit</span>.

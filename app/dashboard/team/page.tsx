@@ -511,7 +511,7 @@ export default function TeamPage() {
         )}
       </div>
 
-      <div className="rounded-xl border border-blue-200 bg-blue-50/50 px-5 py-4 text-sm text-blue-900 shadow-sm">
+      <div className="rounded-xl border border-border/60 bg-muted/20 px-5 py-4 text-sm text-foreground/80">
         <p className="font-semibold mb-1">Role Permissions</p>
         FlowPilot has two roles.{" "}
         <span className="font-bold">Analysts</span> can view runs, transactions,

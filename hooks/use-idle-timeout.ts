@@ -40,6 +40,7 @@ export function useIdleTimeout({
 
     idleDeadline.current = Date.now() + timeoutMs;
 
+
     const warnAt = timeoutMs - warnBeforeMs;
     if (onWarnRef.current && warnAt > 0) {
       warnTimer.current = setTimeout(() => onWarnRef.current?.(), warnAt);
@@ -61,6 +62,7 @@ export function useIdleTimeout({
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
+
 
     return () => {
       if (idleTimer.current) clearTimeout(idleTimer.current);
