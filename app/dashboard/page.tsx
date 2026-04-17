@@ -71,7 +71,7 @@ export default function DashboardPage() {
             Here&apos;s what&apos;s happening in your workspace today.
           </p>
         </div>
-        {canRun && (
+        {/* {canRun && (
           <Button
             onClick={() => router.push("/dashboard/runs/new")}
             className="h-10 shrink-0 rounded-full bg-primary px-5 text-primary-foreground font-semibold shadow-sm hover:opacity-90"
@@ -79,7 +79,7 @@ export default function DashboardPage() {
             <Plus className="mr-1.5 h-4 w-4" />
             New Payout
           </Button>
-        )}
+        )} */}
       </div>
 
       {/* ── Live Now banner ──────────────────────────────────────────────── */}

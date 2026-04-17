@@ -214,8 +214,7 @@ export default function ApprovalGatePage() {
 
       {/* ── Budget cap warning ── */}
       {overBudget && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-          <div className="flex items-start gap-2">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">          <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             Selected total ({naira(selectedTotal)}) exceeds the run budget cap ({naira(budgetCap!)}). Deselect beneficiaries or edit amounts before approving.
           </div>
@@ -228,8 +227,7 @@ export default function ApprovalGatePage() {
         const shortfall = totalWithFee - balance;
         if (shortfall > 0) {
           return (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-              <div className="flex items-start gap-2">
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">              <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div className="space-y-1">
                   <span className="font-semibold">Insufficient wallet balance.</span>
@@ -246,17 +244,15 @@ export default function ApprovalGatePage() {
           );
         }
         return (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground/80">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 shrink-0" />
-                <span>Wallet sufficient — {naira(balance)} available.</span>
+                <ShieldCheck className="h-4 w-4 shrink-0 text-muted-foreground" />                <span>Wallet sufficient — {naira(balance)} available.</span>
               </div>
               <div className="text-xs space-y-0.5 ml-6">
                 <div className="flex justify-between gap-6"><span>Payout total</span><span className="font-semibold">{naira(selectedTotal)}</span></div>
                 <div className="flex justify-between gap-6"><span>Platform fee (0.2%)</span><span className="font-semibold">{naira(platformFee)}</span></div>
-                <div className="flex justify-between gap-6 border-t border-emerald-200 pt-0.5"><span className="font-semibold">Total deduction</span><span className="font-semibold">{naira(totalWithFee)}</span></div>
-              </div>
+                <div className="flex justify-between gap-6 border-t border-border/60 pt-0.5"><span className="font-semibold">Total deduction</span><span className="font-semibold">{naira(totalWithFee)}</span></div>              </div>
             </div>
           </div>
         );
@@ -565,8 +561,7 @@ export default function ApprovalGatePage() {
                     className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm outline-none focus:border-brand"
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700" onClick={commitEdit} disabled={updateMutation.isPending}>
-                      {updateMutation.isPending ? "Saving…" : "Save"}
+                    <Button size="sm" className="flex-1 rounded-full bg-brand text-white hover:opacity-90" onClick={commitEdit} disabled={updateMutation.isPending}>                      {updateMutation.isPending ? "Saving…" : "Save"}
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={() => setEditingId(null)}>Cancel</Button>
                   </div>
@@ -675,8 +670,7 @@ export default function ApprovalGatePage() {
               Reject All
             </Button>
             <Button
-              className="flex-1 rounded-full bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm sm:flex-none disabled:opacity-50"
-              disabled={effectiveSelectedIds.length === 0 || overBudget}
+              className="flex-1 rounded-full bg-brand text-white hover:opacity-90 shadow-sm sm:flex-none disabled:opacity-50"              disabled={effectiveSelectedIds.length === 0 || overBudget}
               onClick={onConfirmOpen}
               title={overBudget ? "Selected total exceeds budget cap" : undefined}
             >
@@ -691,7 +685,7 @@ export default function ApprovalGatePage() {
       {confirmOpen && (
         <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-[520px] rounded-2xl bg-card border border-border p-6 shadow-2xl animate-in slide-in-from-bottom-4 sm:animate-in sm:zoom-in-95 duration-200">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10 text-brand">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <h3 className="mt-4 text-center text-xl font-black tracking-tight text-foreground">
@@ -722,8 +716,7 @@ export default function ApprovalGatePage() {
                 </div>
                 <div className="flex items-center justify-between border-t border-border pt-1">
                   <p className="text-sm font-semibold text-muted-foreground">Total Deduction</p>
-                  <p className="text-lg font-black text-emerald-600">{naira(totalWithFee)}</p>
-                </div>
+                  <p className="text-lg font-black text-foreground">{naira(totalWithFee)}</p>                </div>
               </div>
             </div>
 
@@ -779,7 +772,7 @@ export default function ApprovalGatePage() {
                 type="checkbox"
                 checked={confirmChecked}
                 onChange={(e) => setConfirmChecked(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-border accent-emerald-600"
+                className="mt-0.5 h-4 w-4 rounded border-border accent-brand"
               />
               I confirm I have reviewed all risk flags and lookup results and authorise these payments.
             </label>
@@ -789,8 +782,7 @@ export default function ApprovalGatePage() {
                 <p className="text-sm text-destructive text-center">Approval failed. Please try again.</p>
               )}
               <Button
-                className="h-11 w-full rounded-full bg-emerald-600 text-white hover:bg-emerald-700 font-bold"
-                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet || !hasPin || (hasPin && !pinVerified)}
+                className="h-11 w-full rounded-full bg-brand text-white hover:opacity-90 font-bold"                disabled={!confirmChecked || approveMutation.isPending || insufficientWallet || !hasPin || (hasPin && !pinVerified)}
                 onClick={onApprove}
               >
                 {approveMutation.isPending ? (

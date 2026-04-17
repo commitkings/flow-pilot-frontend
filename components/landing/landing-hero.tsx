@@ -19,13 +19,13 @@ export function LandingHero() {
         </div> */}
 
         <h1 className="mx-auto mt-7 max-w-3xl text-center text-5xl font-extrabold leading-[1.06] tracking-tight text-[#0F0F0F] md:text-7xl">
-          Pay anyone in bulk —{" "}
+          Pay anyone in bulk{" "}
           <span className="text-[#e86727]">safely, in minutes.</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-120 text-center text-[12px] leading-relaxed text-[#6B6B6B] md:text-[16px]">
           Whether you&apos;re an individual paying contractors or a business
-          settling an entire team — FlowPilot verifies every recipient, catches
+          settling an entire team. FlowPilot verifies every recipient, catches
           duplicates and fraud, and waits for your approval before a single
           Naira moves.
         </p>

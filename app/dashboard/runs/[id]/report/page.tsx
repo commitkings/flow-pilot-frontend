@@ -58,7 +58,7 @@ export default function RunReportPage() {
       </div>
 
       {downloadError && (
-        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
           Download failed. Please try again.
         </div>
       )}
@@ -68,7 +68,7 @@ export default function RunReportPage() {
       )}
 
       {reportError && (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground/80">
           No report available yet. The run may still be in progress.
         </div>
       )}
@@ -76,8 +76,7 @@ export default function RunReportPage() {
       {!reportLoading && !reportError && report && (
         <>
           {narrativeSummary && (
-            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 whitespace-pre-line leading-relaxed">
-              {narrativeSummary}
+            <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground/80 whitespace-pre-line leading-relaxed">              {narrativeSummary}
             </div>
           )}
 

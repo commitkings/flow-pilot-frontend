@@ -156,11 +156,10 @@ function DocUpload({
   return (
     <div
       className={cn(
-        "group relative rounded-2xl border-2 border-dashed p-5 transition-all",
+        "group relative rounded-xl border border-dashed p-4 transition-all",
         file
-          ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20"
-          : "border-border bg-muted/20 hover:border-brand/40 hover:bg-brand/5 cursor-pointer",
-      )}
+          ? "border-border bg-muted/20"
+          : "border-border/60 bg-background hover:border-brand/40 hover:bg-brand/5 cursor-pointer",      )}
       onClick={() => !file && fileRef.current?.click()}
     >
       <input
@@ -173,13 +172,12 @@ function DocUpload({
 
       {file ? (
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
-            <FileText className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground truncate">{file.name}</p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">
-              {(file.size / 1024).toFixed(0)} KB · Uploaded
+            <p className="text-sm font-medium text-foreground truncate">{file.name}</p>
+            <p className="text-xs text-muted-foreground">              {(file.size / 1024).toFixed(0)} KB · Uploaded
             </p>
           </div>
           <button
@@ -223,14 +221,13 @@ function DocLink({ label, url }: { label: string; url: string | null | undefined
   );
   return (
     <a href={url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 px-4 py-3 transition-colors hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
-      <div className="h-8 w-8 shrink-0 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+      className="flex items-center gap-3 rounded-xl border border-border/60 bg-muted/20 px-4 py-3 transition-colors hover:bg-muted/40">
+      <div className="h-8 w-8 shrink-0 rounded-lg bg-muted flex items-center justify-center">
+        <FileText className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">{label}</p>
-        <p className="text-xs text-emerald-600 dark:text-emerald-400">Uploaded · Click to view</p>
-      </div>
+        <p className="text-xs text-muted-foreground">Uploaded · Click to view</p>      </div>
       <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
     </a>
   );
@@ -249,35 +246,35 @@ function InfoRow({ label, value, className }: { label: string; value: string; cl
 
 function Sidebar({ step, businessType }: { step: number; businessType: KycBusinessType | "" }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Steps */}
-      <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
-        <p className="mb-4 text-xs font-black uppercase tracking-wider text-muted-foreground">Progress</p>
-        <ol className="space-y-1">
+      <div className="rounded-xl border border-border/60 bg-card p-5">
+        <p className="mb-4 text-xs font-semibold text-muted-foreground">Progress</p>
+        <ol>
           {STEPS.map((s, i) => {
             const done = s.id < step;
             const active = s.id === step;
-            const locked = s.id > step;
             return (
-              <li key={s.id} className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black transition-all",
-                  done   ? "bg-emerald-500 text-white" :
-                  active ? "bg-brand text-white ring-4 ring-brand/20" :
-                           "bg-muted text-muted-foreground"
-                )}>
-                  {done ? <CheckCircle2 className="h-4 w-4" /> : s.id}
+              <li key={s.id} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
+                    done   ? "bg-brand/80 text-white" :
+                    active ? "bg-brand text-white ring-4 ring-brand/15" :
+                             "bg-muted text-muted-foreground"
+                  )}>
+                    {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.id}
+                  </div>
+                  {i < STEPS.length - 1 && (
+                    <div className={cn("my-1 w-px min-h-3.5 flex-1", done ? "bg-brand/30" : "bg-border/60")} />
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className={cn("flex-1 min-w-0", i < STEPS.length - 1 ? "pb-3" : "")}>
                   <p className={cn(
-                    "text-sm font-semibold leading-none",
-                    active ? "text-foreground" : done ? "text-foreground/70" : "text-muted-foreground"
+                    "text-sm font-medium leading-7",
+                    active ? "text-foreground" : done ? "text-foreground/60" : "text-muted-foreground"
                   )}>{s.label}</p>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className={cn("h-px w-3 rounded-full", done ? "bg-emerald-400" : "bg-border")} />
-                )}
-              </li>
+                </div>              </li>
             );
           })}
         </ol>
@@ -285,9 +282,8 @@ function Sidebar({ step, businessType }: { step: number; businessType: KycBusine
 
       {/* What you need */}
       {businessType && step <= 4 && (
-        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm space-y-3">
-          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">What you need</p>
-          <ul className="space-y-2">
+        <div className="rounded-xl border border-border/60 bg-card p-5 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground">What you need</p>          <ul className="space-y-2">
             {[
               businessType !== "mda" && "RC / BN Registration Number",
               businessType !== "mda" && "Tax Identification Number (TIN)",
@@ -300,8 +296,7 @@ function Sidebar({ step, businessType }: { step: number; businessType: KycBusine
               businessType === "partnership" && "Partner Representative ID",
             ].filter(Boolean).map((item) => (
               <li key={item as string} className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="h-1.5 w-1.5 rounded-full bg-brand/60 shrink-0" />
-                {item as string}
+                <div className="h-1.5 w-1.5 rounded-full bg-brand/50 shrink-0" />                {item as string}
               </li>
             ))}
           </ul>
@@ -309,14 +304,10 @@ function Sidebar({ step, businessType }: { step: number; businessType: KycBusine
       )}
 
       {/* Security note */}
-      <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-brand" />
-          <p className="text-xs font-bold text-foreground">Secure & Encrypted</p>
-        </div>
+      <div className="rounded-xl border border-border/60 bg-background p-4 flex items-start gap-3">
+        <ShieldCheck className="h-4 w-4 text-muted-foreground/60 shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Your documents are encrypted and stored securely. We only use them for identity verification in compliance with CBN regulations.
-        </p>
+          Documents are encrypted and stored securely. Used only for identity verification per CBN regulations.        </p>
       </div>
     </div>
   );
@@ -346,18 +337,17 @@ function VerifiedPage({
       {/* Main content */}
       <div className="space-y-5 lg:col-span-2">
         {/* Verified banner */}
-        <div className="flex items-start gap-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-6 dark:border-emerald-800 dark:from-emerald-950/30 dark:to-transparent">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/40">
-            <ShieldCheck className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex items-start gap-4 rounded-2xl border border-blue-200/70 bg-blue-50/40 p-5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100/80">
+            <ShieldCheck className="h-5 w-5 text-blue-600" />
           </div>
           <div>
-            <p className="text-lg font-black text-foreground">Business Verified</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Your business identity has been confirmed. You have full access to FlowPilot's payout capabilities.
+            <p className="text-sm font-semibold text-blue-900">Business Verified</p>
+            <p className="mt-0.5 text-sm text-blue-700/80">
+              Your business identity has been confirmed. You have full access to FlowPilot&apos;s payout capabilities.
             </p>
             {submission.verified_at && (
-              <p className="mt-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                Verified {new Date(submission.verified_at).toLocaleDateString("en-NG", { dateStyle: "long" })}
+              <p className="mt-2 text-xs text-blue-500">                Verified {new Date(submission.verified_at).toLocaleDateString("en-NG", { dateStyle: "long" })}
               </p>
             )}
           </div>
@@ -404,10 +394,9 @@ function VerifiedPage({
       {/* Limits sidebar */}
       <div className="space-y-4">
         {limit_info && currentLevel > 0 && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 space-y-4 dark:border-emerald-800 dark:bg-emerald-950/20">
+          <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-              <p className="text-sm font-bold text-foreground">Level {currentLevel} Limits</p>
+              <TrendingUp className="h-4 w-4 text-brand" />              <p className="text-sm font-bold text-foreground">Level {currentLevel} Limits</p>
             </div>
             <div className="space-y-3">
               {[
@@ -442,16 +431,14 @@ function VerifiedPage({
               return (
                 <div key={tier.level} className={cn(
                   "rounded-xl border p-3 space-y-2",
-                  done ? "border-emerald-200 bg-emerald-50/40" :
-                  next ? "border-brand/30 bg-brand/5" :
+                  done ? "border-border/60 bg-muted/20" :                  next ? "border-brand/30 bg-brand/5" :
                   "border-border bg-muted/20 opacity-50"
                 )}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={cn(
                         "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black",
-                        done ? "bg-emerald-500 text-white" : next ? "bg-brand text-white" : "bg-muted text-muted-foreground"
-                      )}>
+                        done ? "bg-brand/70 text-white" : next ? "bg-brand text-white" : "bg-muted text-muted-foreground"                      )}>
                         {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : tier.level > currentLevel + 1 ? <Lock className="h-3 w-3" /> : tier.level}
                       </div>
                       <p className="text-xs font-bold text-foreground">{tier.label}</p>
@@ -461,8 +448,7 @@ function VerifiedPage({
                         Upgrade
                       </Button>
                     )}
-                    {done && <span className="text-[10px] font-bold text-emerald-600">Active</span>}
-                  </div>
+                    {done && <span className="text-[10px] font-bold text-muted-foreground">Active</span>}                  </div>
                   <div className="flex gap-3 pl-8 text-[10px] text-muted-foreground">
                     <span>{fmt(tier.monthly)}/mo</span>
                     <span>{fmt(tier.single)}/txn</span>
@@ -669,15 +655,14 @@ function BusinessKycForm({
         </div>
 
         {businessType === "mda" ? (
-          <div className="rounded-2xl border border-brand/20 bg-brand/5 p-5 space-y-2">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-brand" />
-              <p className="text-sm font-semibold text-foreground">Government Agency / MDA</p>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Government agencies are not required to provide a CAC registration number or TIN. You'll provide your authorized officer details in the next step.
-            </p>
-          </div>
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-foreground/90">Government Agency / MDA</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Government agencies are not required to provide a CAC registration number or TIN. You&apos;ll provide your authorized officer details in the next step.
+              </p>
+            </div>          </div>
         ) : (
           <div className="grid gap-5 sm:grid-cols-2">
             <Field
@@ -1009,8 +994,7 @@ function BusinessKycForm({
                 <div className="grid gap-2 sm:grid-cols-2">
                   {uploadedDocs.map((doc) => (
                     <div key={doc} className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span className="text-foreground font-medium">{doc}</span>
+                      <CheckCircle2 className="h-4 w-4 text-brand/70 shrink-0" />                      <span className="text-foreground font-medium">{doc}</span>
                     </div>
                   ))}
                 </div>
@@ -1018,10 +1002,9 @@ function BusinessKycForm({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 flex items-start gap-3 dark:border-amber-800 dark:bg-amber-950/20">
-            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-sm text-amber-800 dark:text-amber-300">
-              By submitting, you confirm that all provided information is accurate and that the uploaded documents are genuine. Providing false information is a violation of our Terms of Service.
+          <div className="rounded-xl border border-border/60 bg-muted/20 p-4 flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-muted-foreground/60 shrink-0 mt-0.5" />
+            <p className="text-sm text-muted-foreground">              By submitting, you confirm that all provided information is accurate and that the uploaded documents are genuine. Providing false information is a violation of our Terms of Service.
             </p>
           </div>
         </div>
@@ -1055,22 +1038,20 @@ function BusinessKycForm({
       )}
 
       {isPending && (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-800 dark:bg-amber-950/20">
-          <Clock className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+          <Clock className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-amber-800 dark:text-amber-300">Verification in Progress</p>
-            <p className="mt-0.5 text-sm text-amber-700 dark:text-amber-400">
-              We've received your documents. Review typically completes within 10 minutes. You can resubmit if needed.
-            </p>
+            <p className="text-sm font-semibold text-foreground">Verification in Progress</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              We&apos;ve received your documents. Review typically completes within 10 minutes. You can resubmit if needed.            </p>
           </div>
         </div>
       )}
 
       {kyc_status === "not_submitted" && (
-        <div className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-800 dark:bg-blue-950/20">
-          <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800 dark:text-blue-300">
-            To create payouts, we need to verify your business identity. Complete the steps below — review typically completes within 10 minutes.
+        <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+          <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+          <p className="text-sm text-foreground/80">            To create payouts, we need to verify your business identity. Complete the steps below — review typically completes within 10 minutes.
           </p>
         </div>
       )}
@@ -1089,8 +1070,7 @@ function BusinessKycForm({
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center justify-between border-t border-border/60 bg-muted/20 px-6 py-4 sm:px-8">
-            <Button
+          <div className="flex items-center justify-between border-t border-border/60 bg-background px-6 py-4 sm:px-8">            <Button
               variant="outline"
               className="rounded-full"
               onClick={() => setStep((s) => Math.max(1, s - 1))}

@@ -110,6 +110,7 @@ export function ApiKeysSection() {
 
   return (
     <div className="space-y-5">
+
       {/* ── Re-reveal OTP panel (for existing keys) ─────────────────────── */}
       {revealTarget && (
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
@@ -187,6 +188,7 @@ export function ApiKeysSection() {
       )}
 
       {/* ── Revealed key panel (first time, after creation) ─────────────── */}
+      {/* ── Revealed key panel ──────────────────────────────────────────── */}
       {revealedKey && (
         <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-sm">
           <div className="flex items-start gap-3">

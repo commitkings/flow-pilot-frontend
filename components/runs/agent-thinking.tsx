@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { Brain, Zap, Play, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AGENT_LABELS, AGENT_COLORS } from "@/lib/event-types";
+import { AGENT_LABELS } from "@/lib/event-types";
 import type {
   RunEvent,
   ReasoningPayload,
@@ -100,20 +100,10 @@ function humanizeThinking(raw: string, agentType: string): string {
 }
 
 function AgentBadge({ agentType }: { agentType: string }) {
-  const colors = AGENT_COLORS[agentType] ?? {
-    bg: "bg-gray-100 dark:bg-gray-900/30",
-    text: "text-gray-700 dark:text-gray-300",
-  };
   const label = AGENT_LABELS[agentType] ?? agentType;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide shrink-0",
-        colors.bg,
-        colors.text,
-      )}
-    >
+    <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground shrink-0">
       {label}
     </span>
   );
@@ -178,7 +168,7 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
               <div key={event.seq} className="py-1 space-y-0.5">
                 <div className="flex items-center gap-2">
                   <div className="h-px flex-1 bg-border" />
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-brand">
                     <Play className="h-2.5 w-2.5" />
                     {label} started
                   </div>
@@ -197,7 +187,7 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
             return (
               <div key={event.seq} className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-brand">
                   <CheckCircle2 className="h-2.5 w-2.5" />
                   {label} done
                   {cp.duration_ms > 0 && (
@@ -214,7 +204,7 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
             return (
               <div key={event.seq} className="flex items-center gap-2 py-1">
                 <div className="h-px flex-1 bg-border" />
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-red-600 dark:text-red-400">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
                   <XCircle className="h-2.5 w-2.5" />
                   {label} failed
                 </div>
@@ -232,7 +222,7 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
               className="rounded-lg border border-border bg-background px-3 py-2.5"
             >
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                <Brain className="h-3.5 w-3.5 text-violet-500" />
+                <Brain className="h-3.5 w-3.5 text-muted-foreground/60" />
                 <AgentBadge agentType={p.agent_type} />
                 <span className="text-[10px] text-muted-foreground/60">
                   {formatTime(event.emitted_at)}
@@ -253,7 +243,7 @@ export function AgentThinking({ events, className }: AgentThinkingProps) {
               key={event.seq}
               className="flex items-start gap-2 rounded-lg bg-accent/30 px-3 py-2"
             >
-              <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <Zap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <AgentBadge agentType={p.agent_type} />

@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { getUserRole } from "@/lib/api-types";
 import {
   AlertTriangle,
+  Camera,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -201,16 +202,11 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [tz, setTz] = useState(user?.timezone ?? "Africa/Lagos");
 
-  // Populate profile fields when user data loads asynchronously.
-  // For users registered before first_name/last_name were stored, split display_name as a fallback.
+  // Populate profile fields when user data loads asynchronously
   useEffect(() => {
     if (user) {
-      const nameParts = (user.display_name ?? "").trim().split(/\s+/);
-      const fallbackFirst = nameParts[0] ?? "";
-      const fallbackLast = nameParts.slice(1).join(" ");
-      setFirstName((prev) => prev || user.first_name || fallbackFirst);
-      setLastName((prev) => prev || user.last_name || fallbackLast);
-      setJobTitle((prev) => prev || (user.job_title ?? ""));
+      setFirstName((prev) => prev || (user.first_name ?? ""));
+      setLastName((prev) => prev || (user.last_name ?? ""));      setJobTitle((prev) => prev || (user.job_title ?? ""));
       setDepartment((prev) => prev || (user.department ?? ""));
       setPhone((prev) => prev || (user.phone ?? ""));
       setTz(user.timezone ?? "Africa/Lagos");
@@ -387,12 +383,20 @@ export default function SettingsPage() {
           <>
             <Section title="Profile Photo" description="Update your avatar.">
               <div className="flex items-center gap-6">
-                <span className="inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm overflow-hidden">
-                  {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    initials
-                  )}
+                <span className="relative inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground shadow-sm">
+                  <span className="h-full w-full overflow-hidden rounded-full">
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center">{initials}</span>
+                    )}
+                  </span>
+                  <span
+                    className="absolute -bottom-1 -right-1 z-10 inline-flex h-8 w-8 cursor-pointer flex-col items-center justify-center rounded-full bg-brand p-1.5 text-white shadow-md transition-transform hover:scale-105"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Camera className="h-4 w-4" />
+                  </span>
                 </span>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                 <div className="space-y-1.5">
@@ -1076,12 +1080,12 @@ export default function SettingsPage() {
             </div>
             <div className="px-6 py-5 space-y-4">
               {/* Export advisory */}
-              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
-                <p className="font-semibold text-amber-800 flex items-center gap-2">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+                <p className="font-semibold text-foreground flex items-center gap-2">
                   <Download className="h-4 w-4 shrink-0" />
                   Export your data first
                 </p>
-                <p className="mt-1 text-amber-700/90">
+                <p className="mt-1 text-muted-foreground">
                   We strongly recommend exporting your workspace data before deleting. You can restore it later if needed.
                 </p>
                 <button
@@ -1273,9 +1277,9 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <div className="rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 text-sm text-blue-800">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground/80">
                 <p className="font-semibold">What gets restored:</p>
-                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-blue-700">
+                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-muted-foreground">
                   <li>Business profile fields (name, location, contact)</li>
                   <li>Your personal profile fields</li>
                   <li>Team members (re-invited or added directly)</li>

@@ -138,9 +138,9 @@ function AcceptInviteForm() {
   if (invite.status === "accepted") {
     return (
       <div className="flex flex-col items-start gap-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-          <p className="text-sm font-medium text-green-800">
+        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-brand" />
+          <p className="text-sm font-medium text-foreground">
             This invitation has already been accepted.
           </p>
         </div>
@@ -184,9 +184,9 @@ function AcceptInviteForm() {
   if (done) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-          <p className="text-sm font-medium text-green-800">
+        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-brand" />
+          <p className="text-sm font-medium text-foreground">
             Account created! Taking you to the login page&hellip;
           </p>
         </div>
@@ -200,32 +200,29 @@ function AcceptInviteForm() {
   // ── Registration form ──────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-start w-full">
-      {/* Invite context */}
-      <div className="mb-8 w-full rounded-2xl border border-border bg-muted/30 px-5 py-4">
-        <p className="text-xs font-black uppercase tracking-wider text-muted-foreground/80 mb-1">
-          You&apos;re joining
-        </p>
-        <p className="text-base font-bold text-foreground">
-          {invite.business_name}
-        </p>
-        <div className="mt-2 flex items-center gap-2">
+      {/* Invite context card */}
+      <div className="mb-8 w-full rounded-2xl border border-border/60 bg-muted/20 px-5 py-4 space-y-3">
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-0.5">You&apos;re joining</p>
+          <p className="text-lg font-bold text-foreground leading-tight">{invite.business_name}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <RoleBadge role={invite.role} />
           {invite.inviter_name && (
             <span className="text-xs text-muted-foreground">
-              invited by <strong>{invite.inviter_name}</strong>
+              invited by <span className="font-semibold text-foreground">{invite.inviter_name}</span>
             </span>
           )}
         </div>
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          Joining as{" "}
-          <span className="font-semibold text-foreground">{invite.invited_email}</span>
+        <p className="text-xs text-muted-foreground border-t border-border/50 pt-2.5">
+          Joining as <span className="font-semibold text-foreground">{invite.invited_email}</span>
         </p>
       </div>
 
-      <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-        Create your account.
+      <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+        Create your account
       </h1>
-      <p className="mt-2 text-sm font-medium text-muted-foreground">
+      <p className="mt-1.5 text-sm text-muted-foreground">
         Set up your name and password to get started.
       </p>
 
@@ -347,7 +344,12 @@ export default function AcceptInvitePage() {
         ]}
       />
       <section className="flex items-center justify-center overflow-y-auto px-4 py-8 md:px-10">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-lg">
+          {/* Mobile-only page title — AuthAside is hidden on small screens */}
+          <div className="mb-6 md:hidden">
+            <p className="text-xl font-extrabold tracking-tight text-foreground">You&apos;ve been invited.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Set up your account and start collaborating on payouts.</p>
+          </div>
           <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-muted/30" />}>
             <AcceptInviteForm />
           </Suspense>
