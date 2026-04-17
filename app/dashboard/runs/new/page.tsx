@@ -570,6 +570,25 @@ export default function NewRunPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {/* Credit & fee info */}
+                  <div className="rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs space-y-1 text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <span>AI credit cost</span>
+                      <span className={`font-semibold ${credits && credits.balance === 0 ? "text-destructive" : "text-foreground"}`}>
+                        1 credit {credits != null ? `(${credits.balance} remaining)` : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Platform fee</span>
+                      <span className="font-semibold text-foreground">0.6% of payout (min ₦50)</span>
+                    </div>
+                  </div>
+                  {credits != null && credits.balance === 0 && (
+                    <p className="rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs text-destructive flex items-center justify-between">
+                      <span>No AI credits remaining.</span>
+                      <a href="/dashboard/wallet" className="font-semibold underline ml-2 shrink-0">Buy credits</a>
+                    </p>
+                  )}
                   {confirmError && (
                     <p className="rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
                       {confirmError}
@@ -1048,7 +1067,7 @@ export default function NewRunPage() {
 
       {/* Amount breakdown */}
       {total > 0 && (() => {
-        const fee = Math.ceil(total * 0.002 * 100) / 100;
+        const fee = Math.max(50, Math.ceil(total * 0.006 * 100) / 100);
         const grandTotal = total + fee;
         return (
           <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm space-y-1">
@@ -1057,7 +1076,7 @@ export default function NewRunPage() {
               <span>{naira(total)}</span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>Platform fee (0.2%)</span>
+              <span>Platform fee (0.6%, min ₦50)</span>
               <span>{naira(fee)}</span>
             </div>
             <div className="flex items-center justify-between border-t border-border pt-1 font-black text-foreground">

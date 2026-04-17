@@ -25,6 +25,7 @@ import { AmountInput } from "@/components/ui/form-fields";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { useWallet, useWalletTransactions, useTopUpWallet, useWithdrawWallet } from "@/hooks/use-wallet";
 import { useCredits, usePurchaseCredits } from "@/hooks/use-credits";
+import { useApprovalPinStatus, useVerifyApprovalPin } from "@/hooks/use-approval-pin";
 import { useOrgProfile } from "@/hooks/use-settings-queries";
 import { useAuth } from "@/context/auth-context";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
@@ -115,19 +116,93 @@ function TopUpModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── PIN step shared sub-component ────────────────────────────────────────────
+
+function PinStep({
+  title,
+  onBack,
+  onConfirm,
+  isPending,
+}: {
+  title: string;
+  onBack: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  const [pin, setPin] = useState("");
+  const { data: pinStatus, isLoading: pinLoading } = useApprovalPinStatus();
+  const verifyPin = useVerifyApprovalPin(onConfirm, () => setPin(""));
+
+  const hasPin = pinStatus?.has_pin ?? true;
+
+  useEffect(() => {
+    if (!pinLoading && !hasPin) onConfirm();
+  }, [pinLoading, hasPin, onConfirm]);
+
+  if (pinLoading || !hasPin) return (
+    <div className="flex flex-1 items-center justify-center px-6 py-8">
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+    </div>
+  );
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+      <div className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/30 p-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+          <ShieldAlert className="h-4 w-4 text-brand" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">Enter your 4–6 digit approval PIN to proceed.</p>
+        </div>
+      </div>
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Approval PIN <span className="text-destructive">*</span></label>
+        <input
+          type="password"
+          inputMode="numeric"
+          maxLength={6}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          placeholder="Enter PIN"
+          className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
+          onKeyDown={(e) => { if (e.key === "Enter" && pin.length >= 4) verifyPin.mutate(pin); }}
+          autoFocus
+        />
+        <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+          Forgot your PIN?{" "}
+          <a href="/dashboard/settings?tab=security" className="text-brand hover:underline">Reset it in Settings</a>.
+        </p>
+      </div>
+      <div className="flex gap-3">
+        <button type="button" onClick={onBack} disabled={isPending || verifyPin.isPending} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">
+          ← Back
+        </button>
+        <Button
+          className="gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90 disabled:opacity-50"
+          disabled={pin.length < 4 || isPending || verifyPin.isPending}
+          onClick={() => verifyPin.mutate(pin)}
+        >
+          {verifyPin.isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</> : "Confirm"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Withdraw modal ────────────────────────────────────────────────────────────
 
 function WithdrawModal({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState<"details" | "pin">("details");
   const [amount, setAmount] = useState("");
   const [reference, setReference] = useState("");
   const [description, setDescription] = useState("");
   const { mutate: withdraw, isPending } = useWithdrawWallet();
 
   const parsedAmount = parseFloat(amount.replace(/,/g, ""));
-  const canSubmit = parsedAmount > 0 && reference.trim().length > 0 && !isPending;
+  const canContinue = parsedAmount > 0 && reference.trim().length > 0;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
+  const doWithdraw = () => {
     withdraw(
       { amount: parsedAmount, reference: reference.trim(), description: description.trim() || undefined },
       { onSuccess: onClose },
@@ -143,29 +218,44 @@ function WithdrawModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between border-b border-border/50 px-6 py-5">
           <div>
             <h2 className="text-lg font-black tracking-tight text-foreground">Withdraw Funds</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">Record a withdrawal from your organisation wallet.</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {step === "details" ? "Record a withdrawal from your organisation wallet." : "Confirm with your approval PIN."}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">✕</button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Amount (₦) <span className="text-destructive">*</span></label>
-            <AmountInput value={amount} onChange={setAmount} placeholder="e.g. 100,000" className="h-10" />          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Withdrawal Reference <span className="text-destructive">*</span></label>
-            <input type="text" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. WD-20240415-001" className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10" />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Note <span className="text-muted-foreground/50">(optional)</span></label>
-            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Surplus return" className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10" />
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 border-t border-border/50 px-6 py-4">
-          <button type="button" onClick={onClose} disabled={isPending} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">Cancel</button>
-          <Button className="gap-2 rounded-full bg-red-600 px-6 text-white hover:bg-red-700 disabled:opacity-50" onClick={handleSubmit} disabled={!canSubmit}>
-            {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</> : <><Minus className="h-4 w-4" /> Withdraw</>}
-          </Button>
-        </div>
+
+        {step === "details" ? (
+          <>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Amount (₦) <span className="text-destructive">*</span></label>
+                <AmountInput value={amount} onChange={setAmount} placeholder="e.g. 100,000" className="h-10" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Withdrawal Reference <span className="text-destructive">*</span></label>
+                <input type="text" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. WD-20240415-001" className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Note <span className="text-muted-foreground/50">(optional)</span></label>
+                <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Surplus return" className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10" />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-border/50 px-6 py-4">
+              <button type="button" onClick={onClose} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">Cancel</button>
+              <Button className="gap-2 rounded-full bg-red-600 px-6 text-white hover:bg-red-700 disabled:opacity-50" onClick={() => setStep("pin")} disabled={!canContinue}>
+                <Minus className="h-4 w-4" /> Continue
+              </Button>
+            </div>
+          </>
+        ) : (
+          <PinStep
+            title={`Withdrawing ₦${parsedAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}`}
+            onBack={() => setStep("details")}
+            onConfirm={doWithdraw}
+            isPending={isPending}
+          />
+        )}
       </div>
     </div>
   );
@@ -174,15 +264,16 @@ function WithdrawModal({ onClose }: { onClose: () => void }) {
 // ── Buy Credits modal ─────────────────────────────────────────────────────────
 
 function BuyCreditsModal({ bundles, onClose }: { bundles: { credits: number; price: number }[]; onClose: () => void }) {
+  const [step, setStep] = useState<"select" | "pin">("select");
   const [selected, setSelected] = useState<number | null>(null);
-  const [reference, setReference] = useState("");
+  const [autoRef] = useState(() => `credits-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const { mutate: purchase, isPending } = usePurchaseCredits(onClose);
 
-  const canSubmit = selected !== null && reference.trim().length > 0 && !isPending;
+  const selectedBundle = bundles.find((b) => b.credits === selected);
 
-  const handleSubmit = () => {
-    if (!canSubmit || selected === null) return;
-    purchase({ credits: selected, reference: reference.trim() });
+  const doPurchase = () => {
+    if (selected === null) return;
+    purchase({ credits: selected, reference: autoRef });
   };
 
   return (
@@ -194,60 +285,65 @@ function BuyCreditsModal({ bundles, onClose }: { bundles: { credits: number; pri
         <div className="flex items-center justify-between border-b border-border/50 px-6 py-5">
           <div>
             <h2 className="text-lg font-black tracking-tight text-foreground">Buy AI Credits</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">Each payout run uses 1 credit. Funds deducted from wallet.</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {step === "select" ? "Each payout run uses 1 credit. Funds deducted from wallet." : "Confirm with your approval PIN."}
+            </p>
           </div>
           <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">✕</button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          {/* Bundle options */}
-          <div className="grid gap-3">
-            {bundles.map((b) => (
-              <button
-                key={b.credits}
-                type="button"
-                onClick={() => setSelected(b.credits)}
-                className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
-                  selected === b.credits
-                    ? "border-brand bg-brand/5 ring-1 ring-brand/30"
-                    : "border-border hover:border-brand/40 hover:bg-muted/30"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected === b.credits ? "bg-brand text-white" : "bg-muted"}`}>
-                    <Zap className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="font-black text-foreground">{b.credits} credits</p>
-                    <p className="text-xs text-muted-foreground">{b.credits} payout runs</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-foreground">₦{b.price.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">₦{(b.price / b.credits).toLocaleString()} / credit</p>
-                </div>
-              </button>
-            ))}
-          </div>
 
-          {/* Payment reference */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Payment Reference <span className="text-destructive">*</span></label>
-            <input
-              type="text"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="e.g. PAY-CREDITS-001"
-              className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
-            />
-            <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">Must match your payment reference. Cannot be reused.</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 border-t border-border/50 px-6 py-4">
-          <button type="button" onClick={onClose} disabled={isPending} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">Cancel</button>
-          <Button className="gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90 disabled:opacity-50" onClick={handleSubmit} disabled={!canSubmit}>
-            {isPending ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing…</> : <><Sparkles className="h-4 w-4" /> Buy Credits</>}
-          </Button>
-        </div>
+        {step === "select" ? (
+          <>
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="grid gap-3">
+                {bundles.map((b) => (
+                  <button
+                    key={b.credits}
+                    type="button"
+                    onClick={() => setSelected(b.credits)}
+                    className={`flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
+                      selected === b.credits
+                        ? "border-brand bg-brand/5 ring-1 ring-brand/30"
+                        : "border-border hover:border-brand/40 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${selected === b.credits ? "bg-brand text-white" : "bg-muted"}`}>
+                        <Zap className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-black text-foreground">{b.credits} credits</p>
+                        <p className="text-xs text-muted-foreground">{b.credits} payout runs</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-foreground">₦{b.price.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">₦{(b.price / b.credits).toLocaleString()} / credit</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Cost will be deducted directly from your wallet balance. New credits are added instantly.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 border-t border-border/50 px-6 py-4">
+              <button type="button" onClick={onClose} disabled={isPending} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-5 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40">Cancel</button>
+              <Button className="gap-2 rounded-full bg-brand px-6 text-white hover:opacity-90 disabled:opacity-50" onClick={() => setStep("pin")} disabled={selected === null}>
+                <Sparkles className="h-4 w-4" /> Continue
+              </Button>
+            </div>
+          </>
+        ) : (
+          <PinStep
+            title={`Buying ${selected} credits · ₦${selectedBundle?.price.toLocaleString() ?? ""}`}
+            onBack={() => setStep("select")}
+            onConfirm={doPurchase}
+            isPending={isPending}
+          />
+        )}
       </div>
     </div>
   );

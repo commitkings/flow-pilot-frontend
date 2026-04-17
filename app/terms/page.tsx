@@ -143,12 +143,15 @@ export default function TermsOfServicePage() {
               <ul className="list-disc pl-6 space-y-2">
                 <li>Wallet funds are used to settle payout disbursements on your instruction.</li>
                 <li>
-                  A <strong>platform fee of 0.2% of the total payout value</strong> is charged per
-                  executed payout run and deducted from your wallet balance automatically upon execution.
+                  A <strong>platform fee of 0.6% of the total payout value</strong> is charged per
+                  executed payout run, with a <strong>minimum fee of ₦50 per run</strong>. This fee is
+                  deducted from your wallet balance automatically upon execution.
                 </li>
                 <li>
                   AI processing credits are consumed at the rate of <strong>1 credit per payout run</strong>,
-                  including reruns. Credits are non-refundable once consumed.
+                  including reruns. Credits are non-refundable once consumed. New accounts receive
+                  <strong> 5 free AI credits</strong> upon completing onboarding. Additional credits
+                  can be purchased in bundles, with funds deducted directly from your wallet.
                 </li>
                 <li>FlowPilot reserves the right to modify its fee structure with 30 days&apos; written notice.</li>
                 <li>

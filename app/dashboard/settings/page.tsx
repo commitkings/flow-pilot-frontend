@@ -63,6 +63,8 @@ import {
   useApprovalPinStatus,
   useSetupApprovalPin,
   useRemoveApprovalPin,
+  useRequestPinReset,
+  useConfirmPinReset,
 } from "@/hooks/use-approval-pin";
 import { cn } from "@/lib/utils";
 
@@ -136,9 +138,15 @@ export default function SettingsPage() {
   const hasPin = pinStatusData?.has_pin ?? false;
   const setupPin = useSetupApprovalPin();
   const removePin = useRemoveApprovalPin();
-  const [pinStep, setPinStep] = useState<"idle" | "setup" | "removing">("idle");
+  const requestPinReset = useRequestPinReset();
+  const confirmPinReset = useConfirmPinReset(() => setPinStep("idle"));
+  const [pinStep, setPinStep] = useState<"idle" | "setup" | "removing" | "reset-requesting" | "reset-confirm">("idle");
   const [newPin, setNewPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [resetMethod, setResetMethod] = useState<"email" | "totp" | null>(null);
+  const [resetCode, setResetCode] = useState("");
+  const [resetNewPin, setResetNewPin] = useState("");
+  const [resetConfirmPin, setResetConfirmPin] = useState("");
 
   const handleStartSetup = async () => {
     const data = await twoFASetup.mutateAsync();
@@ -914,7 +922,7 @@ export default function SettingsPage() {
                 </div>
 
                 {pinStep === "idle" && (
-                  <div className="flex gap-3">
+                  <div className="flex flex-wrap gap-3">
                     <button
                       type="button"
                       onClick={() => { setPinStep("setup"); setNewPin(""); setConfirmPin(""); }}
@@ -924,13 +932,25 @@ export default function SettingsPage() {
                       {hasPin ? "Change PIN" : "Set up PIN"}
                     </button>
                     {hasPin && (
-                      <button
-                        type="button"
-                        onClick={() => setPinStep("removing")}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
-                      >
-                        Remove PIN
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPinStep("reset-requesting");
+                            setResetCode(""); setResetNewPin(""); setResetConfirmPin(""); setResetMethod(null);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
+                        >
+                          Forgot PIN?
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPinStep("removing")}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-transparent px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
+                        >
+                          Remove PIN
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -992,6 +1012,108 @@ export default function SettingsPage() {
                       >
                         {removePin.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Remove PIN
+                      </Button>
+                      <button type="button" onClick={() => setPinStep("idle")} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {pinStep === "reset-requesting" && (
+                  <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-4 shadow-sm sm:max-w-sm">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Reset Approval PIN</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {resetMethod == null
+                          ? "We'll send a verification code to verify your identity."
+                          : resetMethod === "email"
+                          ? "A 6-digit code has been sent to your email address."
+                          : "Enter the code from your authenticator app."}
+                      </p>
+                    </div>
+                    {resetMethod == null ? (
+                      <div className="flex gap-3">
+                        <Button
+                          className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90"
+                          disabled={requestPinReset.isPending}
+                          onClick={() =>
+                            requestPinReset.mutate(undefined, {
+                              onSuccess: (data) => {
+                                setResetMethod(data.method);
+                                setPinStep("reset-confirm");
+                              },
+                            })
+                          }
+                        >
+                          {requestPinReset.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Send Verification Code
+                        </Button>
+                        <button type="button" onClick={() => setPinStep("idle")} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
+                          Cancel
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {pinStep === "reset-confirm" && (
+                  <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3 shadow-sm sm:max-w-sm">
+                    <p className="text-sm font-bold text-foreground">Enter verification code &amp; new PIN</p>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-muted-foreground">
+                        {resetMethod === "totp" ? "Authenticator code" : "Email verification code"}
+                      </label>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={resetCode}
+                        onChange={(e) => setResetCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="6-digit code"
+                        className="h-10 rounded-full"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-muted-foreground">New PIN (4–6 digits)</label>
+                      <Input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={resetNewPin}
+                        onChange={(e) => setResetNewPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="New PIN"
+                        className="h-10 rounded-full"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-muted-foreground">Confirm new PIN</label>
+                      <Input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={resetConfirmPin}
+                        onChange={(e) => setResetConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="Re-enter new PIN"
+                        className="h-10 rounded-full"
+                      />
+                      {resetConfirmPin && resetNewPin !== resetConfirmPin && (
+                        <p className="text-xs text-destructive">PINs do not match</p>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <Button
+                        className="rounded-full bg-brand px-6 text-white shadow-sm hover:opacity-90"
+                        disabled={
+                          resetCode.length < 6 ||
+                          resetNewPin.length < 4 ||
+                          resetNewPin !== resetConfirmPin ||
+                          confirmPinReset.isPending
+                        }
+                        onClick={() => confirmPinReset.mutate({ code: resetCode, new_pin: resetNewPin })}
+                      >
+                        {confirmPinReset.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Reset PIN
                       </Button>
                       <button type="button" onClick={() => setPinStep("idle")} className="inline-flex items-center rounded-full border border-border/60 bg-transparent px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground">
                         Cancel

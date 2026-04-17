@@ -12,7 +12,10 @@ import {
   Upload,
   Users,
   X,
+  CreditCard,
+  TrendingUp,
 } from "lucide-react";
+import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { useInstitutions } from "@/hooks/use-institutions";
@@ -460,6 +463,40 @@ export default function RecipientsPage() {
           </Button>
         </div>
       </PageHeader>
+
+      {/* Stats cards */}
+      {recipients.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <MetricCard
+            label="Total Recipients"
+            value={isLoading ? "…" : String(recipients.length)}
+            subtext="Saved contacts"
+            icon={<Users className="h-4 w-4" />}
+            accent="brand"
+          />
+          <MetricCard
+            label="Total Payments"
+            value={isLoading ? "…" : String(recipients.reduce((s, r) => s + (r.payment_count ?? 0), 0))}
+            subtext="Across all recipients"
+            icon={<TrendingUp className="h-4 w-4" />}
+            accent="green"
+          />
+          <MetricCard
+            label="Most Paid"
+            value={isLoading ? "…" : (() => {
+              const top = recipients.reduce((best, r) => (r.payment_count ?? 0) > (best.payment_count ?? 0) ? r : best, recipients[0]);
+              return top ? top.name.split(" ")[0] ?? "—" : "—";
+            })()}
+            subtext={(() => {
+              const top = recipients.reduce((best, r) => (r.payment_count ?? 0) > (best.payment_count ?? 0) ? r : best, recipients[0]);
+              return top ? `${top.payment_count ?? 0} payment${(top.payment_count ?? 0) !== 1 ? "s" : ""}` : "No payments yet";
+            })()}
+            icon={<CreditCard className="h-4 w-4" />}
+            accent="amber"
+            className="hidden sm:flex"
+          />
+        </div>
+      )}
 
       {/* CSV import result */}
       {importResult && (

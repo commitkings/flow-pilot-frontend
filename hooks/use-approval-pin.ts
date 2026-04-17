@@ -7,6 +7,9 @@ import {
   setupApprovalPin,
   verifyApprovalPin,
   removeApprovalPin,
+  requestApprovalPinReset,
+  confirmApprovalPinReset,
+  type PinResetRequestResult,
 } from "@/lib/api-client";
 import { ApiError } from "@/lib/api-types";
 
@@ -55,6 +58,31 @@ export function useRemoveApprovalPin(onSuccess?: () => void) {
     },
     onError: (err) => {
       toast.error(err instanceof ApiError ? err.message : "Failed to remove PIN.");
+    },
+  });
+}
+
+export function useRequestPinReset() {
+  return useMutation({
+    mutationFn: () => requestApprovalPinReset(),
+    onError: (err) => {
+      toast.error(err instanceof ApiError ? err.message : "Failed to send reset code.");
+    },
+  });
+}
+
+export function useConfirmPinReset(onSuccess?: () => void) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, new_pin }: { code: string; new_pin: string }) =>
+      confirmApprovalPinReset(code, new_pin),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["approval-pin-status"] });
+      toast.success("Approval PIN has been reset.");
+      onSuccess?.();
+    },
+    onError: (err) => {
+      toast.error(err instanceof ApiError ? err.message : "Failed to reset PIN.");
     },
   });
 }

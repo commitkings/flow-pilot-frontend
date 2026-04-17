@@ -804,3 +804,16 @@ export function removeApprovalPin(): Promise<{ message: string }> {
   return apiClient.delete<{ message: string }>("/auth/approval-pin/remove").then((r) => r.data);
 }
 
+export interface PinResetRequestResult {
+  method: "email" | "totp";
+  message: string;
+}
+
+export function requestApprovalPinReset(): Promise<PinResetRequestResult> {
+  return apiClient.post<PinResetRequestResult>("/auth/approval-pin/reset-request").then((r) => r.data);
+}
+
+export function confirmApprovalPinReset(code: string, new_pin: string): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>("/auth/approval-pin/reset-confirm", { code, new_pin }).then((r) => r.data);
+}
+
