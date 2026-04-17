@@ -7,6 +7,15 @@ import type { CandidateInput } from "./api-types";
 
 export type ScheduledRunType = "recurring" | "one_time";
 
+export interface ScheduledRunConfig {
+  date_from?: string;
+  date_to?: string;
+  risk_tolerance?: number;
+  budget_cap?: number;
+  assigned_approver_id?: string;
+  candidates?: CandidateInput[];
+}
+
 export interface ScheduledRun {
   id: string;
   name: string;
@@ -18,6 +27,7 @@ export interface ScheduledRun {
   last_run_at: string | null;
   last_reminded_at: string | null;
   is_active: boolean;
+  run_config: ScheduledRunConfig | null;
   created_at: string;
 }
 
@@ -44,6 +54,10 @@ export function listScheduledRuns(): Promise<ScheduledRun[]> {
   return apiClient
     .get<{ scheduled_runs: ScheduledRun[] }>("/runs/scheduled")
     .then((r) => r.data.scheduled_runs);
+}
+
+export function getScheduledRun(id: string): Promise<ScheduledRun> {
+  return apiClient.get<ScheduledRun>(`/runs/scheduled/${id}`).then((r) => r.data);
 }
 
 export function createScheduledRun(
@@ -76,6 +90,7 @@ export interface UpdateScheduledRunPayload {
   cron_expression?: string;
   frequency_label?: string;
   run_at?: string;
+  run_config?: Record<string, unknown>;
 }
 
 export function updateScheduledRun(

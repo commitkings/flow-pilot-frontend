@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   listScheduledRuns,
+  getScheduledRun,
   createScheduledRun,
   toggleScheduledRun,
   deleteScheduledRun,
@@ -19,6 +20,16 @@ export function useScheduledRuns() {
     queryKey: QUERY_KEY,
     queryFn: listScheduledRuns,
     staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export function useScheduledRunDetail(id: string | null) {
+  return useQuery({
+    queryKey: ["scheduled-run", id],
+    queryFn: () => getScheduledRun(id!),
+    enabled: Boolean(id),
+    staleTime: 0,
     retry: false,
   });
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, CalendarClock, CalendarDays, Download, Plus, RefreshCw, Rocket, Trash2, Upload,
+  ArrowLeft, Building2, CalendarClock, CalendarDays, Download, Plus, RefreshCw, Rocket, Search, Store, Trash2, Upload, X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,13 +13,15 @@ import { naira } from "@/lib/mock-data";
 import { useInstitutions } from "@/hooks/use-institutions";
 import type { Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
-import { useCreateScheduledRun, useUpdateScheduledRun } from "@/hooks/use-scheduled-runs";
+import { useCreateScheduledRun, useUpdateScheduledRun, useScheduledRunDetail } from "@/hooks/use-scheduled-runs";
 import { useTeamMembers } from "@/hooks/use-team-queries";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import { useCredits } from "@/hooks/use-credits";
 import type { ScheduledRunType } from "@/lib/api-scheduled-runs";
 import Link from "next/link";
 import { readFileAsCsv, IMPORT_ACCEPT, splitCsvLine, normHeader, fixAccountNumber } from "@/lib/file-utils";
+import { useVendors } from "@/hooks/use-vendor-queries";
+import type { SavedRecipient } from "@/lib/api-types";
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
@@ -248,6 +250,12 @@ export default function NewScheduledRunPage() {
   const [csvDuplicateWarning, setCsvDuplicateWarning] = useState<string | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([emptyRow()]);
   const [assignedApproverId, setAssignedApproverId] = useState("");
+  const [showVendorPicker, setShowVendorPicker] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [pickerSelections, setPickerSelections] = useState<Map<string, { recipient: SavedRecipient; amount: string }>>(new Map());
+  const [pickerPurpose, setPickerPurpose] = useState("Vendor Payment");
+
+  const { data: vendorsData } = useVendors();
 
   const { data: teamData } = useTeamMembers();
   const currentUserId = user?.id;
@@ -263,6 +271,32 @@ export default function NewScheduledRunPage() {
   const { mutate: createScheduledRun, isPending: createPending } = useCreateScheduledRun();
   const { mutate: updateScheduledRun, isPending: updatePending } = useUpdateScheduledRun();
   const isPending = isEditing ? updatePending : createPending;
+
+  // Fetch full run data when editing so all fields are pre-populated
+  const { data: editRunData } = useScheduledRunDetail(editId);
+  useEffect(() => {
+    if (!editRunData?.run_config) return;
+    const cfg = editRunData.run_config;
+    if (cfg.date_from) setFromDate(cfg.date_from);
+    if (cfg.date_to) setToDate(cfg.date_to);
+    if (typeof cfg.risk_tolerance === "number") setRiskTolerance(cfg.risk_tolerance);
+    if (cfg.budget_cap != null) setBudgetCap(String(cfg.budget_cap));
+    if (cfg.assigned_approver_id) setAssignedApproverId(cfg.assigned_approver_id);
+    if (Array.isArray(cfg.candidates) && cfg.candidates.length > 0 && institutionOptions.length > 0) {
+      const rows = cfg.candidates.map((c: { beneficiaryName?: string; name?: string; accountNumber?: string; account_number?: string; institutionCode?: string; institution_code?: string; beneficiaryEmail?: string; email?: string; amount?: string | number; purpose?: string }) =>
+        emptyRow({
+          beneficiaryName: c.beneficiaryName ?? c.name ?? "",
+          accountNumber: c.accountNumber ?? c.account_number ?? "",
+          institutionCode: c.institutionCode ?? c.institution_code ?? "",
+          beneficiaryEmail: c.beneficiaryEmail ?? c.email ?? "",
+          amount: String(c.amount ?? ""),
+          purpose: c.purpose ?? "",
+        })
+      );
+      if (rows.length > 0) setRecipients(rows);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editRunData, institutionOptions.length]);
 
   /* ── Derived scheduling state ── */
   const isCustom = frequency === "custom";
@@ -403,15 +437,80 @@ export default function NewScheduledRunPage() {
   const removeRow = (id: string) =>
     setRecipients((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
 
+  const togglePickerSelection = (recipient: SavedRecipient) => {
+    setPickerSelections((prev) => {
+      const next = new Map(prev);
+      if (next.has(recipient.id)) next.delete(recipient.id);
+      else next.set(recipient.id, { recipient, amount: "" });
+      return next;
+    });
+  };
+
+  const updatePickerAmount = (recipientId: string, amount: string) => {
+    setPickerSelections((prev) => {
+      const next = new Map(prev);
+      const sel = next.get(recipientId);
+      if (sel) next.set(recipientId, { ...sel, amount });
+      return next;
+    });
+  };
+
+  const addSelectedRecipients = () => {
+    const entries = Array.from(pickerSelections.values());
+    if (!entries.length) return;
+    setRecipients((prev) => {
+      const rows = entries.map(({ recipient, amount }) =>
+        emptyRow({
+          beneficiaryName: recipient.name,
+          accountNumber: recipient.account_number,
+          institutionCode: recipient.institution_code,
+          beneficiaryEmail: recipient.email ?? "",
+          amount,
+          purpose: pickerPurpose || "Vendor Payment",
+        })
+      );
+      const emptyIdx = prev.findIndex(
+        (r) => !r.beneficiaryName.trim() && !r.accountNumber.trim() && !r.institutionCode.trim()
+      );
+      return emptyIdx !== -1
+        ? [...prev.slice(0, emptyIdx), ...rows, ...prev.slice(emptyIdx + 1)]
+        : [...prev, ...rows];
+    });
+    setShowVendorPicker(false);
+    setVendorSearch("");
+    setPickerSelections(new Map());
+    setPickerPurpose("Vendor Payment");
+  };
+
   const onSubmit = () => {
     setSubmitted(true);
     setSubmitError(null);
     if (!canSubmit) return;
 
     if (isEditing) {
-      const updatePayload: { name: string; objective: string; cron_expression?: string; frequency_label?: string; run_at?: string } = {
+      const updatedCandidates = recipients
+        .filter((r) => r.beneficiaryName.trim() || r.accountNumber.trim())
+        .map((r) => ({
+          institution_code: r.institutionCode,
+          beneficiary_name: r.beneficiaryName,
+          account_number: r.accountNumber,
+          beneficiary_email: r.beneficiaryEmail?.trim() || undefined,
+          amount: Number(r.amount.replace(/,/g, "")),
+          purpose: r.purpose || undefined,
+        }));
+
+      const updatedConfig: Record<string, unknown> = {};
+      if (fromDate) updatedConfig.date_from = fromDate;
+      if (toDate) updatedConfig.date_to = toDate;
+      updatedConfig.risk_tolerance = riskTolerance;
+      if (budgetCap) updatedConfig.budget_cap = Number(budgetCap.replace(/,/g, ""));
+      if (assignedApproverId) updatedConfig.assigned_approver_id = assignedApproverId;
+      if (updatedCandidates.length > 0) updatedConfig.candidates = updatedCandidates;
+
+      const updatePayload: Record<string, unknown> = {
         name: scheduleName.trim(),
         objective: objective.trim(),
+        run_config: updatedConfig,
       };
       if (runType === "one_time") {
         updatePayload.frequency_label = `One-time: ${formatDatetimeLocal(runAt)}`;
@@ -421,7 +520,7 @@ export default function NewScheduledRunPage() {
         updatePayload.frequency_label = isCustom ? `Custom: ${customCron.trim()}` : selectedOption!.label;
       }
       updateScheduledRun(
-        { id: editId!, payload: updatePayload },
+        { id: editId!, payload: updatePayload as Parameters<typeof updateScheduledRun>[0]["payload"] },
         { onSuccess: () => router.push("/dashboard/runs/scheduled") }
       );
       return;
@@ -691,6 +790,14 @@ export default function NewScheduledRunPage() {
               <Upload className="h-3 w-3" />
               Upload CSV / XLSX
             </button>
+            <button
+              type="button"
+              onClick={() => { setShowVendorPicker(true); setPickerSelections(new Map()); }}
+              className="flex items-center gap-1.5 rounded-full border border-brand/30 px-3 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand/5 hover:border-brand/50"
+            >
+              <Store className="h-3 w-3" />
+              From Recipients
+            </button>
             <input ref={csvRef} type="file" accept={IMPORT_ACCEPT} onChange={handleCsvUpload} className="sr-only" />
           </div>
         </div>
@@ -870,6 +977,135 @@ export default function NewScheduledRunPage() {
           </Button>
         </div>
       </div>
+
+      {/* Recipients Picker Modal */}
+      {showVendorPicker && (() => {
+        const allRecipients = vendorsData?.recipients ?? [];
+        const q = vendorSearch.toLowerCase();
+        const filteredRecipients = q
+          ? allRecipients.filter(
+              (r) =>
+                r.name.toLowerCase().includes(q) ||
+                r.account_number.includes(q) ||
+                (r.email?.toLowerCase().includes(q) ?? false)
+            )
+          : allRecipients;
+        const selectedCount = pickerSelections.size;
+        const canAdd = selectedCount > 0 && Array.from(pickerSelections.values()).every((s) => s.amount.trim() && Number(s.amount.replace(/,/g, "")) > 0);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowVendorPicker(false); setVendorSearch(""); setPickerSelections(new Map()); }} />
+            <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between p-5 border-b border-border/50">
+                <div>
+                  <h2 className="text-sm font-black text-foreground">Select Recipients</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Check recipients and enter amounts, then add them all at once</p>
+                </div>
+                <button type="button" onClick={() => { setShowVendorPicker(false); setVendorSearch(""); setPickerSelections(new Map()); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="px-5 pt-4 pb-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={vendorSearch}
+                    onChange={(e) => setVendorSearch(e.target.value)}
+                    placeholder="Search recipients…"
+                    autoFocus
+                    className="h-9 w-full rounded-full border border-border/60 bg-background pl-8 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-3">
+                {filteredRecipients.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
+                    <Store className="h-8 w-8 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">
+                      {allRecipients.length === 0 ? "No saved recipients yet" : "No recipients match your search"}
+                    </p>
+                    {allRecipients.length === 0 && (
+                      <a href="/dashboard/recipients" className="text-xs font-semibold text-brand hover:underline">Add recipients →</a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1 pb-2">
+                    {filteredRecipients.map((r) => {
+                      const bankLabel = institutionOptions.find((o) => o.value === r.institution_code)?.label ?? r.institution_code;
+                      const sel = pickerSelections.get(r.id);
+                      const isSelected = Boolean(sel);
+                      return (
+                        <div key={r.id} className={`rounded-xl border transition-all ${isSelected ? "border-brand/30 bg-brand/5" : "border-transparent hover:bg-muted/40"}`}>
+                          <button
+                            type="button"
+                            onClick={() => togglePickerSelection(r)}
+                            className="w-full flex items-center gap-3 px-3 py-3 text-left"
+                          >
+                            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${isSelected ? "border-brand bg-brand" : "border-border"}`}>
+                              {isSelected && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10">
+                              <Building2 className="h-3.5 w-3.5 text-brand" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{bankLabel} · {r.account_number}</p>
+                            </div>
+                          </button>
+                          {isSelected && (
+                            <div className="px-3 pb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground shrink-0 w-12">Amount</span>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={sel!.amount}
+                                  onChange={(e) => updatePickerAmount(r.id, e.target.value.replace(/[^0-9,]/g, ""))}
+                                  placeholder="e.g. 50,000"
+                                  autoFocus
+                                  className="h-8 flex-1 rounded-lg border border-border/60 bg-background px-3 text-sm font-mono text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {allRecipients.length > 0 && (
+                <div className="p-4 border-t border-border/50 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Purpose (applied to all)</label>
+                    <input
+                      type="text"
+                      value={pickerPurpose}
+                      onChange={(e) => setPickerPurpose(e.target.value)}
+                      placeholder="e.g. Vendor Payment"
+                      className="h-9 w-full rounded-full border border-border/60 bg-background px-4 text-sm text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addSelectedRecipients}
+                    disabled={!canAdd}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {selectedCount === 0 ? "Select recipients above" : `Add ${selectedCount} recipient${selectedCount !== 1 ? "s" : ""}`}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
