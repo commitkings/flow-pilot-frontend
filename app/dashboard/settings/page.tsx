@@ -201,11 +201,15 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [tz, setTz] = useState(user?.timezone ?? "Africa/Lagos");
 
-  // Populate profile fields when user data loads asynchronously
+  // Populate profile fields when user data loads asynchronously.
+  // For users registered before first_name/last_name were stored, split display_name as a fallback.
   useEffect(() => {
     if (user) {
-      setFirstName((prev) => prev || (user.first_name ?? ""));
-      setLastName((prev) => prev || (user.last_name ?? ""));
+      const nameParts = (user.display_name ?? "").trim().split(/\s+/);
+      const fallbackFirst = nameParts[0] ?? "";
+      const fallbackLast = nameParts.slice(1).join(" ");
+      setFirstName((prev) => prev || user.first_name || fallbackFirst);
+      setLastName((prev) => prev || user.last_name || fallbackLast);
       setJobTitle((prev) => prev || (user.job_title ?? ""));
       setDepartment((prev) => prev || (user.department ?? ""));
       setPhone((prev) => prev || (user.phone ?? ""));

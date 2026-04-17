@@ -105,7 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiLogin(email, password);
       // 2FA gate — hand back the mfa_token so the login page can show the TOTP step
       if ("mfa_required" in response && response.mfa_required) {
-        setIsLoading(false);
         return response as MfaChallenge;
       }
       const { token, requires_2fa_setup } = response as { token: string; requires_2fa_setup?: boolean };
@@ -114,7 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(me);
       // Org enforces 2FA and user hasn't set it up — signal the caller to redirect
       if (requires_2fa_setup) {
-        setIsLoading(false);
         return { requires_2fa_setup: true } as Requires2FASetup;
       }
     } catch (err) {
