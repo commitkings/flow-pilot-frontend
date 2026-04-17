@@ -160,8 +160,8 @@ export default function RunsPage() {
     <div className="space-y-6">
       {/* Welcome banner */}
       {showWelcome && (
-        <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5">
-          <p className="text-sm font-semibold text-emerald-800">
+        <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-5 py-3.5">
+          <p className="text-sm font-semibold text-foreground">
             Welcome to FlowPilot — your workspace is ready.
           </p>
           <button
@@ -169,7 +169,7 @@ export default function RunsPage() {
               setDismissedWelcome(true);
               router.replace("/dashboard/runs");
             }}
-            className="text-emerald-600 hover:text-emerald-900"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="h-4 w-4" />
           </button>

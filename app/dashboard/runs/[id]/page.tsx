@@ -715,7 +715,7 @@ export default function RunDetailPage() {
             </h1>
             <StatusBadge status={status} label={statusLabel} />
             {isLiveRun && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand">
                 <Radio className="h-3 w-3 animate-pulse" />
                 Live
               </span>
@@ -743,9 +743,9 @@ export default function RunDetailPage() {
 
       {/* Approval banner */}
       {run.status === "awaiting_approval" && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-900 dark:bg-amber-950/30 space-y-3">
+        <div className="rounded-xl border border-border/60 bg-muted/20 px-5 py-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground/80">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>Analysis complete. Approval required before payouts execute.</span>
             </div>
@@ -755,7 +755,7 @@ export default function RunDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 gap-1.5"
+                  className="rounded-full gap-1.5"
                   onClick={() => {
                     setRerunObjective(run.objective ?? "");
                     setRerunConstraints("");
@@ -774,7 +774,7 @@ export default function RunDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300"
+                  className="rounded-full"
                   onClick={() => {
                     setReassignUserId(run.assignedToId ?? "");
                     setReassignOpen(true);
@@ -788,7 +788,7 @@ export default function RunDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300 gap-1.5"
+                  className="rounded-full gap-1.5"
                   disabled={nudgeMutation.isPending}
                   onClick={() => nudgeMutation.mutate()}
                 >
@@ -802,29 +802,29 @@ export default function RunDetailPage() {
               )}
               {canApprove ? (
                 <Button
-                  className="rounded-full bg-amber-500 px-6 text-white hover:bg-amber-600"
+                  className="rounded-full bg-brand px-6 text-white hover:opacity-90"
                   onClick={() => router.push(`/dashboard/runs/${id}/approve`)}
                 >
                   Review &amp; Approve
                 </Button>
               ) : (
-                <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                <span className="text-xs text-muted-foreground font-medium">
                   Waiting for {run.assignedTo?.name ?? "the assigned approver"} to review
                 </span>
               )}
             </div>
           </div>
           {/* Assignee info strip */}
-          <div className="flex items-center gap-2 rounded-xl border border-amber-200/60 bg-amber-100/40 px-4 py-2.5 text-sm dark:border-amber-800/40 dark:bg-amber-900/20">
-            <span className="text-amber-700 dark:text-amber-400">Assigned to:</span>
+          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/20 px-4 py-2.5 text-sm">
+            <span className="text-muted-foreground">Assigned to:</span>
             {run.assignedTo ? (
               <>
-                <span className="font-bold text-amber-900 dark:text-amber-200">{run.assignedTo.name}</span>
-                <span className="text-amber-600 dark:text-amber-500">·</span>
-                <span className="text-xs text-amber-700 dark:text-amber-400">{run.assignedTo.email}</span>
+                <span className="font-bold text-foreground">{run.assignedTo.name}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span className="text-xs text-muted-foreground">{run.assignedTo.email}</span>
               </>
             ) : (
-              <span className="font-bold text-amber-900 dark:text-amber-200">Any available approver</span>
+              <span className="font-semibold text-foreground">Any available approver</span>
             )}
           </div>
         </div>
@@ -879,7 +879,7 @@ export default function RunDetailPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Update the payout details and re-run the full analysis. This will reset the current approval and resubmit for review.
               </p>
-              <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+              <div className="mt-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-xs text-foreground/70">
                 Warning: All current beneficiaries will be cleared and regenerated by the pipeline.
               </div>
               <div className={`mt-2 rounded-lg border px-3 py-2 text-xs flex items-center justify-between ${
@@ -1019,9 +1019,9 @@ export default function RunDetailPage() {
       )}
 
       {run.status === "failed" && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+        <div className="rounded-xl border border-destructive/20 bg-destructive/5 px-5 py-4">
           <div className="flex items-start gap-3">
-            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-red-100 text-red-600">
+            <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
               <AlertTriangle className="h-4 w-4" />
             </div>
             <div className="min-w-0">
@@ -1179,20 +1179,21 @@ export default function RunDetailPage() {
 
       {/* Tabbed section */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="flex border-b border-border px-6 pt-4 gap-1">
+        <div className="flex gap-1 border-b border-border/60 bg-muted/20 px-4 pt-3">
           {TABS.map(({ key, label }) => (
             <button
               key={key}
               type="button"
               onClick={() => setActiveTab(key)}
-              className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors ${activeTab === key
-                  ? "bg-background text-foreground border border-b-transparent border-border -mb-px"
-                  : "text-muted-foreground hover:text-foreground"
-                }`}
+              className={`relative px-4 py-2.5 text-xs font-black uppercase tracking-wider rounded-t-lg transition-all ${
+                activeTab === key
+                  ? "bg-card text-foreground shadow-sm border border-border/60 border-b-card -mb-px"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+              }`}
             >
               {label}
               {key === "activity" && isLive && (
-                <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-brand animate-pulse" />
               )}
             </button>
           ))}
@@ -1407,10 +1408,7 @@ export default function RunDetailPage() {
                   {/* Compliance Status Badge - only show if we have data */}
                   {auditReportData && (
                     <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "flex items-center gap-2 rounded-full px-4 py-2",
-                        status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                      )}>
+                      <div className="flex items-center gap-2 rounded-full border border-border/60 bg-muted/20 px-4 py-2 text-foreground/80">
                         {status === "completed" ? (
                           <CheckCircle className="h-4 w-4" />
                         ) : (
@@ -1429,9 +1427,9 @@ export default function RunDetailPage() {
                   )}
 
                   {run.status === "failed" && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-                      <p className="text-xs font-black uppercase tracking-wider text-amber-700 mb-2">Why This Run Failed</p>
-                      <p className="text-sm leading-relaxed text-amber-900">
+                    <div className="rounded-xl border border-border/60 bg-muted/20 p-5">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Why This Run Failed</p>
+                      <p className="text-sm leading-relaxed text-foreground/80">
                         {failureMessage ?? "FlowPilot marked this run as failed, but no detailed error message was captured."}
                       </p>
                     </div>
@@ -1548,7 +1546,7 @@ function ProgressTab({
             Pipeline Steps
           </p>
           {isLiveRun && isLive && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand">
               <Radio className="h-2.5 w-2.5 animate-pulse" />
               Live
             </span>
@@ -1728,8 +1726,8 @@ function PersonChip({
 }) {
   const colorMap = {
     brand: "bg-brand/10 text-brand",
-    amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    green: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    amber: "bg-muted text-foreground",
+    green: "bg-brand/10 text-brand",
   };
   return (
     <div className="flex items-center gap-2">

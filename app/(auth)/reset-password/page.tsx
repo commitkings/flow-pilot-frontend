@@ -51,9 +51,9 @@ function ResetPasswordForm() {
   if (done) {
     return (
       <div className="flex flex-col items-start w-full">
-        <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
-          <p className="text-sm font-medium text-green-800">
+        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-brand" />
+          <p className="text-sm font-medium text-foreground">
             Password reset! Redirecting you to login&hellip;
           </p>
         </div>

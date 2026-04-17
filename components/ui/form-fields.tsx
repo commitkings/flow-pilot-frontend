@@ -342,12 +342,19 @@ export function AmountInput({
 }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   onChange: (value: string) => void;
 }) {
+  function format(raw: string): string {
+    const clean = raw.replace(/[^0-9.]/g, "");
+    const [integer, ...rest] = clean.split(".");
+    const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return rest.length > 0 ? `${formatted}.${rest.join("")}` : formatted;
+  }
+
   return (
     <Input
       type="text"
       inputMode="decimal"
       value={value}
-      onChange={(e) => onChange(e.target.value.replace(/[^0-9,.]/g, ""))}
+      onChange={(e) => onChange(format(e.target.value))}
       placeholder={placeholder}
       className={cn(
         "h-12 rounded-full border-border bg-background px-5 text-sm transition-all focus-visible:border-brand focus-visible:ring-1 focus-visible:ring-brand/10",
@@ -502,11 +509,15 @@ export function DateInput({
   onChange,
   placeholder = "Select date",
   className,
+  max,
+  min,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  max?: string;
+  min?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -538,6 +549,8 @@ export function DateInput({
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        max={max}
+        min={min}
         className="sr-only"
       />
     </div>

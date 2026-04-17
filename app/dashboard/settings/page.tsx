@@ -1081,12 +1081,12 @@ export default function SettingsPage() {
             </div>
             <div className="px-6 py-5 space-y-4">
               {/* Export advisory */}
-              <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
-                <p className="font-semibold text-amber-800 flex items-center gap-2">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+                <p className="font-semibold text-foreground flex items-center gap-2">
                   <Download className="h-4 w-4 shrink-0" />
                   Export your data first
                 </p>
-                <p className="mt-1 text-amber-700/90">
+                <p className="mt-1 text-muted-foreground">
                   We strongly recommend exporting your workspace data before deleting. You can restore it later if needed.
                 </p>
                 <button
@@ -1278,9 +1278,9 @@ export default function SettingsPage() {
               </p>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <div className="rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 text-sm text-blue-800">
+              <div className="rounded-xl border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground/80">
                 <p className="font-semibold">What gets restored:</p>
-                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-blue-700">
+                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-muted-foreground">
                   <li>Business profile fields (name, location, contact)</li>
                   <li>Your personal profile fields</li>
                   <li>Team members (re-invited or added directly)</li>

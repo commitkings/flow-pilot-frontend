@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 import { ChevronLeft, Building2, User } from "lucide-react";
 import { AuthAside } from "@/components/auth/AuthAside";
@@ -15,6 +14,7 @@ import { useAuth } from "@/context/auth-context";
 import { useCompleteOnboarding } from "@/hooks/use-onboarding-mutations";
 import { inviteTeamMember } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { Field, DateInput } from "@/components/ui/form-fields";
 
 // Individual: 0=AccountType, 1=Preferences (UseCase+Risk)
 // Business:   0=AccountType, 1=BusinessProfile, 2=Preferences (UseCase+Risk), 3=Team
@@ -99,6 +99,8 @@ function createClientId(): string {
 
 // ── DOB input component ───────────────────────────────────────────────────────
 
+const DOB_MAX = new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
 function DobField({
   value,
   onChange,
@@ -109,20 +111,17 @@ function DobField({
   error?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-foreground">
-        Date of Birth <span className="text-destructive">*</span>
-      </label>
-      <Input
-        type="date"
+    <Field label="Date of Birth *">
+      <DateInput
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        max={new Date(Date.now() - 18 * 365.25 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]}
-        className="h-11 rounded-xl"
+        onChange={onChange}
+        placeholder="Select date of birth"
+        max={DOB_MAX}
+        className="bg-transparent"
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
       <p className="text-xs text-muted-foreground">You must be at least 18 years old to register.</p>
-    </div>
+    </Field>
   );
 }
 
