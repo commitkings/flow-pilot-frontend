@@ -24,6 +24,7 @@ import {
   Wallet,
   CalendarClock,
   Bookmark,
+  Store,
 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,7 @@ const navGroups: NavGroup[] = [
       { label: "All Payouts", href: "/dashboard/runs", icon: LayoutDashboard, subSectionLabel: "Payouts" },
       { label: "Scheduled", href: "/dashboard/runs/scheduled", icon: CalendarClock },
       { label: "Templates", href: "/dashboard/runs/templates", icon: Bookmark },
+      { label: "Recipients", href: "/dashboard/recipients", icon: Store },
       { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare },
       { label: "Approvals", href: "/dashboard/approvals", icon: ClipboardCheck, roles: ["approver", "owner"] },
       { label: "Transactions", href: "/dashboard/transactions", icon: ArrowLeftRight },

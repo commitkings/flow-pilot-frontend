@@ -747,6 +747,30 @@ export async function deleteConversation(
   return data;
 }
 
+// ── 19. Saved Recipients ──────────────────────────────────────────────────────
+
+export interface RecipientFilters {
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export function listRecipients(filters: RecipientFilters = {}): Promise<import("./api-types").SavedRecipientListResponse> {
+  return apiClient.get("/recipients", { params: filters }).then((r) => r.data);
+}
+
+export function createRecipient(payload: import("./api-types").CreateSavedRecipientPayload): Promise<import("./api-types").SavedRecipient> {
+  return apiClient.post("/recipients", payload).then((r) => r.data);
+}
+
+export function updateRecipient(recipientId: string, payload: import("./api-types").UpdateSavedRecipientPayload): Promise<import("./api-types").SavedRecipient> {
+  return apiClient.patch(`/recipients/${recipientId}`, payload).then((r) => r.data);
+}
+
+export function deleteRecipient(recipientId: string): Promise<{ status: string }> {
+  return apiClient.delete(`/recipients/${recipientId}`).then((r) => r.data);
+}
+
 // ── Receipt email ─────────────────────────────────────────────────────────────
 
 export function sendReceiptEmail(

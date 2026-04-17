@@ -254,6 +254,7 @@ export default function SettingsPage() {
   const [configLiquidityBuffer, setConfigLiquidityBuffer] = useState("");
 
   const org = orgQuery.data;
+  const isIndividual = org?.account_type === "individual";
   const connections = connectionsQuery.data?.connections ?? [];
 
   // org enforcement: use mutation result (most recent) or fall back to org profile data
@@ -349,7 +350,11 @@ export default function SettingsPage() {
     { id: "security",  label: "Security",   icon: <Lock className="h-4 w-4" /> },
     { id: "account",   label: "Account",    icon: <AlertOctagon className="h-4 w-4" /> },
   ];
-  const tabs = allTabs.filter((t) => !t.ownerOnly || isOwner);
+  const tabs = allTabs.filter((t) => {
+    if (t.ownerOnly && !isOwner) return false;
+    if (t.id === "workspace" && isIndividual) return false;
+    return true;
+  });
 
   return (
     <div className="mx-auto max-w-4xl pb-16">
@@ -1042,11 +1047,15 @@ export default function SettingsPage() {
               {isOwner ? (
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
-                    <p className="font-bold text-destructive">Delete Organisation</p>
-                    <p className="mt-0.5 text-sm text-destructive/80">Permanently deactivates your workspace and removes access for all team members. Export your data first.</p>
+                    <p className="font-bold text-destructive">{isIndividual ? "Delete Account" : "Delete Organisation"}</p>
+                    <p className="mt-0.5 text-sm text-destructive/80">
+                      {isIndividual
+                        ? "Permanently deletes your account and all associated data. This cannot be undone."
+                        : "Permanently deactivates your workspace and removes access for all team members. Export your data first."}
+                    </p>
                   </div>
                   <Button variant="destructive" className="shrink-0 rounded-full shadow-sm" onClick={() => { setDeleteOpen(true); setDeleteConfirmText(""); setDeleteOtp(""); setDeleteEmailCode(""); setDeleteCodeSent(false); }}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete Organisation
+                    <Trash2 className="mr-2 h-4 w-4" /> {isIndividual ? "Delete Account" : "Delete Organisation"}
                   </Button>
                 </div>
               ) : (

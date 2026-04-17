@@ -21,6 +21,78 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AmountInput } from "@/components/ui/form-fields";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { useWallet, useWalletTransactions, useTopUpWallet, useWithdrawWallet } from "@/hooks/use-wallet";
+import { useCredits, usePurchaseCredits } from "@/hooks/use-credits";
+import { useOrgProfile } from "@/hooks/use-settings-queries";
+import { useAuth } from "@/context/auth-context";
+import { useKycStatus } from "@/hooks/use-kyc-queries";
+import { getUserRole, isOwner, ApiError } from "@/lib/api-types";
+import { PageHeader } from "@/components/ui/page-header";
+
+function formatNGN(amount: number): string {
+  return `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function getMonthOptions(count = 12): { value: string; label: string }[] {
+  const options: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleString("en-NG", { month: "long", year: "numeric" });
+    options.push({ value, label });
+  }
+  return options;
+}
+
+// ── Top-up modal ──────────────────────────────────────────────────────────────
+
+function TopUpModal({ onClose }: { onClose: () => void }) {
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
+  const [description, setDescription] = useState("");
+  const { mutate: topUp, isPending } = useTopUpWallet();
+
+  const parsedAmount = parseFloat(amount.replace(/,/g, ""));
+  const canSubmit = parsedAmount > 0 && reference.trim().length > 0 && !isPending;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    topUp(
+      { amount: parsedAmount, reference: reference.trim(), description: description.trim() || undefined },
+      { onSuccess: onClose },
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border/50 px-6 py-5">
+          <div>
+            <h2 className="text-lg font-black tracking-tight text-foreground">Top Up Wallet</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Record a top-up to your organisation wallet.</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">✕</button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Amount (₦) <span className="text-destructive">*</span></label>
             <AmountInput value={amount} onChange={setAmount} placeholder="e.g. 500,000" className="h-10" />          </div>
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Payment Reference <span className="text-destructive">*</span></label>
@@ -304,17 +376,6 @@ export default function WalletPage() {
   }, [user, role, router]);
 
   if (!user || role === "analyst") return null;
-
-  const { data: wallet, isLoading: walletLoading, isError: walletError, error: walletErrorObj, refetch: refetchWallet } = useWallet();
-  const { data: credits } = useCredits();
-  const { data: org } = useOrgProfile();
-  const { data: kycData } = useKycStatus();
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const { data: txData, isLoading: txLoading } = useWalletTransactions(50, 0, selectedMonth || undefined);
-  const [showTopUp, setShowTopUp] = useState(false);
-  const [showWithdraw, setShowWithdraw] = useState(false);
-  const [showBuyCredits, setShowBuyCredits] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   function copyToClipboard(value: string, field: string) {
     navigator.clipboard.writeText(value).then(() => {

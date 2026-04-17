@@ -68,3 +68,18 @@ export function deleteScheduledRun(id: string): Promise<{ status: string }> {
     .delete<{ status: string }>(`/runs/scheduled/${id}`)
     .then((r) => r.data);
 }
+
+export interface UpdateScheduledRunPayload {
+  name?: string;
+  objective?: string;
+  is_active?: boolean;
+}
+
+export function updateScheduledRun(
+  id: string,
+  payload: UpdateScheduledRunPayload,
+): Promise<ScheduledRun> {
+  return apiClient
+    .patch<ScheduledRun>(`/runs/scheduled/${id}`, payload)
+    .then((r) => r.data);
+}

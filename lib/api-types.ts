@@ -717,6 +717,39 @@ export interface InviteResult {
   invited_email?: string;
 }
 
+// ── Saved Recipients ─────────────────────────────────────────
+
+export interface SavedRecipient {
+  id: string;
+  business_id: string;
+  name: string;
+  account_number: string;
+  institution_code: string;
+  email: string | null;
+  notes: string | null;
+  tags: string[];
+  payment_count: number;
+  last_paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavedRecipientListResponse {
+  recipients: SavedRecipient[];
+  total: number;
+}
+
+export interface CreateSavedRecipientPayload {
+  name: string;
+  account_number: string;
+  institution_code: string;
+  email?: string | null;
+  notes?: string | null;
+  tags?: string[];
+}
+
+export type UpdateSavedRecipientPayload = Partial<CreateSavedRecipientPayload>;
+
 // ── Errors ───────────────────────────────────────────────────
 
 export interface ApiErrorBody {

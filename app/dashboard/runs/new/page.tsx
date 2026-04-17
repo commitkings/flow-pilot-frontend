@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { ArrowLeft, Download, MessageSquare, Plus, Rocket, Settings2, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Building2, Download, MessageSquare, Plus, Rocket, Search, Settings2, Store, Trash2, Upload, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, TextareaInput, DateRangeInput, BankSelectInput, NumericInput, AmountInput } from "@/components/ui/form-fields";
@@ -16,8 +16,9 @@ import { useCredits } from "@/hooks/use-credits";
 import Link from "next/link";
 import { ChatContainer, RunConfigPreview, ConversationSidebar } from "@/components/chat";
 import { useConfirmRun, useAbandonConversation } from "@/hooks/use-chat-mutations";
-import type { ConversationSummary } from "@/lib/api-types";
+import type { ConversationSummary, SavedRecipient } from "@/lib/api-types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useVendors } from "@/hooks/use-vendor-queries";
 
 type Mode = "chat" | "form";
 
@@ -88,8 +89,10 @@ export default function NewRunPage() {
     }
   }, [user, role, router]);
 
-  // KYC gate — show wall before rendering the form
-  if (kycData && kycStatus !== "verified") {
+  // KYC gate — only block users who have never been verified (level 0).
+  // Users already verified at level 1+ can still use the platform even while upgrading.
+  const kycLevelReached = kycData?.limit_info?.kyc_level ?? 0;
+  if (kycData && kycStatus !== "verified" && kycLevelReached === 0) {
     return (
       <div className="mx-auto max-w-lg py-24 text-center space-y-5">
         <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 mx-auto">
@@ -131,6 +134,7 @@ export default function NewRunPage() {
 
   // Form state (existing)
   const { data: institutionsData, isLoading: loadingInstitutions, isError: institutionsIsError } = useInstitutions({ enabled: true });
+  const { data: vendorsData } = useVendors();
   const institutionOptions = useMemo(
     () => buildInstitutionOptions(institutionsData?.data ?? []),
     [institutionsData]
@@ -149,6 +153,10 @@ export default function NewRunPage() {
   const [csvError, setCsvError] = useState<string | null>(null);
   const [csvDuplicateWarning, setCsvDuplicateWarning] = useState<string | null>(null);
   const [recipients, setRecipients] = useState<Recipient[]>([emptyRow()]);
+  const [showVendorPicker, setShowVendorPicker] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState("");
+  const [pickerSelections, setPickerSelections] = useState<Map<string, { recipient: SavedRecipient; amount: string }>>(new Map());
+  const [pickerPurpose, setPickerPurpose] = useState("Vendor Payment");
   const [assignedApproverId, setAssignedApproverId] = useState("");
 
   // Team members for reviewer selection
@@ -404,6 +412,54 @@ export default function NewRunPage() {
 
   const removeRow = (id: string) =>
     setRecipients((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev));
+
+  const togglePickerSelection = (recipient: SavedRecipient) => {
+    setPickerSelections((prev) => {
+      const next = new Map(prev);
+      if (next.has(recipient.id)) {
+        next.delete(recipient.id);
+      } else {
+        next.set(recipient.id, { recipient, amount: "" });
+      }
+      return next;
+    });
+  };
+
+  const updatePickerAmount = (recipientId: string, amount: string) => {
+    setPickerSelections((prev) => {
+      const next = new Map(prev);
+      const sel = next.get(recipientId);
+      if (sel) next.set(recipientId, { ...sel, amount });
+      return next;
+    });
+  };
+
+  const addSelectedRecipients = () => {
+    const entries = Array.from(pickerSelections.values());
+    if (!entries.length) return;
+    setRecipients((prev) => {
+      const rows = entries.map(({ recipient, amount }) =>
+        emptyRow({
+          beneficiaryName: recipient.name,
+          accountNumber: recipient.account_number,
+          institutionCode: recipient.institution_code,
+          beneficiaryEmail: recipient.email ?? "",
+          amount,
+          purpose: pickerPurpose || "Vendor Payment",
+        })
+      );
+      const emptyIdx = prev.findIndex(
+        (r) => !r.beneficiaryName.trim() && !r.accountNumber.trim() && !r.institutionCode.trim()
+      );
+      return emptyIdx !== -1
+        ? [...prev.slice(0, emptyIdx), ...rows, ...prev.slice(emptyIdx + 1)]
+        : [...prev, ...rows];
+    });
+    setShowVendorPicker(false);
+    setVendorSearch("");
+    setPickerSelections(new Map());
+    setPickerPurpose("Vendor Payment");
+  };
 
   const onSubmit = () => {
     setSubmitted(true);
@@ -710,6 +766,14 @@ export default function NewRunPage() {
               <Upload className="h-3 w-3" />
               Upload CSV
             </button>
+            <button
+              type="button"
+              onClick={() => { setShowVendorPicker(true); setPickerSelections(new Map()); }}
+              className="flex items-center gap-1.5 rounded-full border border-brand/30 px-3 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand/5 hover:border-brand/50"
+            >
+              <Store className="h-3 w-3" />
+              From Recipients
+            </button>
             <input ref={csvRef} type="file" accept=".csv,text/csv" onChange={handleCsvUpload} className="sr-only" />
           </div>
         </div>
@@ -827,6 +891,142 @@ export default function NewRunPage() {
           Add Recipient
         </button>
       </section>
+
+      {/* Recipients Picker Modal — multi-select with per-recipient amounts */}
+      {showVendorPicker && (() => {
+        const allRecipients = vendorsData?.recipients ?? [];
+        const q = vendorSearch.toLowerCase();
+        const filteredRecipients = q
+          ? allRecipients.filter(
+              (r) =>
+                r.name.toLowerCase().includes(q) ||
+                r.account_number.includes(q) ||
+                (r.email?.toLowerCase().includes(q) ?? false)
+            )
+          : allRecipients;
+        const selectedCount = pickerSelections.size;
+        const canAdd = selectedCount > 0 && Array.from(pickerSelections.values()).every((s) => s.amount.trim() && Number(s.amount.replace(/,/g, "")) > 0);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setShowVendorPicker(false); setVendorSearch(""); setPickerSelections(new Map()); }} />
+            <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[85vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-border/50">
+                <div>
+                  <h2 className="text-sm font-black text-foreground">Select Recipients</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Check recipients and enter amounts, then add them all at once</p>
+                </div>
+                <button type="button" onClick={() => { setShowVendorPicker(false); setVendorSearch(""); setPickerSelections(new Map()); }} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="px-5 pt-4 pb-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={vendorSearch}
+                    onChange={(e) => setVendorSearch(e.target.value)}
+                    placeholder="Search recipients…"
+                    autoFocus
+                    className="h-9 w-full rounded-full border border-border/60 bg-background pl-8 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
+                  />
+                </div>
+              </div>
+
+              {/* List */}
+              <div className="overflow-y-auto flex-1 px-3">
+                {filteredRecipients.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
+                    <Store className="h-8 w-8 text-muted-foreground/30" />
+                    <p className="text-sm text-muted-foreground">
+                      {allRecipients.length === 0 ? "No saved recipients yet" : "No recipients match your search"}
+                    </p>
+                    {allRecipients.length === 0 && (
+                      <a href="/dashboard/recipients" className="text-xs font-semibold text-brand hover:underline">Add recipients →</a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-1 pb-2">
+                    {filteredRecipients.map((r) => {
+                      const bankLabel = institutionOptions.find((o) => o.value === r.institution_code)?.label ?? r.institution_code;
+                      const sel = pickerSelections.get(r.id);
+                      const isSelected = Boolean(sel);
+                      return (
+                        <div key={r.id} className={`rounded-xl border transition-all ${isSelected ? "border-brand/30 bg-brand/5" : "border-transparent hover:bg-muted/40"}`}>
+                          <button
+                            type="button"
+                            onClick={() => togglePickerSelection(r)}
+                            className="w-full flex items-center gap-3 px-3 py-3 text-left"
+                          >
+                            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${isSelected ? "border-brand bg-brand" : "border-border"}`}>
+                              {isSelected && <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10">
+                              <Building2 className="h-3.5 w-3.5 text-brand" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{bankLabel} · {r.account_number}</p>
+                            </div>
+                          </button>
+                          {isSelected && (
+                            <div className="px-3 pb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground shrink-0 w-12">Amount</span>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={sel!.amount}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/[^0-9,]/g, "");
+                                    updatePickerAmount(r.id, v);
+                                  }}
+                                  placeholder="e.g. 50,000"
+                                  autoFocus
+                                  className="h-8 flex-1 rounded-lg border border-border/60 bg-background px-3 text-sm font-mono text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {allRecipients.length > 0 && (
+                <div className="p-4 border-t border-border/50 space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Purpose (applied to all)</label>
+                    <input
+                      type="text"
+                      value={pickerPurpose}
+                      onChange={(e) => setPickerPurpose(e.target.value)}
+                      placeholder="e.g. Vendor Payment"
+                      className="h-9 w-full rounded-full border border-border/60 bg-background px-4 text-sm text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand/10 placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addSelectedRecipients}
+                    disabled={!canAdd}
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-4 w-4" />
+                    {selectedCount === 0 ? "Select recipients above" : `Add ${selectedCount} recipient${selectedCount !== 1 ? "s" : ""}`}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Credit usage notice */}
       {credits != null && (

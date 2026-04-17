@@ -1258,110 +1258,162 @@ export default function RunDetailPage() {
 
           {/* Beneficiaries tab */}
           {activeTab === "candidates" && (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
               {loadingCandidates ? (
-                <div className="col-span-2 flex justify-center py-10">
+                <div className="flex justify-center py-10">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : candidates.length === 0 ? (
-                <p className="col-span-2 py-10 text-center text-sm text-muted-foreground">
+                <p className="py-10 text-center text-sm text-muted-foreground">
                   No beneficiaries have been attached to this run.
                 </p>
               ) : (
-                candidates.map((candidate) => {
-                  const borderColor = RISK_BORDER_COLORS[candidate.decision] ?? "border-border";
-                  const isEditing = editingCandidateId === candidate.id;
-                  const canEdit = run.status === "awaiting_approval";
-                  return (
-                    <div key={candidate.id} className="relative">
-                      {/* Edit button overlay — only when awaiting_approval */}
-                      {canEdit && !isEditing && (
-                        <button
-                          type="button"
-                          className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground transition-colors border border-border/50"
-                          onClick={() => {
-                            setEditAmount(String(candidate.amount));
-                            setEditName(candidate.beneficiaryName);
-                            setEditAccount(candidate.accountNumber);
-                            setEditingCandidateId(candidate.id);
-                          }}
-                          title="Edit beneficiary"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30 text-left">
+                        <th className="px-5 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground">Beneficiary</th>
+                        <th className="hidden px-5 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground md:table-cell">Bank</th>
+                        <th className="px-5 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground text-right">Amount</th>
+                        <th className="hidden px-5 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground sm:table-cell">Decision</th>
+                        <th className="hidden px-5 py-3 text-xs font-black uppercase tracking-wider text-muted-foreground lg:table-cell">Status</th>
+                        <th className="px-5 py-3" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {candidates.map((candidate) => {
+                        const isEditing = editingCandidateId === candidate.id;
+                        const canEdit = run.status === "awaiting_approval";
+                        const lifecycle = getCandidateLifecycle(candidate);
+                        const decisionBg =
+                          candidate.decision === "allow" ? "bg-emerald-50 dark:bg-emerald-950/20" :
+                          candidate.decision === "block" ? "bg-red-50 dark:bg-red-950/20" :
+                          candidate.decision === "review" ? "bg-amber-50 dark:bg-amber-950/20" : "";
 
-                      {isEditing ? (
-                        /* Inline edit form */
-                        <div className={`rounded-xl border-2 ${borderColor} bg-background p-4 space-y-3`}>
-                          <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">Editing Beneficiary</p>
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-muted-foreground">Full Name</label>
-                              <input
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-muted-foreground">Account Number</label>
-                              <input
-                                value={editAccount}
-                                onChange={(e) => setEditAccount(e.target.value.replace(/\D/g, ""))}
-                                className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm font-mono outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-xs font-medium text-muted-foreground">Amount (₦)</label>
-                              <input
-                                value={editAmount}
-                                onChange={(e) => setEditAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                                className="h-9 w-full rounded-xl border border-border bg-muted/30 px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1 rounded-full text-xs"
-                              onClick={() => setEditingCandidateId(null)}
-                              disabled={updateCandidateMutation.isPending}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="flex-1 rounded-full bg-brand text-white text-xs hover:opacity-90"
-                              disabled={updateCandidateMutation.isPending}
-                              onClick={() => {
-                                const amount = parseFloat(editAmount.replace(/,/g, ""));
-                                if (isNaN(amount) || amount <= 0) return;
-                                updateCandidateMutation.mutate({
-                                  candidateId: candidate.id,
-                                  payload: {
-                                    amount,
-                                    beneficiary_name: editName.trim() || undefined,
-                                    account_number: editAccount.trim() || undefined,
-                                  },
-                                });
-                              }}
-                            >
-                              {updateCandidateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <CandidateCard
-                          candidate={candidate}
-                          borderColor={borderColor}
-                          onSelect={() => setSelectedCandidate(candidate)}
-                        />
-                      )}
-                    </div>
-                  );
-                })
+                        if (isEditing) {
+                          return (
+                            <tr key={candidate.id} className="border-b border-brand/20 bg-brand/5">
+                              <td colSpan={6} className="px-5 py-4">
+                                <p className="mb-3 text-xs font-black uppercase tracking-wider text-muted-foreground">Editing Beneficiary</p>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">Full Name</label>
+                                    <input
+                                      value={editName}
+                                      onChange={(e) => setEditName(e.target.value)}
+                                      className="h-9 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">Account Number</label>
+                                    <input
+                                      value={editAccount}
+                                      onChange={(e) => setEditAccount(e.target.value.replace(/\D/g, ""))}
+                                      className="h-9 w-full rounded-xl border border-border bg-background px-3 text-sm font-mono outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-medium text-muted-foreground">Amount (₦)</label>
+                                    <input
+                                      value={editAmount}
+                                      onChange={(e) => setEditAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                                      className="h-9 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand/20"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="mt-3 flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-full text-xs"
+                                    onClick={() => setEditingCandidateId(null)}
+                                    disabled={updateCandidateMutation.isPending}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="rounded-full bg-brand text-white text-xs hover:opacity-90"
+                                    disabled={updateCandidateMutation.isPending}
+                                    onClick={() => {
+                                      const amount = parseFloat(editAmount.replace(/,/g, ""));
+                                      if (isNaN(amount) || amount <= 0) return;
+                                      updateCandidateMutation.mutate({
+                                        candidateId: candidate.id,
+                                        payload: {
+                                          amount,
+                                          beneficiary_name: editName.trim() || undefined,
+                                          account_number: editAccount.trim() || undefined,
+                                        },
+                                      });
+                                    }}
+                                  >
+                                    {updateCandidateMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return (
+                          <tr
+                            key={candidate.id}
+                            className={`group border-b border-border/60 last:border-0 transition-colors hover:bg-muted/20 cursor-pointer ${decisionBg}`}
+                            onClick={() => setSelectedCandidate(candidate)}
+                          >
+                            <td className="px-5 py-3.5">
+                              <p className="font-semibold text-foreground">{candidate.beneficiaryName}</p>
+                              <p className="text-xs text-muted-foreground font-mono">
+                                {candidate.accountNumber.slice(0, 3)}***{candidate.accountNumber.slice(-3)}
+                              </p>
+                            </td>
+                            <td className="hidden px-5 py-3.5 text-sm text-muted-foreground md:table-cell">
+                              {candidate.institution}
+                            </td>
+                            <td className="px-5 py-3.5 text-right font-semibold text-foreground">
+                              {formatCurrency(candidate.amount)}
+                            </td>
+                            <td className="hidden px-5 py-3.5 sm:table-cell">
+                              <StatusBadge status={candidate.decision as "allow" | "review" | "block"} />
+                            </td>
+                            <td className="hidden px-5 py-3.5 lg:table-cell">
+                              <StatusBadge status={lifecycle.badgeStatus} label={lifecycle.label} />
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setSelectedCandidate(candidate); }}
+                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                                >
+                                  <Info className="h-3 w-3" />
+                                  Details
+                                </button>
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/50 bg-white/80 text-muted-foreground shadow-sm opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditAmount(String(candidate.amount));
+                                      setEditName(candidate.beneficiaryName);
+                                      setEditAccount(candidate.accountNumber);
+                                      setEditingCandidateId(candidate.id);
+                                    }}
+                                    title="Edit beneficiary"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

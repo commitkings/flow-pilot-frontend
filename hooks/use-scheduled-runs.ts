@@ -7,7 +7,9 @@ import {
   createScheduledRun,
   toggleScheduledRun,
   deleteScheduledRun,
+  updateScheduledRun,
   type CreateScheduledRunPayload,
+  type UpdateScheduledRunPayload,
 } from "@/lib/api-scheduled-runs";
 
 const QUERY_KEY = ["scheduled-runs"] as const;
@@ -50,6 +52,21 @@ export function useToggleScheduledRun() {
             ? "One-time run cancelled."
             : "Scheduled run paused.";
       toast.success(label);
+    },
+    onError: () => {
+      toast.error("Failed to update scheduled run. Please try again.");
+    },
+  });
+}
+
+export function useUpdateScheduledRun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateScheduledRunPayload }) =>
+      updateScheduledRun(id, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
+      toast.success("Scheduled run updated.");
     },
     onError: () => {
       toast.error("Failed to update scheduled run. Please try again.");
