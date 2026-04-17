@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
@@ -135,9 +135,12 @@ function PinStep({
 
   const hasPin = pinStatus?.has_pin ?? true;
 
+  const onConfirmRef = useRef(onConfirm);
+  onConfirmRef.current = onConfirm;
+
   useEffect(() => {
-    if (!pinLoading && !hasPin) onConfirm();
-  }, [pinLoading, hasPin, onConfirm]);
+    if (!pinLoading && !hasPin) onConfirmRef.current();
+  }, [pinLoading, hasPin]);
 
   if (pinLoading || !hasPin) return (
     <div className="flex flex-1 items-center justify-center px-6 py-8">

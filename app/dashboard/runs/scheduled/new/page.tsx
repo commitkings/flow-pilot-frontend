@@ -611,6 +611,17 @@ export default function NewScheduledRunPage() {
             <span className="bg-amber-500 px-2 py-1.5 text-center">Review</span>
             <span className="bg-red-500 px-2 py-1.5 text-center">Block</span>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+            {riskTolerance <= 0.25
+              ? "Very cautious. Only payments that look completely safe will go through. If anything seems off, it gets blocked."
+              : riskTolerance <= 0.45
+              ? "Cautious. Safe payments go through automatically. Anything that looks a little suspicious gets flagged for you to check."
+              : riskTolerance <= 0.60
+              ? "Balanced. Most payments go through. Only the ones that look genuinely risky will be flagged or stopped."
+              : riskTolerance <= 0.75
+              ? "Relaxed. Almost all payments go through. Only obvious problems get flagged."
+              : "Very relaxed. Payments go through with minimal checks. Only use this if you're very confident in your data."}
+          </p>
         </Field>
 
         <Field label="Budget Cap (Optional)">
