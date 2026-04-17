@@ -23,6 +23,14 @@ const SCOPES = [
   { value: "approvals:write", label: "Submit approvals" },
   { value: "transactions:read", label: "Read transactions" },
   { value: "audit:read", label: "Read audit logs" },
+  { value: "wallet:read", label: "Read wallet balance & history" },
+  { value: "wallet:write", label: "Initiate wallet credits" },
+  { value: "recipients:read", label: "Read saved recipients" },
+  { value: "recipients:write", label: "Create & manage recipients" },
+  { value: "scheduled_runs:read", label: "Read scheduled runs" },
+  { value: "scheduled_runs:write", label: "Create & manage scheduled runs" },
+  { value: "webhooks:read", label: "Read webhook endpoints" },
+  { value: "webhooks:write", label: "Manage webhook endpoints" },
 ] as const;
 
 const EXPIRY_OPTIONS = [

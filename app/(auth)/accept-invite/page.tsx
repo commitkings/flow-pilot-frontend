@@ -201,22 +201,31 @@ function AcceptInviteForm() {
   return (
     <div className="flex flex-col items-start w-full">
       {/* Invite context card */}
-      <div className="mb-8 w-full rounded-2xl border border-border/60 bg-muted/20 px-5 py-4 space-y-3">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-0.5">You&apos;re joining</p>
-          <p className="text-lg font-bold text-foreground leading-tight">{invite.business_name}</p>
+      <div className="mb-8 w-full rounded-2xl border border-border/60 bg-muted/20 overflow-hidden">
+        {/* Business header */}
+        <div className="px-5 py-4 border-b border-border/50">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">You&apos;re joining</p>
+          <p className="text-xl font-extrabold text-foreground leading-tight">{invite.business_name}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        {/* Role + inviter row */}
+        <div className="px-5 py-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 bg-muted/30">
           <RoleBadge role={invite.role} />
           {invite.inviter_name && (
             <span className="text-xs text-muted-foreground">
-              invited by <span className="font-semibold text-foreground">{invite.inviter_name}</span>
+              Invited by{" "}
+              <span className="font-semibold text-foreground">{invite.inviter_name}</span>
             </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground border-t border-border/50 pt-2.5">
-          Joining as <span className="font-semibold text-foreground">{invite.invited_email}</span>
-        </p>
+
+        {/* Email row */}
+        <div className="px-5 py-3 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Joining as</span>
+          <span className="text-xs font-semibold text-foreground bg-muted px-2 py-0.5 rounded-md">
+            {invite.invited_email}
+          </span>
+        </div>
       </div>
 
       <h1 className="text-2xl font-extrabold tracking-tight text-foreground">

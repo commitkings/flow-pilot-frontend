@@ -113,13 +113,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleTourSkip = async () => {
     setShowTour(false);
+    const wasFirstTour = !user?.has_taken_tour;
     try {
       await updateMe({ has_taken_tour: true } as never);
       await refreshUser();
     } catch {
       // best-effort
     }
-    // No 2FA prompt on skip/cancel
+    if (wasFirstTour && user && !user.totp_enabled) {
+      setShow2FAPrompt(true);
+    }
   };
 
   useIdleTimeout({
