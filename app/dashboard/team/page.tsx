@@ -52,6 +52,7 @@ import { useOrgProfile } from "@/hooks/use-settings-queries";
 import type { BulkImportResult } from "@/lib/api-client";
 import type { TeamMember } from "@/lib/api-types";
 import { useQuery } from "@tanstack/react-query";
+import { toCsvFile, IMPORT_ACCEPT } from "@/lib/file-utils";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -426,11 +427,11 @@ export default function TeamPage() {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.name.endsWith(".csv")) {
+    if (file && (file.name.endsWith(".csv") || file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))) {
       setImportFile(file);
       setImportResults(null);
     } else {
-      toast.error("Please drop a .csv file.");
+      toast.error("Please drop a .csv or .xlsx file.");
     }
   };
 
@@ -447,7 +448,8 @@ export default function TeamPage() {
     if (!importFile) return;
     setImportLoading(true);
     try {
-      const result = await importTeamMembers(importFile);
+      const fileToSend = await toCsvFile(importFile);
+      const result = await importTeamMembers(fileToSend);
       setImportResults(result);
       const { added, invited, skipped, failed } = result.summary;
       if (failed === 0) {
@@ -665,7 +667,7 @@ export default function TeamPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".csv"
+                    accept={IMPORT_ACCEPT}
                     className="sr-only"
                     onChange={handleFileSelect}
                   />

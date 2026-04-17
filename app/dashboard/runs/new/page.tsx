@@ -19,6 +19,7 @@ import { useConfirmRun, useAbandonConversation } from "@/hooks/use-chat-mutation
 import type { ConversationSummary, SavedRecipient } from "@/lib/api-types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useVendors } from "@/hooks/use-vendor-queries";
+import { readFileAsCsv, IMPORT_ACCEPT } from "@/lib/file-utils";
 
 type Mode = "chat" | "form";
 
@@ -329,10 +330,9 @@ export default function NewRunPage() {
     if (!file) return;
     setCsvError(null);
     setCsvDuplicateWarning(null);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+    readFileAsCsv(file).then((text) => {
       try {
-        const parsed = parseCsv(evt.target?.result as string);
+        const parsed = parseCsv(text);
         if (!parsed.length) throw new Error("No valid recipients found.");
 
         setRecipients((prev) => {
@@ -373,10 +373,11 @@ export default function NewRunPage() {
           return isOnlyBlankRow ? parsed : [...prev, ...parsed];
         });
       } catch (err) {
-        setCsvError(err instanceof Error ? err.message : "Failed to parse CSV.");
+        setCsvError(err instanceof Error ? err.message : "Failed to parse file.");
       }
-    };
-    reader.readAsText(file);
+    }).catch((err) => {
+      setCsvError(err instanceof Error ? err.message : "Failed to read file.");
+    });
     e.target.value = "";
   };
 
@@ -794,7 +795,7 @@ export default function NewRunPage() {
               className="flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand/20"
             >
               <Upload className="h-3 w-3" />
-              Upload CSV
+              Upload CSV / XLSX
             </button>
             <button
               type="button"
@@ -804,7 +805,7 @@ export default function NewRunPage() {
               <Store className="h-3 w-3" />
               From Recipients
             </button>
-            <input ref={csvRef} type="file" accept=".csv,text/csv" onChange={handleCsvUpload} className="sr-only" />
+            <input ref={csvRef} type="file" accept={IMPORT_ACCEPT} onChange={handleCsvUpload} className="sr-only" />
           </div>
         </div>
 

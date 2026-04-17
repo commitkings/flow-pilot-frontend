@@ -28,6 +28,7 @@ import {
 import type { SavedRecipient, CreateSavedRecipientPayload } from "@/lib/api-types";
 import { BankSelectInput, Field, TextInput, TextareaInput } from "@/components/ui/form-fields";
 import type { Institution } from "@/lib/api-types";
+import { readFileAsCsv, IMPORT_ACCEPT } from "@/lib/file-utils";
 
 /* ── Helpers ─────────────────────────────────────────────────────────────────── */
 
@@ -364,10 +365,9 @@ export default function RecipientsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setImportResult(null);
+    e.target.value = "";
 
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const text = ev.target?.result as string;
+    readFileAsCsv(file).then(async (text) => {
       const lines = text.split(/\r?\n/).filter((l) => l.trim());
       if (lines.length < 2) return;
 
@@ -427,10 +427,9 @@ export default function RecipientsPage() {
       }
 
       setImportResult(result);
-    };
-
-    reader.readAsText(file);
-    e.target.value = "";
+    }).catch(() => {
+      setImportResult({ added: 0, skipped: 0, errors: ["Failed to read file. Please upload a valid CSV or XLSX file."] });
+    });
   }
 
   return (
@@ -454,9 +453,9 @@ export default function RecipientsPage() {
             className="flex items-center gap-1.5 rounded-full border border-brand/30 px-3 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand/5"
           >
             <Upload className="h-3.5 w-3.5" />
-            Import CSV
+            Import CSV / XLSX
           </button>
-          <input ref={csvRef} type="file" accept=".csv,text/csv" onChange={handleCsvUpload} className="sr-only" />
+          <input ref={csvRef} type="file" accept={IMPORT_ACCEPT} onChange={handleCsvUpload} className="sr-only" />
           <Button onClick={() => { setEditingRecipient(null); setShowModal(true); }} className="rounded-full bg-brand text-white hover:opacity-90 gap-1.5">
             <Plus className="h-4 w-4" />
             Add Recipient

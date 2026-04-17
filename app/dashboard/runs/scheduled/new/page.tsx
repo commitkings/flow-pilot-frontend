@@ -19,6 +19,7 @@ import { useKycStatus } from "@/hooks/use-kyc-queries";
 import { useCredits } from "@/hooks/use-credits";
 import type { ScheduledRunType } from "@/lib/api-scheduled-runs";
 import Link from "next/link";
+import { readFileAsCsv, IMPORT_ACCEPT } from "@/lib/file-utils";
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
@@ -306,10 +307,9 @@ export default function NewScheduledRunPage() {
     if (!file) return;
     setCsvError(null);
     setCsvDuplicateWarning(null);
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+    readFileAsCsv(file).then((text) => {
       try {
-        const parsed = parseCsv(evt.target?.result as string);
+        const parsed = parseCsv(text);
         if (!parsed.length) throw new Error("No valid recipients found.");
 
         setRecipients((prev) => {
@@ -340,10 +340,11 @@ export default function NewScheduledRunPage() {
           return isOnlyBlankRow ? parsed : [...prev, ...parsed];
         });
       } catch (err) {
-        setCsvError(err instanceof Error ? err.message : "Failed to parse CSV.");
+        setCsvError(err instanceof Error ? err.message : "Failed to parse file.");
       }
-    };
-    reader.readAsText(file);
+    }).catch((err) => {
+      setCsvError(err instanceof Error ? err.message : "Failed to read file.");
+    });
     e.target.value = "";
   };
 
@@ -673,9 +674,9 @@ export default function NewScheduledRunPage() {
               className="flex items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-brand/20"
             >
               <Upload className="h-3 w-3" />
-              Upload CSV
+              Upload CSV / XLSX
             </button>
-            <input ref={csvRef} type="file" accept=".csv,text/csv" onChange={handleCsvUpload} className="sr-only" />
+            <input ref={csvRef} type="file" accept={IMPORT_ACCEPT} onChange={handleCsvUpload} className="sr-only" />
           </div>
         </div>
 
