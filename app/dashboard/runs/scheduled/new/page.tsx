@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, CalendarClock, CalendarDays, Download, Plus, RefreshCw, Rocket, Trash2, Upload,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Field, TextInput, TextareaInput, DateRangeInput, BankSelectInput, NumericInput, AmountInput, SelectInput,
@@ -13,7 +13,7 @@ import { naira } from "@/lib/mock-data";
 import { useInstitutions } from "@/hooks/use-institutions";
 import type { Institution } from "@/lib/api-types";
 import { useAuth } from "@/context/auth-context";
-import { useCreateScheduledRun } from "@/hooks/use-scheduled-runs";
+import { useCreateScheduledRun, useUpdateScheduledRun } from "@/hooks/use-scheduled-runs";
 import { useTeamMembers } from "@/hooks/use-team-queries";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import { useCredits } from "@/hooks/use-credits";
@@ -168,6 +168,10 @@ export default function NewScheduledRunPage() {
   const accountType = kycData?.limit_info?.account_type ?? "business";
   const isIndividual = accountType === "individual";
 
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("editId");
+  const isEditing = Boolean(editId);
+
   // Analysts cannot create runs
   useEffect(() => {
     if (user && role === "analyst") router.replace("/dashboard/runs");
@@ -203,18 +207,36 @@ export default function NewScheduledRunPage() {
   }
 
   /* ── Scheduling state ── */
-  const [runType, setRunType] = useState<ScheduledRunType>("recurring");
-  const [scheduleName, setScheduleName] = useState("");
-  const [frequency, setFrequency] = useState("");
-  const [customCron, setCustomCron] = useState("");
-  const [runAt, setRunAt] = useState("");
+  const [runType, setRunType] = useState<ScheduledRunType>(() =>
+    (searchParams.get("runType") as ScheduledRunType) || "recurring"
+  );
+  const [scheduleName, setScheduleName] = useState(() => searchParams.get("name") ?? "");
+  const [frequency, setFrequency] = useState(() => {
+    const cron = searchParams.get("cron") ?? "";
+    if (!cron) return "";
+    const matched = FREQUENCY_OPTIONS.find((o) => o.cron === cron);
+    return matched ? matched.value : "custom";
+  });
+  const [customCron, setCustomCron] = useState(() => {
+    const cron = searchParams.get("cron") ?? "";
+    if (!cron) return "";
+    return FREQUENCY_OPTIONS.find((o) => o.cron === cron) ? "" : cron;
+  });
+  const [runAt, setRunAt] = useState(() => {
+    const nextRunAt = searchParams.get("nextRunAt");
+    if (!nextRunAt) return "";
+    const d = new Date(nextRunAt);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
 
   /* ── Payout state ── */
   const { data: institutionsData, isLoading: loadingInstitutions, isError: institutionsIsError } = useInstitutions({ enabled: true });
   const institutionOptions = useMemo(() => buildInstitutionOptions(institutionsData?.data ?? []), [institutionsData]);
   const institutionsError = institutionsIsError ? "Unable to load institutions." : null;
 
-  const [objective, setObjective] = useState("");
+  const [objective, setObjective] = useState(() => searchParams.get("objective") ?? "");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [riskTolerance, setRiskTolerance] = useState(0.35);
@@ -237,7 +259,9 @@ export default function NewScheduledRunPage() {
   const showReviewerSelect = approvalCapableMembers.length > 1;
 
   const csvRef = useRef<HTMLInputElement>(null);
-  const { mutate: createScheduledRun, isPending } = useCreateScheduledRun();
+  const { mutate: createScheduledRun, isPending: createPending } = useCreateScheduledRun();
+  const { mutate: updateScheduledRun, isPending: updatePending } = useUpdateScheduledRun();
+  const isPending = isEditing ? updatePending : createPending;
 
   /* ── Derived scheduling state ── */
   const isCustom = frequency === "custom";
@@ -347,14 +371,15 @@ export default function NewScheduledRunPage() {
     ? runAt.length > 0 && isFuture(runAt)
     : Boolean(frequency) && (isCustom ? customCronValid : true);
 
-  const canSubmit =
-    scheduleName.trim().length > 0 &&
-    objective.trim().length > 0 &&
-    fromDate && toDate &&
-    recipients.length > 0 &&
-    institutionOptions.length > 0 &&
-    !loadingInstitutions && !institutionsError && !hasInvalidField &&
-    scheduleValid && !isPending;
+  const canSubmit = isEditing
+    ? scheduleName.trim().length > 0 && objective.trim().length > 0 && scheduleValid && !isPending
+    : (scheduleName.trim().length > 0 &&
+       objective.trim().length > 0 &&
+       Boolean(fromDate) && Boolean(toDate) &&
+       recipients.length > 0 &&
+       institutionOptions.length > 0 &&
+       !loadingInstitutions && !institutionsError && !hasInvalidField &&
+       scheduleValid && !isPending);
 
   const updateRow = (id: string, patch: Partial<Recipient>) =>
     setRecipients((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -366,6 +391,26 @@ export default function NewScheduledRunPage() {
     setSubmitted(true);
     setSubmitError(null);
     if (!canSubmit) return;
+
+    if (isEditing) {
+      const updatePayload: { name: string; objective: string; cron_expression?: string; frequency_label?: string; run_at?: string } = {
+        name: scheduleName.trim(),
+        objective: objective.trim(),
+      };
+      if (runType === "one_time") {
+        updatePayload.frequency_label = `One-time: ${formatDatetimeLocal(runAt)}`;
+        updatePayload.run_at = localDatetimeToUTC(runAt);
+      } else {
+        updatePayload.cron_expression = isCustom ? customCron.trim() : selectedOption!.cron;
+        updatePayload.frequency_label = isCustom ? `Custom: ${customCron.trim()}` : selectedOption!.label;
+      }
+      updateScheduledRun(
+        { id: editId!, payload: updatePayload },
+        { onSuccess: () => router.push("/dashboard/runs/scheduled") }
+      );
+      return;
+    }
+
     if (!businessId) { setSubmitError("No business found on your account."); return; }
 
     const candidates = recipients.map((r) => ({
@@ -421,8 +466,12 @@ export default function NewScheduledRunPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div>
-          <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">Schedule a Payout</h1>
-          <p className="hidden text-sm text-muted-foreground sm:block">Set up a one-time or recurring automated payout run.</p>
+          <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">
+            {isEditing ? "Edit Scheduled Payout" : "Schedule a Payout"}
+          </h1>
+          <p className="hidden text-sm text-muted-foreground sm:block">
+            {isEditing ? "Update the schedule configuration for this payout." : "Set up a one-time or recurring automated payout run."}
+          </p>
         </div>
       </div>
 
@@ -431,7 +480,7 @@ export default function NewScheduledRunPage() {
         <h2 className="text-xs font-black uppercase tracking-wider text-muted-foreground">Schedule</h2>
 
         {/* Run type toggle */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className={`grid grid-cols-2 gap-2 ${isEditing ? "opacity-60 pointer-events-none" : ""}`}>
           <RunTypeButton
             active={runType === "one_time"}
             icon={<CalendarDays className="h-4 w-4" />}
@@ -447,6 +496,9 @@ export default function NewScheduledRunPage() {
             onClick={() => setRunType("recurring")}
           />
         </div>
+        {isEditing && (
+          <p className="text-[11px] text-muted-foreground/70">Run type cannot be changed after creation.</p>
+        )}
 
         <Field label="Schedule Name">
           <TextInput
@@ -747,7 +799,7 @@ export default function NewScheduledRunPage() {
 
       {/* Amount breakdown */}
       {total > 0 && (() => {
-        const fee = Math.ceil(total * 0.002 * 100) / 100;
+        const fee = Math.max(50, Math.ceil(total * 0.006 * 100) / 100);
         const grandTotal = total + fee;
         return (
           <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm space-y-1">
@@ -756,7 +808,7 @@ export default function NewScheduledRunPage() {
               <span>{naira(total)}</span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>Platform fee (0.2%)</span>
+              <span>Platform fee (0.6%, min ₦50)</span>
               <span>{naira(fee)}</span>
             </div>
             <div className="flex items-center justify-between border-t border-border pt-1 font-black text-foreground">
@@ -785,7 +837,9 @@ export default function NewScheduledRunPage() {
             className="gap-2 rounded-full bg-brand px-8 text-white hover:opacity-90"
           >
             <Rocket className="h-4 w-4" />
-            {runType === "one_time" ? "Schedule One-time Payout" : "Schedule Recurring Payout"}
+            {isEditing
+              ? "Update Scheduled Payout"
+              : runType === "one_time" ? "Schedule One-time Payout" : "Schedule Recurring Payout"}
           </Button>
         </div>
       </div>

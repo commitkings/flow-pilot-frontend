@@ -32,6 +32,11 @@ const ALL_STEPS: TourStep[] = [
     description: "View and manage all payouts. Use Scheduled for recurring disbursements and Templates for reusable payout workflows.",
   },
   {
+    tourId: "recipients",
+    title: "Recipients",
+    description: "Save and manage frequently paid people. Add a recipient once and reuse them across multiple payout runs without re-entering details.",
+  },
+  {
     tourId: "approvals",
     title: "Approvals",
     description: "Review candidates before money moves. Risky transactions are auto-flagged.",
@@ -149,26 +154,9 @@ export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeM
     const mobile = vw < 768;
     setIsMobile(mobile);
 
-    // ── Mobile sidebar step: top strip so the open sidebar is visible ────────
-    if (mobile && isSidebarStep) {
-      setRect(null);
-      setTooltipPos({
-        position: "fixed",
-        top: "0",
-        left: "0",
-        right: "0",
-        width: "100%",
-        borderTopLeftRadius: 0,
-        borderTopRightRadius: 0,
-        borderBottomLeftRadius: "1rem",
-        borderBottomRightRadius: "1rem",
-      });
-      return;
-    }
-
-    // ── Mobile non-sidebar step: bottom sheet ────────────────────────────────
+    // ── Mobile: bottom sheet for all steps (rect spotlight handled by sidebar useEffect) ──
     if (mobile) {
-      setRect(null);
+      if (!isSidebarStep) setRect(null);
       setTooltipPos({
         position: "fixed",
         bottom: "0",
@@ -243,17 +231,30 @@ export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeM
     });
   }, [step, isSidebarStep]);
 
-  // Open/close the mobile sidebar based on step type
+  // Open/close the mobile sidebar and spotlight the nav item after animation
   useEffect(() => {
     const vw = window.innerWidth;
     if (vw >= 768) return; // desktop — do nothing
 
     if (isSidebarStep) {
+      setRect(null); // clear stale rect immediately
       openMobileMenu?.();
+      // Wait for the drawer animation to complete, then find and spotlight the element
+      const timer = setTimeout(() => {
+        if (!step.tourId) return;
+        const el = document.querySelector(`[data-tour="${step.tourId}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "instant", block: "nearest" });
+          const r = el.getBoundingClientRect();
+          setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
     } else {
       closeMobileMenu?.();
+      setRect(null);
     }
-  }, [index, isSidebarStep, openMobileMenu, closeMobileMenu]);
+  }, [index, isSidebarStep, step, openMobileMenu, closeMobileMenu]);
 
   useEffect(() => {
     positionTooltip();
@@ -273,8 +274,8 @@ export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeM
 
   const goPrev = () => setIndex((i) => Math.max(0, i - 1));
 
-  // On mobile sidebar steps we skip the dark overlay — the sidebar already dims the content
-  const showOverlay = !(isMobile && isSidebarStep);
+  // Show overlay on desktop always; on mobile only when we have a rect to spotlight
+  const showOverlay = !isMobile || rect !== null;
 
   return (
     <>
@@ -301,7 +302,7 @@ export function TourGuide({ userRole, onComplete, onSkip, openMobileMenu, closeM
           {/* Mobile sidebar-step hint */}
           {isMobile && isSidebarStep && (
             <p className="mb-3 text-xs font-semibold text-brand flex items-center gap-1">
-              <span>👈</span> See it highlighted in the menu
+              <span>☝️</span> It&apos;s highlighted in the menu above
             </p>
           )}
 

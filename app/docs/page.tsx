@@ -44,7 +44,8 @@ const NAV_GROUPS = [
     items: [
       { id: "runs",         label: "Runs" },
       { id: "candidates",   label: "Candidates" },
-      { id: "approvals",    label: "Approvals" },
+      { id: "recipients",   label: "Recipients" },
+      { id: "wallet",       label: "Wallet" },
       { id: "transactions", label: "Transactions" },
       { id: "audit-log",    label: "Audit Log" },
       { id: "webhooks",     label: "Webhooks" },
@@ -332,28 +333,6 @@ const CANDIDATES_RESPONSE = `{
   "has_more": true
 }`;
 
-const APPROVE_REQUEST = `{
-  "candidate_ids": [
-    "a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6",
-    "b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e"
-  ]
-}`;
-
-const APPROVE_RESPONSE = `{
-  "approved": 2,
-  "message": "2 candidates approved successfully."
-}`;
-
-const REJECT_REQUEST = `{
-  "candidate_ids": ["a1b2c3d4-e5f6-7a8b-9c0d-e1f2a3b4c5d6"],
-  "reason": "Duplicate detected"
-}`;
-
-const REJECT_RESPONSE = `{
-  "rejected": 1,
-  "message": "1 candidate rejected."
-}`;
-
 const TRANSACTIONS_RESPONSE = `{
   "data": [
     {
@@ -374,21 +353,52 @@ const TRANSACTIONS_RESPONSE = `{
   "has_more": true
 }`;
 
-const APPROVALS_RESPONSE = `{
+const RECIPIENTS_LIST_RESPONSE = `{
   "data": [
     {
-      "run_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "objective": "Monthly payroll disbursement for Lagos office — June 2026",
-      "status": "awaiting_approval",
-      "pending_candidates": 8,
-      "total_candidates": 142,
-      "created_at": "2026-06-01T08:00:00Z"
+      "id": "d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a",
+      "name": "Adaeze Okonkwo",
+      "account_number": "0123456789",
+      "institution_code": "058",
+      "bank_name": "GTBank",
+      "narration_note": "Monthly consulting fee",
+      "created_at": "2026-03-01T10:00:00Z"
     }
   ],
-  "total": 3,
+  "total": 18,
   "limit": 50,
   "offset": 0,
   "has_more": false
+}`;
+
+const RECIPIENT_CREATE_REQUEST = `{
+  "name": "Adaeze Okonkwo",
+  "account_number": "0123456789",
+  "institution_code": "058",
+  "bank_name": "GTBank",
+  "narration_note": "Monthly consulting fee"
+}`;
+
+const RECIPIENT_CREATE_RESPONSE = `{
+  "id": "d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a",
+  "name": "Adaeze Okonkwo",
+  "account_number": "0123456789",
+  "institution_code": "058",
+  "bank_name": "GTBank",
+  "narration_note": "Monthly consulting fee",
+  "created_at": "2026-04-17T10:00:00Z"
+}`;
+
+const RECIPIENT_DELETE_RESPONSE = `{
+  "status": "deleted",
+  "id": "d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a"
+}`;
+
+const WALLET_BALANCE_RESPONSE = `{
+  "balance": 12500000.00,
+  "currency": "NGN",
+  "ai_credit_balance": 47,
+  "updated_at": "2026-04-17T09:45:00Z"
 }`;
 
 const AUDIT_RESPONSE = `{
@@ -593,7 +603,7 @@ export default function DocsPage() {
               </div>
               <p className="text-[#b8c6d3] text-sm leading-relaxed max-w-lg">
                 Build integrations against the FlowPilot treasury execution platform.
-                Manage runs, candidates, approvals, transactions, and audit events programmatically.
+                Manage runs, recipients, wallet balance, transactions, and audit events programmatically.
               </p>
               <div className="flex items-center gap-2 mt-4">
                 <span className="text-xs text-[#64748b] font-mono">Base URL</span>
@@ -689,11 +699,13 @@ export default function DocsPage() {
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
                 {[
-                  { scope: "runs:read",       desc: "Read runs and their metadata" },
-                  { scope: "runs:write",       desc: "Create new payment runs" },
-                  { scope: "transactions:read", desc: "Query transaction history" },
-                  { scope: "audit:read",       desc: "Access the audit event log" },
-                  { scope: "approvals:write",  desc: "Approve or reject candidates within a run" },
+                  { scope: "runs:read",         desc: "Read runs and their metadata" },
+                  { scope: "runs:write",         desc: "Create new payment runs" },
+                  { scope: "recipients:read",    desc: "List saved recipients" },
+                  { scope: "recipients:write",   desc: "Create or delete saved recipients" },
+                  { scope: "wallet:read",        desc: "Read wallet balance and AI credit balance" },
+                  { scope: "transactions:read",  desc: "Query transaction history" },
+                  { scope: "audit:read",         desc: "Access the audit event log" },
                 ].map((row) => (
                   <tr key={row.scope} className="hover:bg-white/2 transition-colors">
                     <td className="px-4 py-3">
@@ -834,45 +846,66 @@ export default function DocsPage() {
           />
         </section>
 
-        {/* ── Approvals ── */}
-        <section id="approvals">
-          <SectionHeading id="approvals">Approvals</SectionHeading>
+        {/* ── Recipients ── */}
+        <section id="recipients">
+          <SectionHeading id="recipients">Recipients</SectionHeading>
           <p className="text-sm text-[#b8c6d3] leading-relaxed mb-2">
-            Approve or reject individual candidates within a run. Bulk operations are supported —
-            pass multiple <IC>candidate_ids</IC> in a single request.
-            All approval operations require the <IC>approvals:write</IC> scope.
+            Saved recipients let you store frequently paid beneficiaries once and reuse them
+            across multiple payout runs. Each recipient has a name, account number, bank code,
+            and an optional default narration note.
           </p>
 
           <EndpointBlock
-            id="list-approvals"
+            id="list-recipients"
             method="GET"
-            path="/public/approvals"
-            description="Return a paginated list of runs currently in awaiting_approval status, including a summary of pending candidate counts."
+            path="/public/recipients"
+            description="Return a paginated list of saved recipients for your organisation. Use the search parameter to filter by name or account number."
             params={[
+              { name: "search", type: "string",  required: false, description: "Filter by name or account number (partial match)" },
               { name: "limit",  type: "integer", required: false, description: "Number of records to return (default 50, max 200)" },
               { name: "offset", type: "integer", required: false, description: "Number of records to skip for pagination" },
             ]}
-            responseBody={APPROVALS_RESPONSE}
+            responseBody={RECIPIENTS_LIST_RESPONSE}
+            scope="recipients:read"
           />
 
           <EndpointBlock
-            id="approve-candidates"
+            id="create-recipient"
             method="POST"
-            path="/public/runs/{run_id}/approve"
-            description="Approve one or more candidates within a run. Approved candidates are queued for disbursement."
-            requestBody={APPROVE_REQUEST}
-            responseBody={APPROVE_RESPONSE}
-            scope="approvals:write"
+            path="/public/recipients"
+            description="Create a new saved recipient. The institution_code is the CBN-assigned bank code (e.g. 058 for GTBank)."
+            requestBody={RECIPIENT_CREATE_REQUEST}
+            responseBody={RECIPIENT_CREATE_RESPONSE}
+            statusCode={201}
+            scope="recipients:write"
           />
 
           <EndpointBlock
-            id="reject-candidates"
-            method="POST"
-            path="/public/runs/{run_id}/reject"
-            description="Reject one or more candidates. A rejection reason is optional but recommended for audit trail purposes."
-            requestBody={REJECT_REQUEST}
-            responseBody={REJECT_RESPONSE}
-            scope="approvals:write"
+            id="delete-recipient"
+            method="DELETE"
+            path="/public/recipients/{recipient_id}"
+            description="Permanently delete a saved recipient. This does not affect past payout runs that referenced the recipient."
+            responseBody={RECIPIENT_DELETE_RESPONSE}
+            scope="recipients:write"
+          />
+        </section>
+
+        {/* ── Wallet ── */}
+        <section id="wallet">
+          <SectionHeading id="wallet">Wallet</SectionHeading>
+          <p className="text-sm text-[#b8c6d3] leading-relaxed mb-2">
+            Your FlowPilot wallet is debited on each approved payout run. Fund it via bank
+            transfer to your virtual account in the dashboard. The wallet endpoint also returns
+            your remaining AI credit balance.
+          </p>
+
+          <EndpointBlock
+            id="get-wallet-balance"
+            method="GET"
+            path="/public/wallet/balance"
+            description="Return the current wallet balance (NGN), currency, and remaining AI credit balance for your organisation."
+            responseBody={WALLET_BALANCE_RESPONSE}
+            scope="wallet:read"
           />
         </section>
 

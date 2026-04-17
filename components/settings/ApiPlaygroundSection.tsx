@@ -5,7 +5,7 @@ import { AlertCircle, Lock, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type HttpMethod = "GET" | "POST";
+type HttpMethod = "GET" | "POST" | "DELETE";
 
 interface ParamDef {
   name: string;
@@ -51,6 +51,20 @@ const ENDPOINTS: EndpointDef[] = [
     bodyParams: [],
   },
   {
+    id: "create_run",
+    method: "POST",
+    path: "/runs",
+    description: "Create a new payout run. AI planning and scoring agents are triggered automatically.",
+    scope: "runs:write",
+    pathParams: [],
+    queryParams: [],
+    bodyParams: [
+      { name: "objective", description: "What this payout is for", placeholder: "Monthly payroll — April 2026", required: true },
+      { name: "risk_tolerance", description: "Risk threshold 0.0–1.0 (default 0.35)", placeholder: "0.35" },
+      { name: "budget_cap", description: "Max total spend in NGN", placeholder: "10000000" },
+    ],
+  },
+  {
     id: "list_candidates",
     method: "GET",
     path: "/runs/{run_id}/candidates",
@@ -66,28 +80,54 @@ const ENDPOINTS: EndpointDef[] = [
     bodyParams: [],
   },
   {
-    id: "approve_run",
+    id: "list_recipients",
+    method: "GET",
+    path: "/recipients",
+    description: "List saved recipients for your organisation.",
+    scope: "recipients:read",
+    pathParams: [],
+    queryParams: [
+      { name: "search", description: "Search by name or account number", placeholder: "Adaeze" },
+      { name: "limit", description: "Max records (1–200)", placeholder: "50" },
+      { name: "offset", description: "Skip first N records", placeholder: "0" },
+    ],
+    bodyParams: [],
+  },
+  {
+    id: "create_recipient",
     method: "POST",
-    path: "/runs/{run_id}/approve",
-    description: "Approve a run that is awaiting approval.",
-    scope: "approvals:write",
-    pathParams: ["run_id"],
+    path: "/recipients",
+    description: "Save a new recipient for future reuse across payout runs.",
+    scope: "recipients:write",
+    pathParams: [],
     queryParams: [],
     bodyParams: [
-      { name: "notes", description: "Optional approval notes", placeholder: "Looks good" },
+      { name: "name", description: "Beneficiary full name", placeholder: "Adaeze Okonkwo", required: true },
+      { name: "account_number", description: "10-digit NUBAN account number", placeholder: "0123456789", required: true },
+      { name: "institution_code", description: "CBN bank code", placeholder: "058", required: true },
+      { name: "bank_name", description: "Human-readable bank name", placeholder: "GTBank" },
+      { name: "narration_note", description: "Default payment narration", placeholder: "Consulting retainer" },
     ],
   },
   {
-    id: "reject_run",
-    method: "POST",
-    path: "/runs/{run_id}/reject",
-    description: "Reject a run that is awaiting approval.",
-    scope: "approvals:write",
-    pathParams: ["run_id"],
+    id: "delete_recipient",
+    method: "DELETE",
+    path: "/recipients/{recipient_id}",
+    description: "Permanently delete a saved recipient.",
+    scope: "recipients:write",
+    pathParams: ["recipient_id"],
     queryParams: [],
-    bodyParams: [
-      { name: "notes", description: "Optional rejection reason", placeholder: "Amount exceeds policy limit" },
-    ],
+    bodyParams: [],
+  },
+  {
+    id: "wallet_balance",
+    method: "GET",
+    path: "/wallet/balance",
+    description: "Get the current wallet balance and AI credit balance for your organisation.",
+    scope: "wallet:read",
+    pathParams: [],
+    queryParams: [],
+    bodyParams: [],
   },
   {
     id: "list_transactions",
@@ -121,8 +161,9 @@ const ENDPOINTS: EndpointDef[] = [
 ];
 
 const METHOD_BADGE: Record<HttpMethod, string> = {
-  GET:  "border-border bg-muted text-foreground",
-  POST: "border-brand/30 bg-brand/10 text-brand",
+  GET:    "border-border bg-muted text-foreground",
+  POST:   "border-brand/30 bg-brand/10 text-brand",
+  DELETE: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
 export function ApiPlaygroundSection() {

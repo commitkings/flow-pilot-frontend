@@ -73,6 +73,9 @@ export interface UpdateScheduledRunPayload {
   name?: string;
   objective?: string;
   is_active?: boolean;
+  cron_expression?: string;
+  frequency_label?: string;
+  run_at?: string;
 }
 
 export function updateScheduledRun(

@@ -13,10 +13,10 @@ import {
   Play,
   RefreshCw,
   Trash2,
-  X,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { PageHeader } from "@/components/ui/page-header";
@@ -24,7 +24,6 @@ import {
   useScheduledRuns,
   useToggleScheduledRun,
   useDeleteScheduledRun,
-  useUpdateScheduledRun,
 } from "@/hooks/use-scheduled-runs";
 import { useKycStatus } from "@/hooks/use-kyc-queries";
 import type { ScheduledRun } from "@/lib/api-scheduled-runs";
@@ -104,69 +103,21 @@ function RunTypeBadge({ runType }: { runType: "recurring" | "one_time" }) {
   );
 }
 
-/* ── Edit Modal ──────────────────────────────────────────────────────────── */
-
-function EditModal({ run, onClose }: { run: ScheduledRun; onClose: () => void }) {
-  const [name, setName] = useState(run.name);
-  const [objective, setObjective] = useState(run.objective);
-  const { mutate: update, isPending } = useUpdateScheduledRun();
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim() || !objective.trim()) return;
-    update(
-      { id: run.id, payload: { name: name.trim(), objective: objective.trim() } },
-      { onSuccess: onClose }
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-black text-foreground">Edit Scheduled Payout</h2>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground/80">Name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-10 w-full rounded-full border border-border/60 bg-background px-4 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-wider text-muted-foreground/80">Objective</label>
-            <textarea
-              value={objective}
-              onChange={(e) => setObjective(e.target.value)}
-              rows={3}
-              className="w-full rounded-xl border border-border/60 bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-brand focus:ring-1 focus:ring-brand/10 resize-none"
-            />
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} disabled={isPending} className="flex-1 rounded-full border border-border/60 bg-transparent py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground disabled:opacity-40">Cancel</button>
-            <button type="submit" disabled={isPending || !name.trim() || !objective.trim()} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-brand py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40">
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 /* ── Row ─────────────────────────────────────────────────────────────────── */
 
 function ScheduledRunRow({ run }: { run: ScheduledRun }) {
+  const router = useRouter();
   const { mutate: toggle, isPending: toggling } = useToggleScheduledRun();
   const { mutate: remove, isPending: deleting } = useDeleteScheduledRun();
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+
+  const handleEdit = () => {
+    const params = new URLSearchParams({ editId: run.id, name: run.name, objective: run.objective, runType: run.run_type });
+    if (run.cron_expression) params.set("cron", run.cron_expression);
+    if (run.frequency_label) params.set("frequencyLabel", run.frequency_label);
+    if (run.next_run_at) params.set("nextRunAt", run.next_run_at);
+    router.push(`/dashboard/runs/scheduled/new?${params.toString()}`);
+  };
 
   const rowState = getRowState(run);
   const isOneTime = run.run_type === "one_time";
@@ -245,7 +196,7 @@ function ScheduledRunRow({ run }: { run: ScheduledRun }) {
               variant="ghost"
               size="sm"
               className="h-8 w-8 rounded-full p-0 text-muted-foreground hover:text-foreground"
-              onClick={() => setEditOpen(true)}
+              onClick={handleEdit}
             >
               <Pencil className="h-3.5 w-3.5" />
             </Button>
@@ -325,7 +276,6 @@ function ScheduledRunRow({ run }: { run: ScheduledRun }) {
         </div>
       </td>
     </tr>
-    {editOpen && <EditModal run={run} onClose={() => setEditOpen(false)} />}
     </>
   );
 }
