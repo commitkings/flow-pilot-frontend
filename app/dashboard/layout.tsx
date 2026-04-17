@@ -228,7 +228,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className={`inline-block h-1.5 w-1.5 rounded-full animate-pulse ${kycStatus === "pending" ? "bg-amber-500" : "bg-[#e86727]"}`} />
               {kycStatus === "pending"
                 ? "Your documents are under review — you'll be notified within 10 minutes."
-                : user?.account_type === "individual"
+                : kycData?.limit_info?.account_type === "individual"
                   ? "Complete your identity verification (KYC) to unlock payouts."
                   : "Complete your business verification (KYC) to unlock payouts."}
               <Link href="/dashboard/kyc" className="underline font-semibold ml-1">
