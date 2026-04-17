@@ -542,7 +542,7 @@ export default function NewScheduledRunPage() {
           <DateRangeInput from={fromDate} to={toDate} onFromChange={setFromDate} onToChange={setToDate} />
         </Field>
 
-        <Field label="Risk Tolerance">
+        <Field label="Payment Safety Level">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground">Threshold</span>
             <span className="rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-black text-brand">

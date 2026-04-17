@@ -931,7 +931,7 @@ export default function RunDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">
-                    Risk Tolerance: <span className="font-black text-foreground">{rerunRisk.toFixed(2)}</span>
+                    Payment Safety Level: <span className="font-black text-foreground">{rerunRisk.toFixed(2)}</span>
                   </label>
                   <input
                     type="range" min={0} max={1} step={0.01}

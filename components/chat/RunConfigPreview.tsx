@@ -45,7 +45,7 @@ const SLOT_CONFIGS: SlotConfig[] = [
   },
   {
     key: "risk_tolerance",
-    label: "Risk Tolerance",
+    label: "Payment Safety Level",
     required: true,
     format: (v) => {
       const val = Number(v);

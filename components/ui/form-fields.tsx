@@ -508,8 +508,6 @@ export function DateInput({
   placeholder?: string;
   className?: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const formatted = value
     ? new Date(value + "T00:00:00")
       .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
@@ -518,7 +516,6 @@ export function DateInput({
 
   return (
     <div
-      onClick={() => inputRef.current?.showPicker?.()}
       className={cn(
         "relative h-12 min-w-36 cursor-pointer rounded-full border border-border bg-background transition-all",
         "focus-within:border-brand focus-within:ring-1 focus-within:ring-brand/10",
@@ -534,11 +531,10 @@ export function DateInput({
         <Calendar className="h-4 w-4 text-muted-foreground" />
       </div>
       <input
-        ref={inputRef}
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="sr-only"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       />
     </div>
   );
@@ -560,9 +556,6 @@ export function DateRangeInput({
   onToChange: (value: string) => void;
   className?: string;
 }) {
-  const fromRef = useRef<HTMLInputElement>(null);
-  const toRef = useRef<HTMLInputElement>(null);
-
   const fmt = (value: string) =>
     value
       ? new Date(value + "T00:00:00")
@@ -574,19 +567,18 @@ export function DateRangeInput({
     <div className={cn("flex flex-col gap-2 sm:flex-row sm:gap-0 sm:h-12 sm:overflow-hidden sm:rounded-full sm:border sm:border-border sm:bg-background sm:transition-all sm:focus-within:border-brand sm:focus-within:ring-1 sm:focus-within:ring-brand/10", className)}>
       {/* From */}
       <div
-        onClick={() => fromRef.current?.showPicker?.()}
-        className="flex h-12 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 transition-all focus-within:border-brand sm:flex-1 sm:rounded-none sm:border-0 sm:focus-within:border-0"
+        className="relative flex h-12 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 transition-all focus-within:border-brand sm:flex-1 sm:rounded-none sm:border-0 sm:focus-within:border-0"
       >
-        <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">From</span>
-        <span className="flex-1 text-sm">
+        <span className="pointer-events-none shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">From</span>
+        <span className="pointer-events-none flex-1 text-sm">
           {fmt(from) ? (
             <span className="text-foreground">{fmt(from)}</span>
           ) : (
             <span className="text-muted-foreground">Start date</span>
           )}
         </span>
-        <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <input ref={fromRef} type="date" value={from} onChange={(e) => onFromChange(e.target.value)} className="sr-only" />
+        <Calendar className="pointer-events-none h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input type="date" value={from} onChange={(e) => onFromChange(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
       </div>
 
       {/* Separator — desktop only */}
@@ -596,19 +588,18 @@ export function DateRangeInput({
 
       {/* To */}
       <div
-        onClick={() => toRef.current?.showPicker?.()}
-        className="flex h-12 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 transition-all focus-within:border-brand sm:flex-1 sm:rounded-none sm:border-0 sm:focus-within:border-0"
+        className="relative flex h-12 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-4 transition-all focus-within:border-brand sm:flex-1 sm:rounded-none sm:border-0 sm:focus-within:border-0"
       >
-        <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">To</span>
-        <span className="flex-1 text-sm">
+        <span className="pointer-events-none shrink-0 text-[10px] font-black uppercase tracking-wider text-muted-foreground">To</span>
+        <span className="pointer-events-none flex-1 text-sm">
           {fmt(to) ? (
             <span className="text-foreground">{fmt(to)}</span>
           ) : (
             <span className="text-muted-foreground">End date</span>
           )}
         </span>
-        <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <input ref={toRef} type="date" value={to} onChange={(e) => onToChange(e.target.value)} className="sr-only" />
+        <Calendar className="pointer-events-none h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <input type="date" value={to} onChange={(e) => onToChange(e.target.value)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
       </div>
     </div>
   );

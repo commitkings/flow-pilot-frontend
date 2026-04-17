@@ -197,7 +197,7 @@ export default function ApprovalGatePage() {
           Run {truncateRunId(id)}
         </span>
         <span className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-foreground">
-          Risk Tolerance {riskTolerance.toFixed(2)}
+          Safety Level {riskTolerance.toFixed(2)}
         </span>
         {budgetCap !== null && (
           <span className={cn(
