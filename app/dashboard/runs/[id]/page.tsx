@@ -597,6 +597,9 @@ export default function RunDetailPage() {
     ? approvalCapableMembers.filter((m) => m.user_id !== currentUserId)
     : approvalCapableMembers;
 
+  // When no approver is explicitly assigned and only one person can approve, treat them as the de-facto assignee
+  const soleApprover = !run?.assignedTo && approvalCapableMembers.length === 1 ? approvalCapableMembers[0] : null;
+
   // Whether the current user is the designated approver (or unassigned + capable)
   const isAssignedApprover =
     !run?.assignedToId || run.assignedToId === currentUserId;
@@ -817,8 +820,15 @@ export default function RunDetailPage() {
                 <span className="text-muted-foreground/60">·</span>
                 <span className="text-xs text-muted-foreground">{run.assignedTo.email}</span>
               </>
+            ) : soleApprover ? (
+              <>
+                <span className="font-bold text-foreground">{soleApprover.user?.display_name || soleApprover.user?.email}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span className="text-xs text-muted-foreground">{soleApprover.user?.email}</span>
+              </>
             ) : (
-              <span className="font-semibold text-foreground">Any available approver</span>            )}
+              <span className="font-semibold text-foreground">Any available approver</span>
+            )}
           </div>
         </div>
       )}
@@ -1149,6 +1159,8 @@ export default function RunDetailPage() {
             value={
               run.assignedTo
                 ? <PersonChip name={run.assignedTo.name} email={run.assignedTo.email} color="amber" />
+                : soleApprover
+                ? <PersonChip name={soleApprover.user?.display_name || soleApprover.user?.email || ""} email={soleApprover.user?.email || ""} color="amber" />
                 : <span className="text-sm text-muted-foreground">Any available approver</span>
             }
           />
