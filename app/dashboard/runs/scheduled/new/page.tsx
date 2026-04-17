@@ -19,7 +19,7 @@ import { useKycStatus } from "@/hooks/use-kyc-queries";
 import { useCredits } from "@/hooks/use-credits";
 import type { ScheduledRunType } from "@/lib/api-scheduled-runs";
 import Link from "next/link";
-import { readFileAsCsv, IMPORT_ACCEPT } from "@/lib/file-utils";
+import { readFileAsCsv, IMPORT_ACCEPT, splitCsvLine, normHeader, fixAccountNumber } from "@/lib/file-utils";
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
@@ -278,28 +278,43 @@ export default function NewScheduledRunPage() {
   /* ── CSV helpers ── */
   const parseCsv = (text: string): Recipient[] => {
     if (institutionOptions.length === 0) throw new Error("Institutions must finish loading before CSV import.");
-    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+
+    const lines = text.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("#"));
     if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row.");
-    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, ""));
-    const col = (cols: string[], key: string) => {
-      const i = headers.indexOf(key);
-      return i >= 0 ? (cols[i] ?? "").trim().replace(/^"|"$/g, "") : "";
+
+    const headers = splitCsvLine(lines[0]).map(normHeader);
+    const col = (cols: string[], ...keys: string[]) => {
+      for (const key of keys) {
+        const i = headers.indexOf(normHeader(key));
+        if (i >= 0) return (cols[i] ?? "").trim().replace(/^"|"$/g, "");
+      }
+      return "";
     };
-    return lines.slice(1).map((line, idx) => {
-      const cols = line.split(",");
-      const raw = col(cols, "bank_name") || col(cols, "institution_code") || col(cols, "institution") || col(cols, "bank");
+
+    const results: Recipient[] = [];
+    lines.slice(1).forEach((line, idx) => {
+      const cols = splitCsvLine(line);
+
+      if (cols.every((c) => !c)) return;
+
+      const raw = col(cols, "bank_name", "institution_code", "bank_code", "institution", "bank");
       const code = resolveCode(raw, institutionOptions);
-      if (!raw) throw new Error(`Row ${idx + 2}: missing bank_name or institution_code.`);
-      if (!code) throw new Error(`Row ${idx + 2}: unknown bank '${raw}'.`);
-      return emptyRow({
-        beneficiaryName: col(cols, "beneficiaryname") || col(cols, "name"),
+      if (!raw) throw new Error(`Row ${idx + 2}: bank column is empty. Make sure the column is named "bank_name".`);
+      if (!code) throw new Error(`Row ${idx + 2}: unrecognised bank "${raw}". Use the full name (e.g. "Access Bank"), short name, or bank code.`);
+
+      const accountRaw = col(cols, "accountnumber", "account_number", "account");
+      const accountNumber = fixAccountNumber(accountRaw);
+
+      results.push(emptyRow({
+        beneficiaryName: col(cols, "beneficiaryname", "beneficiary_name", "name", "fullname", "full_name"),
         institutionCode: code,
-        accountNumber: col(cols, "accountnumber") || col(cols, "account"),
-        beneficiaryEmail: col(cols, "beneficiaryemail") || col(cols, "email"),
+        accountNumber,
+        beneficiaryEmail: col(cols, "beneficiaryemail", "beneficiary_email", "email"),
         amount: col(cols, "amount"),
-        purpose: col(cols, "purpose"),
-      });
+        purpose: col(cols, "purpose", "narration", "description", "note", "notes"),
+      }));
     });
+    return results;
   };
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

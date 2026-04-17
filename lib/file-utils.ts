@@ -41,3 +41,54 @@ export async function toCsvFile(file: File): Promise<File> {
 }
 
 export const IMPORT_ACCEPT = ".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+/**
+ * Normalise a header or lookup key so that "Bank Name", "bank_name",
+ * "bank-name", and "bankname" all map to the same string.
+ */
+export function normHeader(h: string): string {
+  return h.trim().toLowerCase().replace(/[\s_\-]+/g, "");
+}
+
+/**
+ * RFC-4180-compliant CSV line splitter.
+ * Handles quoted fields that contain commas or escaped double-quotes.
+ */
+export function splitCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') { field += '"'; i++; } // escaped ""
+        else inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        result.push(field.trim());
+        field = "";
+      } else {
+        field += ch;
+      }
+    }
+  }
+  result.push(field.trim());
+  return result;
+}
+
+/**
+ * Pad account numbers that look like they had a leading zero stripped by Excel.
+ * Nigerian NUBAN numbers are always 10 digits — a 9-digit value means Excel
+ * dropped the leading zero.
+ */
+export function fixAccountNumber(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 9) return "0" + digits;
+  return digits || raw;
+}
