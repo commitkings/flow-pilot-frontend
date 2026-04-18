@@ -5,6 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { getUserRole } from "@/lib/api-types";
 import {
   AlertTriangle,
+  Bell,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -47,6 +48,8 @@ import {
   useDeleteSelfAccount,
   useImportAccountData,
   useRequestDeleteCode,
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
 } from "@/hooks/use-settings-queries";
 import { useUploadOrgLogo } from "@/hooks/use-kyc-queries";
 import { CardSelect, PillSelect, type CardSelectOption } from "@/components/ui/select-fields";
@@ -68,7 +71,7 @@ import {
 } from "@/hooks/use-approval-pin";
 import { cn } from "@/lib/utils";
 
-type Tab = "profile" | "workspace" | "security" | "account";
+type Tab = "profile" | "workspace" | "security" | "notifications" | "account";
 
 export default function SettingsPage() {
   const { user, logout, refreshUser } = useAuth();
@@ -80,7 +83,7 @@ export default function SettingsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("tab");
-    if (t === "security" || t === "workspace" || t === "account") setActiveTab(t);
+    if (t === "security" || t === "workspace" || t === "account" || t === "notifications") setActiveTab(t);
   }, []);
 
   const orgQuery = useOrgProfile();
@@ -261,6 +264,19 @@ export default function SettingsPage() {
   const [configRiskThreshold, setConfigRiskThreshold] = useState("");
   const [configLiquidityBuffer, setConfigLiquidityBuffer] = useState("");
 
+  // Notification preferences
+  const notifPrefsQuery = useNotificationPreferences();
+  const updateNotifPrefs = useUpdateNotificationPreferences();
+  const notifPrefs = notifPrefsQuery.data ?? {
+    login_alerts: true,
+    security_alerts: true,
+    payout_updates: true,
+    kyc_updates: true,
+    api_key_warnings: true,
+    wallet_alerts: true,
+    scheduled_run_reminders: true,
+  };
+
   const org = orgQuery.data;
   const isIndividual = org?.account_type === "individual";
   const connections = connectionsQuery.data?.connections ?? [];
@@ -353,10 +369,11 @@ export default function SettingsPage() {
 
   // Tab definitions
   const allTabs: { id: Tab; label: string; icon: React.ReactNode; ownerOnly?: boolean }[] = [
-    { id: "profile",   label: "Profile",   icon: <User className="h-4 w-4" /> },
-    { id: "workspace", label: "Workspace",  icon: <Building2 className="h-4 w-4" /> },
-    { id: "security",  label: "Security",   icon: <Lock className="h-4 w-4" /> },
-    { id: "account",   label: "Account",    icon: <AlertOctagon className="h-4 w-4" /> },
+    { id: "profile",       label: "Profile",       icon: <User className="h-4 w-4" /> },
+    { id: "workspace",     label: "Workspace",      icon: <Building2 className="h-4 w-4" /> },
+    { id: "security",      label: "Security",       icon: <Lock className="h-4 w-4" /> },
+    { id: "notifications", label: "Notifications",  icon: <Bell className="h-4 w-4" /> },
+    { id: "account",       label: "Account",        icon: <AlertOctagon className="h-4 w-4" /> },
   ];
   const tabs = allTabs.filter((t) => {
     if (t.ownerOnly && !isOwner) return false;
@@ -1126,6 +1143,71 @@ export default function SettingsPage() {
           </Section>
         )}
 
+        {/* ════════════════ NOTIFICATIONS ════════════════ */}
+        {activeTab === "notifications" && (
+          <>
+            <Section title="Email Notifications" description="Choose which emails FlowPilot sends to you. Security-critical alerts (e.g. account lockouts, password resets) are always sent.">
+              <div className="divide-y divide-border/60">
+                <NotifToggle
+                  label="Login alerts"
+                  description="Receive an email each time a successful sign-in is detected on your account."
+                  checked={notifPrefs.login_alerts}
+                  onChange={(v) => updateNotifPrefs.mutate({ login_alerts: v })}
+                  loading={updateNotifPrefs.isPending}
+                />
+                <NotifToggle
+                  label="Security alerts"
+                  description="Emails when 2FA is enabled or disabled on your account."
+                  checked={notifPrefs.security_alerts}
+                  onChange={(v) => updateNotifPrefs.mutate({ security_alerts: v })}
+                  loading={updateNotifPrefs.isPending}
+                />
+                <NotifToggle
+                  label="Payout updates"
+                  description="Notifications for payout runs awaiting your approval or when a run you created completes."
+                  checked={notifPrefs.payout_updates}
+                  onChange={(v) => updateNotifPrefs.mutate({ payout_updates: v })}
+                  loading={updateNotifPrefs.isPending}
+                />
+                {!isIndividual && (
+                  <NotifToggle
+                    label="KYC updates"
+                    description="Status emails when KYC documents are submitted or verified."
+                    checked={notifPrefs.kyc_updates}
+                    onChange={(v) => updateNotifPrefs.mutate({ kyc_updates: v })}
+                    loading={updateNotifPrefs.isPending}
+                  />
+                )}
+                <NotifToggle
+                  label="API key expiry warnings"
+                  description="Receive a warning email when an API key is approaching its expiry date."
+                  checked={notifPrefs.api_key_warnings}
+                  onChange={(v) => updateNotifPrefs.mutate({ api_key_warnings: v })}
+                  loading={updateNotifPrefs.isPending}
+                />
+                {!isIndividual && (
+                  <>
+                    <NotifToggle
+                      label="Wallet alerts"
+                      description="Top-up confirmations and low-balance warnings for your organisation wallet."
+                      checked={notifPrefs.wallet_alerts}
+                      onChange={(v) => updateNotifPrefs.mutate({ wallet_alerts: v })}
+                      loading={updateNotifPrefs.isPending}
+                    />
+                    <NotifToggle
+                      label="Scheduled run reminders"
+                      description="A heads-up email the day before a scheduled payout run fires."
+                      checked={notifPrefs.scheduled_run_reminders}
+                      onChange={(v) => updateNotifPrefs.mutate({ scheduled_run_reminders: v })}
+                      loading={updateNotifPrefs.isPending}
+                    />
+                  </>
+                )}
+              </div>
+            </Section>
+          </>
+        )}
+
         {/* ════════════════ ACCOUNT ════════════════ */}
         {activeTab === "account" && (
           <Section title="Account" description="Data export, session management, and destructive actions." variant="danger">
@@ -1466,6 +1548,47 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function NotifToggle({
+  label,
+  description,
+  checked,
+  onChange,
+  loading,
+}: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  loading?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-6 py-4">
+      <div className="space-y-0.5">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        disabled={loading}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50",
+          checked ? "bg-brand" : "bg-muted"
+        )}
+      >
+        <span
+          className={cn(
+            "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200",
+            checked ? "translate-x-5" : "translate-x-0"
+          )}
+        />
+      </button>
     </div>
   );
 }

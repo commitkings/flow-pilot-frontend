@@ -9,16 +9,18 @@ import {
   deleteSelfAccount,
   exportAccountData,
   getConnections,
+  getNotificationPreferences,
   getOrgProfile,
   importAccountData,
   removeAvatar,
   requestDeleteCode,
   updateMe,
+  updateNotificationPreferences,
   updateOrgConfig,
   updateOrgProfile,
   uploadAvatar,
 } from "@/lib/api-client";
-import type { User } from "@/lib/api-types";
+import type { NotificationPreferences, User } from "@/lib/api-types";
 
 export function useOrgProfile() {
   return useQuery({
@@ -188,6 +190,28 @@ export function useImportAccountData() {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : "Failed to import data");
+    },
+  });
+}
+
+export function useNotificationPreferences() {
+  return useQuery({
+    queryKey: ["notification-preferences"],
+    queryFn: () => getNotificationPreferences(),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (prefs: Partial<NotificationPreferences>) => updateNotificationPreferences(prefs),
+    onSuccess: (data) => {
+      qc.setQueryData(["notification-preferences"], data);
+      toast.success("Notification preferences saved");
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : "Failed to save preferences");
     },
   });
 }

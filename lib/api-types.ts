@@ -39,6 +39,16 @@ export interface Membership {
   role: string;
 }
 
+export interface NotificationPreferences {
+  login_alerts: boolean;
+  security_alerts: boolean;
+  payout_updates: boolean;
+  kyc_updates: boolean;
+  api_key_warnings: boolean;
+  wallet_alerts: boolean;
+  scheduled_run_reminders: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -62,6 +72,7 @@ export interface User {
   totp_enabled: boolean;
   /** ISO timestamp deadline set by org enforcement — null if not under a grace period */
   totp_grace_until: string | null;
+  notification_preferences: NotificationPreferences;
 }
 
 /** Convenience helper — returns the current user's role or null */

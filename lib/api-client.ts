@@ -47,6 +47,7 @@ import type {
   RunStatusResponse,
   TeamMembersResponse,
   TransactionsResponse,
+  NotificationPreferences,
   UploadCandidatesResponse,
   User,
 } from "./api-types";
@@ -588,6 +589,18 @@ export function importAccountData(file: File): Promise<{ status: string; restore
     .then((r) => r.data);
 }
 
+
+export function getNotificationPreferences(): Promise<NotificationPreferences> {
+  return apiClient.get<NotificationPreferences>("/account/notification-preferences").then((r) => r.data);
+}
+
+export function updateNotificationPreferences(
+  prefs: Partial<NotificationPreferences>
+): Promise<NotificationPreferences> {
+  return apiClient
+    .patch<NotificationPreferences>("/account/notification-preferences", prefs)
+    .then((r) => r.data);
+}
 
 // ── 15. Two-Factor Authentication ────────────────────────────────────────────
 
